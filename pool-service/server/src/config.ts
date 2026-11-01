@@ -13,7 +13,12 @@ const envSchema = z.object({
   /** Signs the session cookie. Generate with `openssl rand -hex 32`. */
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
   /** argon2 hash of the single user's password (`npm run hash-password`). */
-  ADMIN_PASSWORD_HASH: z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash'),
+  // Strip surrounding quotes: `docker run --env-file` keeps them literally,
+  // while Compose and Node's --env-file remove them.
+  ADMIN_PASSWORD_HASH: z
+    .string()
+    .transform((v) => v.trim().replace(/^(['"])(.*)\1$/, '$2'))
+    .pipe(z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash')),
   PHOTO_DIR: z.string().default('./data/photos'),
   /** Built Quasar PWA to serve from `/` (optional in development). */
   CLIENT_DIST: z.string().optional(),
