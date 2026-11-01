@@ -1,0 +1,64 @@
+# Pool Service — local development and (with Phase 6 additions) production.
+#
+#   docker compose up -d mongo        # just the database, for `npm run dev` / tests
+#   docker compose up -d --build      # database + API
+#
+# Mongo runs as a single-node replica set because /sync/package uses transactions.
+name: pool-service
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - ./data/mongo:/data/db
+    # Exposed on localhost only, for development and tests. Remove in production.
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      # Initiates the replica set on first start, then reports healthy once PRIMARY.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok }; db.hello().isWritablePrimary || quit(1)"
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      MONGO_URL: mongodb://mongo:27017/pool?replicaSet=rs0
+      PHOTO_DIR: /data/photos
+    volumes:
+      - ./data/photos:/data/photos
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Internal only; cloudflared (Phase 6) reaches it at http://api:3000.
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Phase 6: Cloudflare Tunnel pointing pool.<yourdomain> at http://api:3000
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+  #   depends_on:
+  #     - api

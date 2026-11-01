@@ -1,0 +1,27 @@
+{
+  "name": "@pool/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pool Service PWA (Quasar, Vue 3, Pinia)",
+  "scripts": {
+    "postinstall": "quasar prepare",
+    "dev": "quasar dev -m pwa",
+    "build": "quasar build -m pwa",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@pool/shared": "0.1.0",
+    "@quasar/extras": "^2.1.0",
+    "pinia": "^4.1.0",
+    "quasar": "^2.35.2",
+    "vue": "^3.5.44",
+    "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "@quasar/app-vite": "^3.10.3",
+    "@types/node": "^22.19.0",
+    "typescript": "~5.9.3",
+    "vue-tsc": "^3.3.14"
+  }
+}
