@@ -49,8 +49,11 @@ services:
       NODE_ENV: production
       MONGO_URL: mongodb://mongo:27017/pool?replicaSet=rs0
       PHOTO_DIR: /data/photos
+      BACKUP_DIR: /backups
     volumes:
       - ./data/photos:/data/photos
+      # Read-only: the More screen shows the last backup time from backups/LAST_BACKUP.
+      - ./backups:/backups:ro
     depends_on:
       mongo:
         condition: service_healthy

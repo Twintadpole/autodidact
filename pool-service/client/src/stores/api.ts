@@ -8,15 +8,39 @@ export class ApiError extends Error {
   }
 }
 
+/** Set by the router: called when a request comes back 401 (session expired) so the app can show the login screen. */
+let unauthorizedHandler: (() => void) | null = null;
+export function onUnauthorized(handler: () => void) {
+  unauthorizedHandler = handler;
+}
+
 export async function api<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const req: RequestInit = { method: init.method ?? 'GET', credentials: 'same-origin' };
   if (init.body !== undefined) {
     req.headers = { 'content-type': 'application/json' };
     req.body = JSON.stringify(init.body);
   }
-  const res = await fetch(`/api${path}`, req);
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, req);
+  } catch {
+    throw new ApiError(0, 'No connection to the server. Check your signal and try again.');
+  }
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new ApiError(res.status, data?.message ?? `${res.status} ${res.statusText}`);
+  let data: { message?: string } | null = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+  if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) unauthorizedHandler?.();
+    throw new ApiError(res.status, data?.message ?? `${res.status} ${res.statusText}`);
+  }
   return data as T;
+}
+
+/** A readable message for notifications. */
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

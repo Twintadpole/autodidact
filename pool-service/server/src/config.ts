@@ -22,6 +22,8 @@ const envSchema = z.object({
   PHOTO_DIR: z.string().default('./data/photos'),
   /** Built Quasar PWA to serve from `/` (optional in development). */
   CLIENT_DIST: z.string().optional(),
+  /** Folder holding LAST_BACKUP (written by deploy/backup.sh); shown on the More screen. */
+  BACKUP_DIR: z.string().optional(),
   COOKIE_SECURE: boolFromEnv.optional(),
   /** Behind Cloudflare Tunnel / a reverse proxy: trust X-Forwarded-* headers. */
   TRUST_PROXY: boolFromEnv.default(true),
@@ -37,6 +39,7 @@ export interface AppConfig {
   adminPasswordHash: string;
   photoDir: string;
   clientDist?: string;
+  backupDir?: string;
   cookieSecure: boolean;
   trustProxy: boolean;
   logLevel: string;
@@ -60,6 +63,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     adminPasswordHash: e.ADMIN_PASSWORD_HASH,
     photoDir: path.resolve(e.PHOTO_DIR),
     clientDist: e.CLIENT_DIST ? path.resolve(e.CLIENT_DIST) : undefined,
+    backupDir: e.BACKUP_DIR ? path.resolve(e.BACKUP_DIR) : undefined,
     cookieSecure: e.COOKIE_SECURE ?? e.NODE_ENV === 'production',
     trustProxy: e.TRUST_PROXY,
     logLevel: e.LOG_LEVEL,

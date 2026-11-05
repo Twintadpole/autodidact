@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import type { FastifyPluginAsync } from 'fastify';
@@ -12,6 +13,22 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
   app.get('/health', async (_request, reply) => {
     const mongo = mongoose.connection.readyState === 1;
     return reply.code(mongo ? 200 : 503).send({ ok: mongo, mongo });
+  });
+};
+
+/** App/server info for the More screen. */
+export const systemRoutes: FastifyPluginAsync<{ backupDir?: string }> = async (app, { backupDir }) => {
+  app.get('/system/status', async () => {
+    let lastBackupAt: string | null = null;
+    if (backupDir) {
+      try {
+        const raw = (await fs.promises.readFile(path.join(backupDir, 'LAST_BACKUP'), 'utf8')).trim();
+        if (raw && !Number.isNaN(Date.parse(raw))) lastBackupAt = new Date(raw).toISOString();
+      } catch {
+        // no backup yet
+      }
+    }
+    return { lastBackupAt, serverTime: new Date().toISOString() };
   });
 };
 
