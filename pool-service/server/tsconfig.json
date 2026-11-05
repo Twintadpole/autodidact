@@ -5,5 +5,5 @@
     "types": ["node"],
     "customConditions": ["@pool/source"]
   },
-  "include": ["src", "test", "scripts", "vitest.config.ts"]
+  "include": ["src", "test", "vitest.config.ts"]
 }

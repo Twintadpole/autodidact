@@ -1,19 +1,28 @@
-# Pool Service — local development and (with Phase 6 additions) production.
+# Pool Service: local development and the VPS deployment.
 #
 #   docker compose up -d mongo        # just the database, for `npm run dev` / tests
-#   docker compose up -d --build      # database + API
+#   docker compose up -d --build      # database + API (what the VPS runs)
 #
 # Mongo runs as a single-node replica set because /sync/package uses transactions.
+# On the VPS, the host's cloudflared (Cloudflare Tunnel) forwards
+# https://poolapp.evolutiondfw.com to http://localhost:3000.
 name: pool-service
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   mongo:
     image: mongo:8
     restart: unless-stopped
     command: ["--replSet", "rs0", "--bind_ip_all"]
+    logging: *logging
     volumes:
       - ./data/mongo:/data/db
-    # Exposed on localhost only, for development and tests. Remove in production.
+    # Bound to localhost only: reachable from the server itself (dev, tests, backups), never from outside.
     ports:
       - "127.0.0.1:27017:27017"
     healthcheck:
@@ -34,6 +43,7 @@ services:
       context: .
       dockerfile: server/Dockerfile
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
       NODE_ENV: production
@@ -44,21 +54,12 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    # Internal only; cloudflared (Phase 6) reaches it at http://api:3000.
-    expose:
-      - "3000"
+    # Localhost only. The Cloudflare Tunnel on the host connects here.
+    ports:
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
+      start_period: 20s
       retries: 3
-
-  # Phase 6: Cloudflare Tunnel pointing pool.<yourdomain> at http://api:3000
-  # cloudflared:
-  #   image: cloudflare/cloudflared:latest
-  #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run
-  #   environment:
-  #     TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
-  #   depends_on:
-  #     - api

@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "hash-password": "tsx scripts/hash-password.ts"
+    "hash-password": "tsx src/cli/hash-password.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
