@@ -7,3 +7,6 @@ coverage/
 *.log
 .quasar/
 client/dist/
+e2e/out/
+e2e/node_modules/
+e2e/package*.json
