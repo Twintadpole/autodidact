@@ -32,7 +32,9 @@
         <div v-for="q in quadrants" :key="q.key" class="quad" :class="`quad--${q.key}`" :data-test="`quad-${q.key}`">
           <div class="quad-title">{{ q.label }} <span class="text-grey-7">({{ q.items.length }})</span></div>
           <div v-for="i in q.items" :key="i._id" class="quad-item" :data-test="`issue-${i._id}`" @click="openIssue(i)">
-            <div class="text-body2 text-weight-medium ellipsis-2-lines">{{ i.title }}</div>
+            <div class="text-body2 text-weight-medium ellipsis-2-lines">
+              {{ i.title }}<q-icon v-if="i.photoIds?.length" name="photo_camera" size="14px" class="q-ml-xs text-grey-7" />
+            </div>
             <div v-if="!poolId" class="text-caption text-grey-7 ellipsis">{{ poolName(i.poolId) }}</div>
           </div>
         </div>
@@ -43,7 +45,7 @@
         <q-item v-for="i in sortedActive" :key="i._id" clickable :data-test="`issue-${i._id}`" @click="openIssue(i)">
           <q-item-section avatar><q-icon :name="QUAD_ICON[deriveQuadrant(i)]" :color="QUAD_COLOR[deriveQuadrant(i)]" /></q-item-section>
           <q-item-section>
-            <q-item-label>{{ i.title }}</q-item-label>
+            <q-item-label>{{ i.title }}<q-icon v-if="i.photoIds?.length" name="photo_camera" size="14px" class="q-ml-xs text-grey-7" /></q-item-label>
             <q-item-label caption>
               {{ quadLabel(i) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span><span v-if="i.status === 'in_progress'"> · in progress</span>
             </q-item-label>

@@ -34,3 +34,25 @@ wait_healthy() {
   dc logs --tail 50 api
   die "API did not become healthy at ${url}"
 }
+
+# Live record counts (not deleted) per collection, as JSON. Used to prove a deploy kept every record.
+COUNTED='["customers","pools","visits","issues","notes","photos","chemicals"]'
+record_counts() {
+  local db="${1:-pool}"
+  dc exec -T mongo mongosh --quiet "${db}" --eval \
+    "JSON.stringify(Object.fromEntries(${COUNTED}.map(c => [c, db.getCollection(c).countDocuments({ deletedAt: null })])))"
+}
+
+# Prints a before/after table; exits non-zero if any collection lost records.
+compare_counts() {
+  local before="$1" after="$2" l1="${3:-before}" l2="${4:-after}"
+  dc exec -T mongo mongosh --quiet --eval "
+    const b = ${before}, a = ${after}; let lost = false;
+    print('collection    ' + '${l1}'.padStart(8) + '${l2}'.padStart(8));
+    for (const c of ${COUNTED}) {
+      const flag = (a[c] ?? 0) < (b[c] ?? 0) ? '   <-- FEWER' : '';
+      if (flag) lost = true;
+      print(c.padEnd(14) + String(b[c] ?? 0).padStart(8) + String(a[c] ?? 0).padStart(8) + flag);
+    }
+    if (lost) quit(3);"
+}

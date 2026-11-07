@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { idSchema } from '@pool/shared';
 import { newId, queryBool } from '../util.js';
+import { diff, recordAudit } from './audit.js';
 
 export interface CrudOptions {
   /** URL path, e.g. "/customers". */
@@ -55,6 +56,7 @@ export function registerCrud(parent: FastifyInstance, opts: CrudOptions): void {
       return reply.code(409).send({ error: 'Conflict', message: `Document ${_id} already exists` });
     }
     const [created] = await model.create([{ ...body, _id, createdAt: now, updatedAt: now, deletedAt: null, syncedAt: now }]);
+    await recordAudit({ collectionName: model.collection.name, docId: _id, action: 'create', source: 'app' });
     return reply.code(201).send(created!.toObject());
   });
 
@@ -71,7 +73,8 @@ export function registerCrud(parent: FastifyInstance, opts: CrudOptions): void {
         { $set: { ...body, updatedAt: now, syncedAt: now } },
         { returnDocument: 'after', runValidators: true },
       )
-      .lean();
+      .lean<Record<string, any>>();
+    await recordAudit({ collectionName: model.collection.name, docId: request.params.id, action: 'update', source: 'app', changes: diff(existing, body) });
     return updated;
   });
 
@@ -85,6 +88,7 @@ export function registerCrud(parent: FastifyInstance, opts: CrudOptions): void {
       )
       .lean();
     if (!updated) return reply.code(404).send({ error: 'Not Found', message: `No document ${request.params.id}` });
+    await recordAudit({ collectionName: model.collection.name, docId: request.params.id, action: 'delete', source: 'app' });
     return updated;
   });
 }

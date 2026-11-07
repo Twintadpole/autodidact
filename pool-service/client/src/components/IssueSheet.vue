@@ -29,6 +29,34 @@
             label="Status"
             data-test="issue-status"
           />
+
+          <!-- Photos -->
+          <div>
+            <div class="text-caption text-grey-7 q-mb-xs">Photos</div>
+            <div class="row q-gutter-sm items-start" data-test="issue-photos">
+              <div v-for="ph in photos" :key="ph._id" class="photo-tile" data-test="issue-photo">
+                <q-img :src="thumbUrl(ph._id)" ratio="1" class="rounded-borders cursor-pointer" @click="viewing = ph" />
+                <q-checkbox
+                  :model-value="ph.savedToPool"
+                  dense
+                  size="sm"
+                  label="Save to pool"
+                  class="text-caption"
+                  data-test="photo-save-to-pool"
+                  @update:model-value="(v: boolean) => setSaved(ph, v)"
+                />
+              </div>
+              <div v-for="n in uploading" :key="`up-${n}`" class="photo-tile flex flex-center bg-grey-2 rounded-borders" style="height: 88px">
+                <q-spinner color="primary" />
+              </div>
+            </div>
+            <div class="row q-gutter-sm q-mt-xs">
+              <q-btn outline dense no-caps color="primary" icon="photo_camera" label="Camera" data-test="photo-camera" @click="cameraInput?.click()" />
+              <q-btn outline dense no-caps color="primary" icon="photo_library" label="Gallery" data-test="photo-gallery" @click="galleryInput?.click()" />
+            </div>
+            <input ref="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" @change="onFiles" />
+            <input ref="galleryInput" type="file" accept="image/*" multiple class="hidden" data-test="photo-input" @change="onFiles" />
+          </div>
         </q-card-section>
 
         <q-card-actions class="q-px-md q-pb-md column q-gutter-sm items-stretch">
@@ -48,15 +76,19 @@
       </q-form>
     </q-card>
   </q-dialog>
+  <PhotoViewer :photo="viewing" @close="viewing = null" @save-to-pool="(v) => viewing && setSaved(viewing, v)" @delete="removePhoto" />
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { deriveQuadrant, QUADRANTS, type IssueStatus } from '@pool/shared';
+import PhotoViewer from '@/components/PhotoViewer.vue';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
-import type { Issue } from '@/lib/types';
+import { compressPhoto, thumbUrl } from '@/lib/photos';
+import { newId } from '@/lib/format';
+import type { Issue, Photo } from '@/lib/types';
 
 const props = defineProps<{ modelValue: boolean; issue?: Issue | null; poolId: string }>();
 const emit = defineEmits<{ 'update:modelValue': [boolean]; saved: [Issue] }>();
@@ -74,11 +106,67 @@ const STATUS_LABELS: Record<IssueStatus, string> = {
 const statusOptions = (Object.keys(STATUS_LABELS) as IssueStatus[]).map((s) => ({ label: STATUS_LABELS[s], value: s }));
 
 const form = reactive({ title: '', description: '', urgent: false, important: false, status: 'open' as IssueStatus });
+const photos = ref<Photo[]>([]);
+const uploading = ref(0);
+const viewing = ref<Photo | null>(null);
+const cameraInput = ref<HTMLInputElement | null>(null);
+const galleryInput = ref<HTMLInputElement | null>(null);
+/** A new issue gets its ID up front so photos can be attached before it is saved. */
+const pendingId = ref(newId());
+let savedNew = false;
+
+const issueId = computed(() => props.issue?._id ?? pendingId.value);
+
+async function onFiles(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  input.value = '';
+  for (const file of files) {
+    uploading.value++;
+    try {
+      const { blob, width, height } = await compressPhoto(file);
+      const photo = await data.uploadPhoto(blob, { poolId: props.poolId, issueId: issueId.value, width, height });
+      photos.value.push(photo);
+    } catch (err) {
+      $q.notify({ type: 'negative', message: `Photo not saved: ${errorMessage(err)}` });
+    } finally {
+      uploading.value--;
+    }
+  }
+}
+
+async function setSaved(ph: Photo, savedToPool: boolean) {
+  try {
+    const updated = await data.patchPhoto(ph._id, { savedToPool });
+    ph.savedToPool = updated.savedToPool;
+    if (viewing.value?._id === ph._id) viewing.value = { ...ph };
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  }
+}
+
+async function removePhoto() {
+  const ph = viewing.value;
+  if (!ph) return;
+  await data.deletePhoto(ph._id);
+  photos.value = photos.value.filter((p) => p._id !== ph._id);
+  viewing.value = null;
+}
 
 watch(
   () => [props.modelValue, props.issue] as const,
-  ([open, issue]) => {
-    if (!open) return;
+  async ([open, issue], old) => {
+    if (!open) {
+      // A new issue that was never saved: don't leave its photos behind.
+      if (old?.[0] && !old[1] && !savedNew) {
+        for (const ph of photos.value) await data.deletePhoto(ph._id).catch(() => undefined);
+      }
+      return;
+    }
+    savedNew = false;
+    photos.value = [];
+    if (!issue) pendingId.value = newId();
+    else data.listPhotos({ issueId: issue._id }).then((list) => (photos.value = list)).catch(() => undefined);
     form.title = issue?.title ?? '';
     form.description = issue?.description ?? '';
     form.urgent = issue?.urgent ?? false;
@@ -105,7 +193,9 @@ const poolLabel = computed(() => {
 async function persist(body: Partial<Issue>) {
   busy.value = true;
   try {
-    const saved = await data.saveIssue(props.issue?._id ?? null, props.issue ? body : { poolId: props.poolId, ...body });
+    const withPhotos = { ...body, photoIds: photos.value.map((p) => p._id) };
+    const saved = await data.saveIssue(props.issue?._id ?? null, props.issue ? withPhotos : { _id: pendingId.value, poolId: props.poolId, ...withPhotos });
+    if (!props.issue) savedNew = true;
     emit('saved', saved);
     emit('update:modelValue', false);
   } catch (err) {
@@ -133,6 +223,9 @@ function quick(status: IssueStatus) {
 </script>
 
 <style scoped>
+.photo-tile {
+  width: 88px;
+}
 .issue-sheet {
   max-width: 600px;
   border-top-left-radius: 16px;

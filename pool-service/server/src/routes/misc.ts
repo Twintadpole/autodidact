@@ -7,6 +7,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { idSchema } from '@pool/shared';
 import { Photo, Pool } from '../models/index.js';
 import type { PhotoStore } from '../services/photoStore.js';
+import { diff, recordAudit } from '../services/audit.js';
 
 /** Public: Docker liveness check. */
 export const healthRoutes: FastifyPluginAsync = async (app) => {
@@ -41,6 +42,7 @@ export const routeRoutes: FastifyPluginAsync = async (app) => {
       { deletedAt: null },
       { $set: { 'week.done': false, 'week.doneAt': null, 'week.changedAt': now, updatedAt: now, syncedAt: now } },
     );
+    await recordAudit({ collectionName: 'pools', docId: '*', action: 'bulk', source: 'app', note: `Reset week: cleared ${res.modifiedCount} checkmark(s)` });
     return { ok: true, pools: res.modifiedCount, resetAt: now.toISOString() };
   });
 };
@@ -61,6 +63,54 @@ export const photoRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (pa
       .header('Cache-Control', 'private, max-age=31536000, immutable')
       .send(fs.createReadStream(store.absPath(rel)));
   }
+
+  /** Photo metadata: a pool's gallery (savedToPool=true) or an issue's photos. */
+  app.get(
+    '/photos',
+    {
+      schema: {
+        querystring: z.object({
+          poolId: idSchema.optional(),
+          issueId: idSchema.optional(),
+          savedToPool: z.enum(['true', 'false']).optional(),
+        }),
+      },
+    },
+    async (req) => {
+      const filter: Record<string, unknown> = { deletedAt: null };
+      if (req.query.poolId) filter.poolId = req.query.poolId;
+      if (req.query.issueId) filter.issueId = req.query.issueId;
+      if (req.query.savedToPool) filter.savedToPool = req.query.savedToPool === 'true';
+      const docs = await Photo.find(filter).sort({ takenAt: -1 }).lean<Record<string, unknown>[]>();
+      return docs.map(({ file: _file, syncedAt: _s, ...rest }) => rest);
+    },
+  );
+
+  /** Toggle "Save to pool" or change the caption. */
+  app.patch(
+    '/photos/:id',
+    { schema: { params, body: z.object({ savedToPool: z.boolean().optional(), caption: z.string().max(500).optional() }) } },
+    async (req, reply) => {
+      const existing = await Photo.findOne({ _id: req.params.id, deletedAt: null }).lean<Record<string, unknown>>();
+      if (!existing) return reply.code(404).send({ error: 'Not Found', message: 'No such photo' });
+      const now = new Date();
+      const updated = await Photo.findByIdAndUpdate(req.params.id, { $set: { ...req.body, updatedAt: now, syncedAt: now } }, { returnDocument: 'after' }).lean<
+        Record<string, unknown>
+      >();
+      await recordAudit({ collectionName: 'photos', docId: req.params.id, action: 'update', source: 'app', changes: diff(existing, req.body) });
+      const { file: _file, syncedAt: _s, ...rest } = updated!;
+      return rest;
+    },
+  );
+
+  /** Soft delete; the image file stays on disk (and in backups). */
+  app.delete('/photos/:id', { schema: { params } }, async (req, reply) => {
+    const now = new Date();
+    const res = await Photo.updateOne({ _id: req.params.id, deletedAt: null }, { $set: { deletedAt: now, updatedAt: now, syncedAt: now } });
+    if (!res.matchedCount) return reply.code(404).send({ error: 'Not Found', message: 'No such photo' });
+    await recordAudit({ collectionName: 'photos', docId: req.params.id, action: 'delete', source: 'app' });
+    return { ok: true };
+  });
 
   app.get('/photos/:id', { schema: { params } }, (req, reply) => send(req.params.id, false, reply));
   app.get('/photos/:id/thumb', { schema: { params } }, (req, reply) => send(req.params.id, true, reply));

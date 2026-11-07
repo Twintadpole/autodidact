@@ -13,7 +13,7 @@ import {
   pool,
   SERVICE_DAYS,
 } from '@pool/shared';
-import { Chemical, Customer, Issue, Note, Pool, Visit } from '../models/index.js';
+import { AuditLog, Chemical, Customer, Issue, Note, Pool, Visit } from '../models/index.js';
 import { registerCrud } from '../services/crud.js';
 import { queryBool } from '../util.js';
 
@@ -97,5 +97,40 @@ export const resourceRoutes: FastifyPluginAsync = async (parent) => {
         .sort({ visitedAt: -1 })
         .limit(request.query.limit)
         .lean(),
+  );
+
+  /** Visits whose timer is running right now (open time segment), for pools that still exist. */
+  app.get('/visits/active', async () => {
+    const running = await Visit.find({
+      deletedAt: null,
+      'timeLog.finished': { $ne: true },
+      'timeLog.segments': { $elemMatch: { end: null } },
+    }).lean<{ poolId: string }[]>();
+    if (!running.length) return running;
+    const livePools = new Set(
+      (await Pool.find({ _id: { $in: running.map((v) => v.poolId) }, deletedAt: null }, { _id: 1 }).lean<{ _id: string }[]>()).map((p) => p._id),
+    );
+    return running.filter((v) => livePools.has(v.poolId));
+  });
+
+  /** Change history for one document (newest first), or the latest changes overall. */
+  app.get(
+    '/audit',
+    {
+      schema: {
+        querystring: z.object({
+          collection: z.string().min(1).max(40).optional(),
+          docId: z.string().min(1).max(64).optional(),
+          limit: z.coerce.number().int().min(1).max(500).default(100),
+        }),
+      },
+    },
+    async (request) => {
+      const { collection, docId, limit } = request.query;
+      const filter: Record<string, unknown> = {};
+      if (collection) filter.collectionName = collection;
+      if (docId) filter.docId = docId;
+      return AuditLog.find(filter).sort({ at: -1 }).limit(limit).lean();
+    },
   );
 };

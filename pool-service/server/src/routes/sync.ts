@@ -108,6 +108,7 @@ export const syncRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (app
         if (!tmp) continue;
         const rel = store.relPath(p._id, p.takenAt);
         await store.place(tmp, rel);
+        await store.makeThumb(rel);
         temps.delete(p._id);
         placed.push(p._id);
         photoFiles.set(p._id, rel);
@@ -119,7 +120,10 @@ export const syncRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (app
       } catch (err) {
         // Roll back files that no committed photo document refers to.
         for (const id of placed) {
-          if (!(await Photo.exists({ _id: id }))) await store.remove(store.absPath(photoFiles.get(id)!));
+          if (!(await Photo.exists({ _id: id }))) {
+            await store.remove(store.absPath(photoFiles.get(id)!));
+            await store.remove(store.absPath(store.thumbRelPath(photoFiles.get(id)!)));
+          }
         }
         throw err;
       }

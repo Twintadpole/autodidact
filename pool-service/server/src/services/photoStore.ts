@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { Readable } from 'node:stream';
+import sharp from 'sharp';
 import { newId } from '../util.js';
 
 /**
@@ -42,6 +43,24 @@ export class PhotoStore {
     const abs = this.absPath(rel);
     await fs.mkdir(path.dirname(abs), { recursive: true });
     await fs.rename(tmp, abs);
+  }
+
+  /**
+   * Writes the 400 px thumbnail next to the image. Also applies the photo's EXIF
+   * rotation so thumbnails are upright. Never throws: a missing thumbnail falls
+   * back to the original when served.
+   */
+  async makeThumb(rel: string): Promise<boolean> {
+    try {
+      await sharp(this.absPath(rel))
+        .rotate()
+        .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 75 })
+        .toFile(this.absPath(this.thumbRelPath(rel)));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async remove(absOrTmp: string): Promise<void> {

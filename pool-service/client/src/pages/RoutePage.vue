@@ -72,6 +72,9 @@
           <q-item-section class="cursor-pointer" :data-test="`open-${p._id}`" @click="open(p._id)">
             <q-item-label class="text-weight-medium" :class="{ 'text-grey-6': p.week.done }">{{ customerName(p) }}</q-item-label>
             <q-item-label caption>{{ p.name }} · {{ shortAddress(p) }}</q-item-label>
+            <q-item-label v-if="runningAt.get(p._id)" class="q-mt-xs">
+              <q-chip dense color="positive" text-color="white" icon="timer" class="q-ma-none" :data-test="`running-${p._id}`">{{ runningAt.get(p._id) }}</q-chip>
+            </q-item-label>
           </q-item-section>
           <q-item-section side class="row no-wrap items-center">
             <q-badge v-if="data.openIssueCount.get(p._id)" color="orange-8" class="q-mr-sm" :label="`${data.openIssueCount.get(p._id)} issue${data.openIssueCount.get(p._id)! > 1 ? 's' : ''}`" />
@@ -84,11 +87,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { format, startOfISOWeek } from 'date-fns';
-import { serviceDaysFrom } from '@pool/shared';
+import { serviceDaysFrom, timeLogSeconds } from '@pool/shared';
+import { hms } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
 import { DAY_LABELS, mapsUrl, poolAddress } from '@/lib/format';
@@ -102,6 +106,16 @@ const data = useDataStore();
 const filter = ref<'all' | 'remaining' | 'done'>('all');
 
 const activePools = computed(() => data.pools.filter((p) => p.active));
+
+// Live "on site" time for pools whose timer is running.
+const now = ref(new Date());
+let tick: ReturnType<typeof setInterval> | undefined;
+onMounted(() => {
+  tick = setInterval(() => (now.value = new Date()), 1000);
+  if (data.loaded) void data.refreshTimers().catch(() => undefined);
+});
+onBeforeUnmount(() => clearInterval(tick));
+const runningAt = computed(() => new Map(data.activeTimers.map((v) => [v.poolId, hms(timeLogSeconds(v.timeLog, now.value))])));
 const doneCount = computed(() => activePools.value.filter((p) => p.week.done).length);
 const weekLabel = format(startOfISOWeek(new Date()), 'MMM d');
 

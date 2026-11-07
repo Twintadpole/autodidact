@@ -36,6 +36,15 @@
 
       <div v-if="loadingVisits" class="flex flex-center q-pa-lg"><q-spinner size="32px" color="primary" /></div>
       <template v-else-if="draft">
+        <!-- Time on site -->
+        <VisitTimer
+          :time-log="draft.timeLog!"
+          :busy="saving"
+          @action="onTimer"
+          @edit="timeEditOpen = true"
+          @history="historyOpen = true"
+        />
+
         <!-- Current visit (editable) -->
         <VisitCard :visit="draft" :title="editingExisting ? 'Today’s visit (saved)' : 'This visit'" />
 
@@ -73,12 +82,14 @@
             :disable="!dirty || !hasContent"
             :loading="saving"
             data-test="save-visit"
-            @click="save()"
+            @click="save('manual')"
           />
         </div>
       </q-page-sticky>
 
       <IssueSheet v-model="issueOpen" :pool-id="pool._id" @saved="onIssueSaved" />
+      <TimeEditDialog v-if="draft" v-model="timeEditOpen" :time-log="draft.timeLog!" @save="onTimesEdited" />
+      <HistoryDialog v-if="draft" v-model="historyOpen" collection="visits" :doc-id="draft._id" title="Visit history" />
     </template>
   </q-page>
 </template>
@@ -90,11 +101,14 @@ import { useQuasar } from 'quasar';
 import { isToday, parseISO } from 'date-fns';
 import VisitCard from '@/components/VisitCard.vue';
 import IssueSheet from '@/components/IssueSheet.vue';
+import VisitTimer, { type TimerAction } from '@/components/VisitTimer.vue';
+import TimeEditDialog from '@/components/TimeEditDialog.vue';
+import HistoryDialog from '@/components/HistoryDialog.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { errorMessage } from '@/stores/api';
-import { newId } from '@/lib/format';
-import type { Note, Visit } from '@/lib/types';
+import { clone, newId } from '@/lib/format';
+import type { Note, TimeLog, Visit } from '@/lib/types';
 
 defineOptions({ name: 'VisitPage' });
 
@@ -115,9 +129,11 @@ const savedSnapshot = ref('');
 const loadingVisits = ref(true);
 const saving = ref(false);
 const issueOpen = ref(false);
+const timeEditOpen = ref(false);
+const historyOpen = ref(false);
 const pinnedNotes = ref<Note[]>([]);
 
-const snapshot = (v: Visit | null) => (v ? JSON.stringify({ r: v.readings, d: v.doses, t: v.tasks, n: v.notes ?? '' }) : '');
+const snapshot = (v: Visit | null) => (v ? JSON.stringify({ r: v.readings, d: v.doses, t: v.tasks, n: v.notes ?? '', tl: v.timeLog }) : '');
 const dirty = computed(() => !!draft.value && snapshot(draft.value) !== savedSnapshot.value);
 const hasContent = computed(() => {
   const v = draft.value;
@@ -126,7 +142,8 @@ const hasContent = computed(() => {
     Object.values(v.readings).some((x) => x !== null && x !== undefined) ||
     v.doses.length > 0 ||
     Object.values(v.tasks).some(Boolean) ||
-    !!v.notes?.trim()
+    !!v.notes?.trim() ||
+    !!v.timeLog?.segments.length
   );
 });
 
@@ -143,6 +160,7 @@ function blankVisit(): Visit {
     doses: [],
     tasks: { brushed: false, skimmed: false, vacuumed: false, basketsEmptied: false, filterCleaned: false },
     notes: '',
+    timeLog: { segments: [], finished: false },
   };
 }
 
@@ -154,8 +172,9 @@ async function load() {
     const latest = visits[0];
     if (latest && isToday(parseISO(latest.visitedAt))) {
       // Coming back to today's visit: keep editing it instead of starting a second one.
-      draft.value = structuredClone(latest);
+      draft.value = clone(latest);
       draft.value.notes ??= '';
+      draft.value.timeLog ??= { segments: [], finished: false };
       previous.value = visits[1] ?? null;
       editingExisting.value = true;
     } else {
@@ -177,7 +196,61 @@ function copyDoses() {
   $q.notify({ message: 'Copied last visit’s doses', color: 'grey-8', timeout: 1500 });
 }
 
-async function save(): Promise<boolean> {
+/** Pause any timer running at another pool (one timer at a time). Returns false if the user cancels. */
+async function pauseOtherTimers(): Promise<boolean> {
+  const others = data.activeTimers.filter((v) => v._id !== draft.value?._id);
+  if (!others.length) return true;
+  const names = others
+    .map((v) => {
+      const p = data.poolById.get(v.poolId);
+      return p ? data.customerById.get(p.customerId)?.name ?? p.name : 'another pool';
+    })
+    .join(', ');
+  const go = await new Promise<boolean>((resolve) =>
+    $q
+      .dialog({ title: 'Timer running elsewhere', message: `The timer at ${names} is still running. Pause it and start here?`, cancel: true, ok: { label: 'Pause it', unelevated: true } })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false)),
+  );
+  if (!go) return false;
+  const now = new Date().toISOString();
+  for (const v of others) {
+    const copy = clone(v);
+    const last = copy.timeLog?.segments[copy.timeLog.segments.length - 1];
+    if (last && !last.end) last.end = now;
+    copy.updatedAt = now;
+    await data.saveVisit(copy);
+  }
+  return true;
+}
+
+async function onTimer(action: TimerAction) {
+  const v = draft.value;
+  if (!v?.timeLog) return;
+  const tl = v.timeLog;
+  const now = new Date().toISOString();
+  const last = tl.segments[tl.segments.length - 1];
+  if (action === 'start' || action === 'resume') {
+    if (!(await pauseOtherTimers())) return;
+    tl.finished = false;
+    tl.segments.push({ start: now, end: null });
+  } else if (action === 'pause') {
+    if (last && !last.end) last.end = now;
+  } else if (action === 'stop') {
+    if (last && !last.end) last.end = now;
+    tl.finished = true;
+  }
+  await save(action);
+}
+
+async function onTimesEdited(timeLog: TimeLog) {
+  if (!draft.value) return;
+  draft.value.timeLog = timeLog;
+  await save('times');
+}
+
+async function save(reason: 'manual' | TimerAction | 'times' = 'manual'): Promise<boolean> {
   const v = draft.value;
   if (!v) return true;
   const invalidDose = v.doses.find((d) => !d.chemicalId || !(d.amount > 0));
@@ -194,7 +267,15 @@ async function save(): Promise<boolean> {
     v.updatedAt = body.updatedAt;
     savedSnapshot.value = snapshot(v);
     editingExisting.value = true;
-    $q.notify({ type: 'positive', message: 'Visit saved', timeout: 1500 });
+    const messages: Record<string, string> = {
+      manual: 'Visit saved',
+      start: 'Timer started',
+      resume: 'Timer resumed',
+      pause: 'Timer paused',
+      stop: 'Timer stopped',
+      times: 'Times updated',
+    };
+    $q.notify({ type: 'positive', message: messages[reason] ?? 'Saved', timeout: 1200 });
     return true;
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

@@ -66,3 +66,8 @@ export function fmtNumber(v: number | null | undefined): string {
 export function newId(): string {
   return crypto.randomUUID();
 }
+
+/** Deep copy of plain data. (structuredClone throws on Vue's reactive proxies.) */
+export function clone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}

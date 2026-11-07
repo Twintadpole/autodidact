@@ -98,8 +98,14 @@ const visitSchema = makeSchema({
     filterCleaned: { type: Boolean, default: false },
   },
   notes: String,
+  timeLog: {
+    segments: [new Schema({ start: { type: Date, required: true }, end: { type: Date, default: null } }, { _id: false })],
+    finished: { type: Boolean, default: false },
+  },
 });
 visitSchema.index({ poolId: 1, visitedAt: -1 });
+// Finds running timers quickly (Route list chip, one-timer-at-a-time rule).
+visitSchema.index({ 'timeLog.segments.end': 1 });
 
 // ---------------------------------------------------------------- chemicals
 const chemicalSchema = makeSchema({
@@ -158,6 +164,28 @@ const syncLogSchema = new Schema(
   { versionKey: false },
 );
 
+// ---------------------------------------------------------------- audit log
+/**
+ * Append-only record of every change: who changed what, when, from what to what.
+ * Never updated or deleted by the app.
+ */
+const auditLogSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+    at: { type: Date, required: true },
+    collectionName: { type: String, required: true },
+    docId: { type: String, required: true },
+    action: { type: String, enum: ['create', 'update', 'delete', 'bulk'], required: true },
+    /** 'app' = online edit through the API, 'sync' = a field package from the phone. */
+    source: { type: String, enum: ['app', 'sync', 'system'], required: true },
+    changes: [new Schema({ path: String, from: Schema.Types.Mixed, to: Schema.Types.Mixed }, { _id: false })],
+    note: String,
+  },
+  { versionKey: false },
+);
+auditLogSchema.index({ collectionName: 1, docId: 1, at: -1 });
+auditLogSchema.index({ at: -1 });
+
 // ---------------------------------------------------------------- sessions
 const sessionSchema = new Schema(
   {
@@ -183,6 +211,7 @@ export const Note = model('Note', noteSchema, 'notes');
 export const Photo = model('Photo', photoSchema, 'photos');
 export const SyncLog = model('SyncLog', syncLogSchema, 'syncLog');
 export const SessionDoc = model('Session', sessionSchema, 'sessions');
+export const AuditLog = model('AuditLog', auditLogSchema, 'auditLog');
 
 /** Models exposed through `/sync/pull`, keyed by collection name. */
 export const SYNC_MODELS = {
@@ -197,7 +226,7 @@ export const SYNC_MODELS = {
 
 /** Create collections and indexes up front (transactions can't create collections implicitly on older servers). */
 export async function ensureCollections(): Promise<void> {
-  const models = [...Object.values(SYNC_MODELS), SyncLog, SessionDoc];
+  const models = [...Object.values(SYNC_MODELS), SyncLog, SessionDoc, AuditLog];
   for (const m of models) {
     await m.createCollection().catch((err: { codeName?: string }) => {
       if (err?.codeName !== 'NamespaceExists') throw err;

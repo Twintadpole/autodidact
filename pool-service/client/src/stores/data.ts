@@ -1,9 +1,19 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { IssueStatus } from '@pool/shared';
-import { api } from './api';
-import { newId } from '@/lib/format';
-import type { Chemical, Customer, Issue, Note, Pool, Visit } from '@/lib/types';
+import { api, apiForm } from './api';
+import { clone, newId } from '@/lib/format';
+import type { AuditEntry, Chemical, Customer, Issue, Note, Photo, Pool, Visit } from '@/lib/types';
+
+/** The database drops empty objects/arrays, so fill in what a visit always has. */
+export function normalizeVisit(v: Visit): Visit {
+  v.readings ??= {};
+  v.doses ??= [];
+  const t: Partial<Visit['tasks']> = v.tasks ?? {};
+  v.tasks = { brushed: !!t.brushed, skimmed: !!t.skimmed, vacuumed: !!t.vacuumed, basketsEmptied: !!t.basketsEmptied, filterCleaned: !!t.filterCleaned };
+  v.timeLog = { finished: false, ...(v.timeLog ?? {}), segments: v.timeLog?.segments ?? [] };
+  return v;
+}
 
 /**
  * In-memory copy of the data the screens share (customers, pools, chemicals,
@@ -15,6 +25,8 @@ export const useDataStore = defineStore('data', () => {
   const pools = ref<Pool[]>([]);
   const chemicals = ref<Chemical[]>([]);
   const issues = ref<Issue[]>([]);
+  /** Visits with a running timer (at most one, but the server allows more after offline use). */
+  const activeTimers = ref<Visit[]>([]);
   const loaded = ref(false);
   const loading = ref(false);
 
@@ -38,16 +50,18 @@ export const useDataStore = defineStore('data', () => {
     if ((loaded.value && !force) || loading.value) return;
     loading.value = true;
     try {
-      const [c, p, ch, i] = await Promise.all([
+      const [c, p, ch, i, t] = await Promise.all([
         api<Customer[]>('/customers'),
         api<Pool[]>('/pools'),
         api<Chemical[]>('/chemicals'),
         api<Issue[]>('/issues?status=open,in_progress,postponed'),
+        api<Visit[]>('/visits/active').then((list) => list.map(normalizeVisit)),
       ]);
       customers.value = c;
       pools.value = p;
       chemicals.value = ch;
       issues.value = i;
+      activeTimers.value = t;
       loaded.value = true;
     } finally {
       loading.value = false;
@@ -136,15 +150,60 @@ export const useDataStore = defineStore('data', () => {
   const poolIssues = (poolId: string) => api<Issue[]>(`/issues?poolId=${poolId}`);
 
   // ------------------------------------------------------------ visits
-  const recentVisits = (poolId: string, limit = 2) => api<Visit[]>(`/pools/${poolId}/visits?limit=${limit}`);
+  const recentVisits = async (poolId: string, limit = 2) => (await api<Visit[]>(`/pools/${poolId}/visits?limit=${limit}`)).map(normalizeVisit);
 
   /** Saves a visit through the same package endpoint the offline outbox will use in Phase 4. */
   async function saveVisit(visit: Visit) {
-    return api<{ duplicate: boolean }>('/sync/package', {
+    const res = await api<{ duplicate: boolean }>('/sync/package', {
       method: 'POST',
       body: { packageId: newId(), poolId: visit.poolId, createdAt: new Date().toISOString(), visit },
     });
+    const running = !!visit.timeLog && !visit.timeLog.finished && visit.timeLog.segments.some((s) => !s.end);
+    activeTimers.value = activeTimers.value.filter((v) => v._id !== visit._id);
+    if (running) activeTimers.value.push(clone(visit));
+    return res;
   }
+
+  const refreshTimers = async () => {
+    activeTimers.value = (await api<Visit[]>('/visits/active')).map(normalizeVisit);
+  };
+
+  // ------------------------------------------------------------ photos
+  /** Uploads one (already compressed) image with its metadata; returns the photo record. */
+  async function uploadPhoto(blob: Blob, meta: { poolId: string; issueId: string | null; width: number; height: number }): Promise<Photo> {
+    const now = new Date().toISOString();
+    const photo: Photo = {
+      _id: newId(),
+      poolId: meta.poolId,
+      issueId: meta.issueId,
+      savedToPool: false,
+      width: meta.width,
+      height: meta.height,
+      bytes: blob.size,
+      takenAt: now,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+    const form = new FormData();
+    form.append('package', JSON.stringify({ packageId: newId(), poolId: meta.poolId, createdAt: now, photos: [photo] }));
+    form.append(photo._id, blob, `${photo._id}.jpg`);
+    await apiForm('/sync/package', form);
+    return photo;
+  }
+
+  const listPhotos = (q: { poolId?: string; issueId?: string; savedToPool?: boolean }) => {
+    const params = new URLSearchParams();
+    if (q.poolId) params.set('poolId', q.poolId);
+    if (q.issueId) params.set('issueId', q.issueId);
+    if (q.savedToPool !== undefined) params.set('savedToPool', String(q.savedToPool));
+    return api<Photo[]>(`/photos?${params}`);
+  };
+  const patchPhoto = (id: string, body: { savedToPool?: boolean; caption?: string }) => api<Photo>(`/photos/${id}`, { method: 'PATCH', body });
+  const deletePhoto = (id: string) => api(`/photos/${id}`, { method: 'DELETE' });
+
+  // ------------------------------------------------------------ edit history
+  const history = (collection: string, docId: string) => api<AuditEntry[]>(`/audit?collection=${collection}&docId=${docId}`);
 
   // ------------------------------------------------------------ notes
   const notesFor = (parentType: Note['parentType'], parentId: string) =>
@@ -162,6 +221,7 @@ export const useDataStore = defineStore('data', () => {
     pools,
     chemicals,
     issues,
+    activeTimers,
     loaded,
     loading,
     customerById,
@@ -184,6 +244,12 @@ export const useDataStore = defineStore('data', () => {
     poolIssues,
     recentVisits,
     saveVisit,
+    refreshTimers,
+    uploadPhoto,
+    listPhotos,
+    patchPhoto,
+    deletePhoto,
+    history,
     notesFor,
     saveNote,
     deleteNote,

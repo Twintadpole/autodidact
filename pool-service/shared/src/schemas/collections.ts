@@ -67,6 +67,60 @@ export const tasksSchema = z.object({
   filterCleaned: z.boolean().default(false),
 });
 
+/**
+ * Time on site. Each Start/Resume opens a segment and each Pause/Stop closes it,
+ * so pauses are the gaps between segments. `finished` is set by Stop.
+ * At most one segment may be open (end = null), and it must be the last one.
+ */
+export const timeSegmentSchema = z.object({
+  start: dateSchema,
+  end: dateSchema.nullable().default(null),
+});
+export const timeLogSchema = z
+  .object({
+    segments: z.array(timeSegmentSchema).default([]),
+    finished: z.boolean().default(false),
+  })
+  .superRefine((log, ctx) => {
+    log.segments.forEach((s, i) => {
+      if (s.end && s.end < s.start) {
+        ctx.addIssue({ code: 'custom', path: ['segments', i, 'end'], message: 'End must be after start' });
+      }
+      if (!s.end && i !== log.segments.length - 1) {
+        ctx.addIssue({ code: 'custom', path: ['segments', i, 'end'], message: 'Only the last segment can be running' });
+      }
+      const prev = log.segments[i - 1];
+      if (prev?.end && s.start < prev.end) {
+        ctx.addIssue({ code: 'custom', path: ['segments', i, 'start'], message: 'Segments overlap' });
+      }
+    });
+    if (log.finished && log.segments.some((s) => !s.end)) {
+      ctx.addIssue({ code: 'custom', path: ['finished'], message: 'A stopped timer cannot have a running segment' });
+    }
+  });
+export type TimeLog = z.infer<typeof timeLogSchema>;
+
+/** Seconds on site; a running segment counts up to `now`. */
+export function timeLogSeconds(
+  log: { segments: { start: Date | string; end: Date | string | null }[] } | undefined | null,
+  now: Date = new Date(),
+): number {
+  if (!log) return 0;
+  let ms = 0;
+  for (const s of log.segments) {
+    const start = new Date(s.start).getTime();
+    const end = s.end ? new Date(s.end).getTime() : now.getTime();
+    if (end > start) ms += end - start;
+  }
+  return Math.round(ms / 1000);
+}
+
+export function timeLogState(log: { segments: { end: unknown }[]; finished: boolean } | undefined | null): 'idle' | 'running' | 'paused' | 'stopped' {
+  if (!log || !log.segments.length) return 'idle';
+  if (log.finished) return 'stopped';
+  return log.segments[log.segments.length - 1]!.end ? 'paused' : 'running';
+}
+
 export const visit = collectionSchemas({
   poolId: idSchema,
   visitedAt: dateSchema,
@@ -74,6 +128,7 @@ export const visit = collectionSchemas({
   doses: z.array(doseSchema).default([]),
   tasks: tasksSchema.default({ brushed: false, skimmed: false, vacuumed: false, basketsEmptied: false, filterCleaned: false }),
   notes: z.string().optional(),
+  timeLog: timeLogSchema.default({ segments: [], finished: false }),
 });
 export type Visit = z.infer<typeof visit.doc>;
 

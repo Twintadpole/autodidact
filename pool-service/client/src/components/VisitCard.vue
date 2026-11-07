@@ -3,7 +3,7 @@
     <q-card-section class="row items-center justify-between q-pb-sm">
       <div>
         <div class="text-subtitle1 text-weight-medium">{{ title }}</div>
-        <div class="text-caption text-grey-7">{{ dateLabel }}</div>
+        <div class="text-caption text-grey-7">{{ dateLabel }}<span v-if="readonly && onSite" data-test="prev-duration"> · {{ onSite }} on site</span></div>
       </div>
       <slot name="actions" />
     </q-card-section>
@@ -94,7 +94,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { READINGS, rateReading, UNITS, type ReadingKey, type Unit } from '@pool/shared';
+import { READINGS, rateReading, timeLogSeconds, UNITS, type ReadingKey, type Unit } from '@pool/shared';
+import { humanDuration } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
 import { fmtNumber, longDate } from '@/lib/format';
 import type { Tasks, Visit } from '@/lib/types';
@@ -113,6 +114,7 @@ const TASKS: { key: keyof Tasks; label: string }[] = [
 ];
 
 const dateLabel = computed(() => longDate(props.visit.visitedAt));
+const onSite = computed(() => (props.visit.timeLog?.segments.length ? humanDuration(timeLogSeconds(props.visit.timeLog)) : ''));
 
 const chemicalOptions = computed(() => data.activeChemicals.map((c) => ({ label: c.name, value: c._id })));
 

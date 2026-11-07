@@ -123,3 +123,28 @@ describe('applyIssueStatus', () => {
     expect(applyIssueStatus(same, 'resolved')).toBe(same);
   });
 });
+
+import { timeLogSchema, timeLogSeconds, timeLogState } from './index.js';
+
+describe('visit time log', () => {
+  const t = (m: number) => new Date(Date.UTC(2026, 10, 7, 9, m)).toISOString();
+
+  it('sums segments and counts a running one up to now', () => {
+    const log = timeLogSchema.parse({ segments: [{ start: t(0), end: t(10) }, { start: t(15), end: null }] });
+    expect(timeLogSeconds(log, new Date(t(20)))).toBe(15 * 60);
+    expect(timeLogState(log)).toBe('running');
+  });
+
+  it('knows paused and stopped', () => {
+    expect(timeLogState(timeLogSchema.parse({ segments: [{ start: t(0), end: t(5) }] }))).toBe('paused');
+    expect(timeLogState(timeLogSchema.parse({ segments: [{ start: t(0), end: t(5) }], finished: true }))).toBe('stopped');
+    expect(timeLogState(timeLogSchema.parse({}))).toBe('idle');
+  });
+
+  it('rejects bad edits: end before start, overlaps, two running segments', () => {
+    expect(timeLogSchema.safeParse({ segments: [{ start: t(10), end: t(5) }] }).success).toBe(false);
+    expect(timeLogSchema.safeParse({ segments: [{ start: t(0), end: t(10) }, { start: t(5), end: t(12) }] }).success).toBe(false);
+    expect(timeLogSchema.safeParse({ segments: [{ start: t(0), end: null }, { start: t(5), end: t(6) }] }).success).toBe(false);
+    expect(timeLogSchema.safeParse({ segments: [{ start: t(0), end: null }], finished: true }).success).toBe(false);
+  });
+});

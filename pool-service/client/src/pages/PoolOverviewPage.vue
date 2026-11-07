@@ -36,12 +36,14 @@
               <tr>
                 <th class="text-left">Date</th>
                 <th v-for="k in HISTORY_KEYS" :key="k">{{ readingLabel(k) }}</th>
+                <th>Time</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="v in visits" :key="v._id">
                 <td class="text-left">{{ shortDate(v.visitedAt) }}</td>
                 <td v-for="k in HISTORY_KEYS" :key="k" class="text-right" :class="cellClass(k, v.readings[k])">{{ fmtNumber(v.readings[k]) }}</td>
+                <td class="text-right">{{ v.timeLog?.segments.length ? Math.round(timeLogSeconds(v.timeLog) / 60) + 'm' : '–' }}</td>
               </tr>
             </tbody>
           </q-markup-table>
@@ -67,13 +69,19 @@
         <div v-else class="text-grey-6 text-body2">None.</div>
       </div>
 
+      <!-- Photos -->
+      <div>
+        <div class="text-subtitle1 q-mb-xs">Photos</div>
+        <PoolGallery ref="gallery" :pool-id="pool._id" />
+      </div>
+
       <!-- Notes -->
       <div>
         <div class="text-subtitle1 q-mb-xs">Notes</div>
         <NotesList parent-type="pool" :parent-id="pool._id" />
       </div>
 
-      <IssueSheet v-model="issueOpen" :issue="selectedIssue" :pool-id="pool._id" />
+      <IssueSheet v-model="issueOpen" :issue="selectedIssue" :pool-id="pool._id" @saved="gallery?.load()" />
     </template>
   </q-page>
 </template>
@@ -81,11 +89,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { deriveQuadrant, QUADRANTS, rateReading, READINGS, type ReadingKey } from '@pool/shared';
+import { deriveQuadrant, QUADRANTS, rateReading, READINGS, timeLogSeconds, type ReadingKey } from '@pool/shared';
 import ContactLinks from '@/components/ContactLinks.vue';
 import NotesList from '@/components/NotesList.vue';
 import TrendChart from '@/components/TrendChart.vue';
 import IssueSheet from '@/components/IssueSheet.vue';
+import PoolGallery from '@/components/PoolGallery.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS, fmtNumber, poolAddress, shortDate } from '@/lib/format';
@@ -101,6 +110,11 @@ const ui = useUiStore();
 const visits = ref<Visit[]>([]);
 const issueOpen = ref(false);
 const selectedIssue = ref<Issue | null>(null);
+const gallery = ref<InstanceType<typeof PoolGallery> | null>(null);
+
+watch(issueOpen, (open) => {
+  if (!open) void gallery.value?.load(); // "Save to pool" may have changed inside the sheet
+});
 
 const poolId = computed(() => String(route.params.id));
 const pool = computed(() => data.poolById.get(poolId.value));

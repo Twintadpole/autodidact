@@ -62,6 +62,16 @@ export interface Tasks {
 
 export type Readings = Partial<Record<string, number | null>>;
 
+export interface TimeSegment {
+  start: string;
+  end: string | null;
+}
+
+export interface TimeLog {
+  segments: TimeSegment[];
+  finished: boolean;
+}
+
 export interface Visit extends Base {
   poolId: string;
   visitedAt: string;
@@ -69,6 +79,29 @@ export interface Visit extends Base {
   doses: Dose[];
   tasks: Tasks;
   notes?: string;
+  timeLog?: TimeLog;
+}
+
+export interface Photo extends Base {
+  poolId: string;
+  issueId: string | null;
+  savedToPool: boolean;
+  width: number;
+  height: number;
+  bytes: number;
+  takenAt: string;
+  caption?: string;
+}
+
+export interface AuditEntry {
+  _id: string;
+  at: string;
+  collectionName: string;
+  docId: string;
+  action: 'create' | 'update' | 'delete' | 'bulk';
+  source: 'app' | 'sync' | 'system';
+  changes: { path: string; from: unknown; to: unknown }[];
+  note?: string;
 }
 
 export interface Chemical extends Base {

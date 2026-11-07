@@ -2,6 +2,7 @@ import mongoose, { type ClientSession, type Model } from 'mongoose';
 import { applyIssueStatus, type SyncPackage, type SyncPackageResponse } from '@pool/shared';
 import { Chemical, Issue, Note, Photo, Pool, SyncLog, Visit } from '../models/index.js';
 import { HttpError } from '../util.js';
+import { diff, recordAudit } from './audit.js';
 
 export type UpsertResult = 'inserted' | 'updated' | 'stale';
 
@@ -18,8 +19,10 @@ export async function upsertLww(
   preserve: string[] = [],
 ): Promise<UpsertResult> {
   const existing = await model.findById(doc._id).session(session).lean<Record<string, any>>();
+  const collectionName = model.collection.name;
   if (!existing) {
     await model.create([{ ...doc, syncedAt: now }], { session });
+    await recordAudit({ collectionName, docId: doc._id, action: 'create', source: 'sync' }, session);
     return 'inserted';
   }
   if (new Date(existing.updatedAt) > new Date(doc.updatedAt)) return 'stale';
@@ -28,6 +31,10 @@ export async function upsertLww(
     if (replacement[key] === undefined && existing[key] !== undefined) replacement[key] = existing[key];
   }
   await model.replaceOne({ _id: doc._id }, replacement, { session, runValidators: true });
+  const changes = diff(existing, replacement);
+  // A soft delete arriving from the phone reads better as "delete" than as a deletedAt change.
+  const deleted = !existing.deletedAt && !!replacement.deletedAt;
+  await recordAudit({ collectionName, docId: doc._id, action: deleted ? 'delete' : 'update', source: 'sync', changes }, session);
   return 'updated';
 }
 
@@ -114,6 +121,16 @@ export async function applyPackage(pkg: SyncPackage, opts: ApplyOptions): Promis
             { session },
           );
           applied.weekToggle = true;
+          await recordAudit(
+            {
+              collectionName: 'pools',
+              docId: pkg.poolId,
+              action: 'update',
+              source: 'sync',
+              changes: [{ path: 'week.done', from: !!pool.week?.done, to: pkg.weekToggle.done }],
+            },
+            session,
+          );
         }
       }
 
