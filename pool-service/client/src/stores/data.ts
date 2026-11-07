@@ -84,10 +84,14 @@ export const useDataStore = defineStore('data', () => {
     return doc;
   }
 
+  /** The server also hides the customer's pools and everything under them. */
   async function deleteCustomer(id: string) {
-    for (const p of pools.value.filter((x) => x.customerId === id)) await deletePool(p._id);
     await api(`/customers/${id}`, { method: 'DELETE' });
+    const poolIds = new Set(pools.value.filter((p) => p.customerId === id).map((p) => p._id));
     customers.value = customers.value.filter((c) => c._id !== id);
+    pools.value = pools.value.filter((p) => !poolIds.has(p._id));
+    issues.value = issues.value.filter((i) => !poolIds.has(i.poolId));
+    activeTimers.value = activeTimers.value.filter((v) => !poolIds.has(v.poolId));
   }
 
   async function savePool(id: string | null, body: Partial<Pool>): Promise<Pool> {
@@ -98,9 +102,12 @@ export const useDataStore = defineStore('data', () => {
     return doc;
   }
 
+  /** The server also hides the pool's visits, issues, notes and photos. */
   async function deletePool(id: string) {
     await api(`/pools/${id}`, { method: 'DELETE' });
     pools.value = pools.value.filter((p) => p._id !== id);
+    issues.value = issues.value.filter((i) => i.poolId !== id);
+    activeTimers.value = activeTimers.value.filter((v) => v.poolId !== id);
   }
 
   /** The weekly checkmark; the Route checkbox and the visit-screen toggle both use this. */

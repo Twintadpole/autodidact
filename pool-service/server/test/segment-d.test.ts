@@ -117,7 +117,7 @@ describe('audit log for online edits', () => {
 
   it('logs Reset week as one bulk entry', async () => {
     await ctx.app.inject({ method: 'POST', url: '/api/route/reset-week', headers: { cookie } });
-    expect(await AuditLog.countDocuments({ collectionName: 'pools', action: 'bulk' })).toBe(1);
+    expect(await AuditLog.countDocuments({ collectionName: 'pools', action: 'bulk', note: /^Reset week/ })).toBe(1);
   });
 });
 
@@ -175,5 +175,44 @@ describe('issue photos', () => {
     await ctx.app.inject({ method: 'DELETE', url: `/api/photos/${photoId}`, headers: { cookie } });
     gallery = await ctx.app.inject({ method: 'GET', url: `/api/photos?poolId=${poolId}&savedToPool=true`, headers: { cookie } });
     expect(gallery.json()).toHaveLength(0);
+  });
+});
+
+describe('deleting a customer hides what belongs to it', () => {
+  it('soft-deletes the pools, visits, issues, notes and photos; nothing is erased', async () => {
+    const cust = await ctx.app.inject({
+      method: 'POST',
+      url: '/api/customers',
+      headers: { cookie },
+      payload: { name: 'Cascade test', address: { line1: '1 A', city: 'D', state: 'TX', zip: '1' } },
+    });
+    const cid = cust.json()._id;
+    const pool = await ctx.app.inject({ method: 'POST', url: '/api/pools', headers: { cookie }, payload: { customerId: cid, type: 'salt', volumeGal: 9000, serviceDay: 'fri' } });
+    const pid = pool.json()._id;
+    const vid = newId();
+    const now = new Date().toISOString();
+    await post({ packageId: newId(), poolId: pid, createdAt: now, visit: { _id: vid, poolId: pid, visitedAt: now, createdAt: now, updatedAt: now } });
+    const iss = await ctx.app.inject({ method: 'POST', url: '/api/issues', headers: { cookie }, payload: { poolId: pid, title: 'Leak' } });
+    const n1 = await ctx.app.inject({ method: 'POST', url: '/api/notes', headers: { cookie }, payload: { parentType: 'pool', parentId: pid, body: 'pool note' } });
+    const n2 = await ctx.app.inject({ method: 'POST', url: '/api/notes', headers: { cookie }, payload: { parentType: 'customer', parentId: cid, body: 'customer note' } });
+    const n3 = await ctx.app.inject({ method: 'POST', url: '/api/notes', headers: { cookie }, payload: { parentType: 'visit', parentId: vid, body: 'visit note' } });
+
+    expect((await ctx.app.inject({ method: 'DELETE', url: `/api/customers/${cid}`, headers: { cookie } })).statusCode).toBe(200);
+
+    const { Customer, Pool, Issue, Note } = await import('../src/models/index.js');
+    const gone = async (m: any, id: string) => {
+      const d = await m.findById(id).lean();
+      return d !== null && d.deletedAt instanceof Date; // still stored, just hidden
+    };
+    expect(await gone(Customer, cid)).toBe(true);
+    expect(await gone(Pool, pid)).toBe(true);
+    expect(await gone(Visit, vid)).toBe(true);
+    expect(await gone(Issue, iss.json()._id)).toBe(true);
+    for (const n of [n1, n2, n3]) expect(await gone(Note, n.json()._id)).toBe(true);
+    // Lists no longer show them
+    const issues = await ctx.app.inject({ method: 'GET', url: `/api/issues?poolId=${pid}`, headers: { cookie } });
+    expect(issues.json()).toHaveLength(0);
+    // And the cascade is in the edit log
+    expect(await AuditLog.countDocuments({ docId: pid, action: 'bulk' })).toBe(1);
   });
 });

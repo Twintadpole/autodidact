@@ -17,6 +17,8 @@ export interface CrudOptions {
   sort?: Record<string, 1 | -1>;
   /** Adjust a create/patch body before writing (e.g. issue status timestamps). */
   beforeWrite?: (body: Record<string, any>, existing: Record<string, any> | null, now: Date) => Record<string, any>;
+  /** Runs after a soft delete (e.g. hide a pool's visits and issues too). */
+  afterDelete?: (id: string, now: Date) => Promise<unknown>;
 }
 
 const idParams = z.object({ id: idSchema });
@@ -89,6 +91,7 @@ export function registerCrud(parent: FastifyInstance, opts: CrudOptions): void {
       .lean();
     if (!updated) return reply.code(404).send({ error: 'Not Found', message: `No document ${request.params.id}` });
     await recordAudit({ collectionName: model.collection.name, docId: request.params.id, action: 'delete', source: 'app' });
+    await opts.afterDelete?.(request.params.id, now);
     return updated;
   });
 }

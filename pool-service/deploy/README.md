@@ -8,6 +8,7 @@ The app runs with Docker Compose on the VPS, as the `claude` user, in `~/autodid
 | `install-docker.sh` | Once: `sudo bash deploy/install-docker.sh` | Docker Engine and the compose plugin (Docker's repo, or Ubuntu's packages as a fallback); adds `claude` to the docker group |
 | `first-deploy.sh` | Once: `bash deploy/first-deploy.sh` | Builds the image, writes `.env` with a fresh session secret and a random app password (printed once and saved to `~/pool-app-initial-password.txt`), starts the stack, installs the nightly backup |
 | `update.sh` | After each new version | Safety backup first, then `git pull` and rebuild/restart; compares record counts before and after and fails loudly if anything is missing. Data and `.env` are kept |
+| `cleanup-orphans.sh` | One-time (Nov 2026) | Lists visits, issues, notes and photos left under already-deleted pools/customers; `--apply <count>` hides exactly those (soft delete, after a safety backup). New deletes cascade on their own |
 | `restore-check.sh` | Any time (safe) | Restores the newest backup into a scratch database, compares it with the live one, then deletes the scratch copy |
 | `set-password.sh` | Any time | Changes the app password (prompts twice; or `echo 'pw' \| bash deploy/set-password.sh -`) |
 | `backup.sh` | Nightly at 03:17 (cron), or by hand | `mongodump` to `backups/pool-<time>.archive.gz`, keeps the newest 14, writes `backups/LAST_BACKUP`. `backup.sh predeploy` (run by `update.sh`) keeps its own newest 10 |

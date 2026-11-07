@@ -15,17 +15,19 @@ import {
 } from '@pool/shared';
 import { AuditLog, Chemical, Customer, Issue, Note, Pool, Visit } from '../models/index.js';
 import { registerCrud } from '../services/crud.js';
+import { cascadeCustomerDelete, cascadePoolDelete } from '../services/cascade.js';
 import { queryBool } from '../util.js';
 
 /** CRUD for customers, pools, chemicals, notes and issues, plus pool visit history. */
 export const resourceRoutes: FastifyPluginAsync = async (parent) => {
   const app = parent.withTypeProvider<ZodTypeProvider>();
 
-  registerCrud(app, { path: '/customers', model: Customer, schemas: customer, sort: { name: 1 } });
+  registerCrud(app, { path: '/customers', model: Customer, schemas: customer, sort: { name: 1 }, afterDelete: cascadeCustomerDelete });
 
   registerCrud(app, {
     path: '/pools',
     model: Pool,
+    afterDelete: (id, now) => cascadePoolDelete(id, now, 'Pool deleted'),
     schemas: pool,
     sort: { serviceDay: 1, routeOrder: 1 },
     listQuery: z.object({
