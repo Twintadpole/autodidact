@@ -1,0 +1,68 @@
+# Pool Service: local development and the VPS deployment.
+#
+#   docker compose up -d mongo        # just the database, for `npm run dev` / tests
+#   docker compose up -d --build      # database + API (what the VPS runs)
+#
+# Mongo runs as a single-node replica set because /sync/package uses transactions.
+# On the VPS, the host's cloudflared (Cloudflare Tunnel) forwards
+# https://poolapp.evolutiondfw.com to http://localhost:3000.
+name: pool-service
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    logging: *logging
+    volumes:
+      - ./data/mongo:/data/db
+    # Bound to localhost only: reachable from the server itself (dev, tests, backups), never from outside.
+    ports:
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      # Initiates the replica set on first start, then reports healthy once PRIMARY.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok }; db.hello().isWritablePrimary || quit(1)"
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    logging: *logging
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      MONGO_URL: mongodb://mongo:27017/pool?replicaSet=rs0
+      PHOTO_DIR: /data/photos
+      BACKUP_DIR: /backups
+    volumes:
+      - ./data/photos:/data/photos
+      # Read-only: the More screen shows the last backup time from backups/LAST_BACKUP.
+      - ./backups:/backups:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+    # Localhost only. The Cloudflare Tunnel on the host connects here.
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
