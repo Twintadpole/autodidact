@@ -11,7 +11,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@pool/shared": "0.1.0",
+    "@pool/shared": "*",
     "@quasar/extras": "^2.1.0",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.4.0",
