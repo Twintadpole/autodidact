@@ -1,24 +1,35 @@
 # Pool Service
 
-A single-user, self-hosted pool service PWA for an Android phone. It works offline at job sites and syncs when signal comes back.
+**v0.1.0-alpha**, live at https://poolapp.evolutiondfw.com. See [CHANGELOG.md](CHANGELOG.md) for what it does today.
 
-- **Customers & pools:** contact records with tap-to-call / tap-to-navigate, notes and photos.
-- **Visit cards:** the current visit's readings (FC, CC, pH, TA, CH, CYA, Salt, Phosphate, Temp) and doses in one card, with the previous visit's card below it.
-- **Weekly service list:** every pool on the route with a checkmark once done this week, plus a manual **Reset week**.
-- **Issues:** per-pool, with urgent/important flags (Eisenhower quadrants), photos, and **Completed** / **Postponed** actions.
+A single-user, self-hosted pool service PWA for an Android phone. It works fully offline at job sites and syncs when signal comes back.
 
-Out of scope: invoicing, multiple users, customer-facing access.
+- **Route:** every pool on the week's route, grouped by service day, with a checkmark once done and a manual **Reset week**.
+- **Visit screen:**
+  - timer with pauses and editable times
+  - current-visit card (readings with out-of-range highlighting, doses, tasks, note) above the previous visit's card
+- **Visit history** for each pool, by date.
+- **Issues:** urgent/important flags (Eisenhower grid), photos, **Completed** / **Postpone**.
+- **Customers & pools:** call/text/navigate links, notes, photo gallery.
+- **Offline-first:**
+  - local copy on the phone and an outbox of unsent changes
+  - background upload
+  - safe retries: the server recognizes a repeated upload and applies it only once
+- **Edit log:** every change on the server is recorded (from → to, when).
 
-## Status
+Out of scope for now: multiple users, customer-facing access.
+
+## Roadmap
 
 | Phase | What | State |
 | --- | --- | --- |
-| 1 | Scaffold: monorepo, shared package, Docker Compose (Mongo replica set), PWA shell | ✅ done |
-| 2 | Server core: models, auth, CRUD, chemical seed, `/sync/pull`, `/sync/package` (transactional, idempotent), tests | ✅ done |
-| 3 | Online UI: login, Route, visit cards, Pool overview, Issues grid/list, Customers | next |
-| 4 | Offline layer: Dexie, drafts, outbox, Background Sync, sync chip | |
-| 5 | Photos: capture, compression, upload, sharp thumbnails, gallery | |
-| 6 | Deploy: cloudflared, backups, Lighthouse PWA audit | |
+| 1–2 | Scaffold; server core (models, auth, sync endpoints, tests) | ✅ |
+| 3 | Online UI: Route, visit cards, Overview, Issues, Customers | ✅ |
+| D | Visit timer, edit log, issue photos, safe deploys | ✅ |
+| 4 | Offline mode: local DB, outbox, background sync, sync chip | ✅ |
+| Alpha polish | Labels, badge, visit history, update message, version | ✅ v0.1.0-alpha |
+| 6 | Hardening: encrypted offsite backups (Cloudflare R2), alerts, Cloudflare Access, SSH lockdown, OS upgrade plan | next |
+| 7 | Desktop layout, fuller customer records, money tools with simple invoices, exports | planned |
 
 ## Layout
 
@@ -79,6 +90,16 @@ Every test file gets its own throwaway database. What they cover:
 - `/sync/pull` first pull vs. incremental pulls, including soft deletes
 - auth: login, 90-day "remember this device", logout, 401 on protected routes, 5-per-15-min login rate limit
 - CRUD, PATCH that changes only the fields you send, issue filters, visit history for the visit cards
+
+Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "E2E test …" customer and hides it at the end, so they're safe to run against the live site (see `deploy/README.md` for the command):
+
+| File | Covers |
+| --- | --- |
+| `phase3.cjs` | Login, Route, visit cards, issues, Overview, Reset week, More (13 checks) |
+| `segment-d.cjs` | Timer, editing times, edit history, issue photos, pool gallery (8) |
+| `offline.cjs` | Airplane mode: work offline, outbox survives a restart, upload exactly once, lost-reply retry (6) |
+| `photos-layout.cjs` | Photo layout, Gallery on an existing issue, HEIC message, first-load Issues page (4) |
+| `alpha-polish.cjs` | Pool labels, Issues badge, visit history, update message, version, desktop width (7) |
 
 Other checks:
 

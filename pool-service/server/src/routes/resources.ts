@@ -101,6 +101,13 @@ export const resourceRoutes: FastifyPluginAsync = async (parent) => {
         .lean(),
   );
 
+  /** One visit (visit history detail screen). */
+  app.get('/visits/:id', { schema: { params: z.object({ id: idSchema }) } }, async (request, reply) => {
+    const v = await Visit.findOne({ _id: request.params.id, deletedAt: null }).lean();
+    if (!v) return reply.code(404).send({ error: 'Not Found', message: 'No such visit' });
+    return v;
+  });
+
   /** Visits whose timer is running right now (open time segment), for pools that still exist. */
   app.get('/visits/active', async () => {
     const running = await Visit.find({

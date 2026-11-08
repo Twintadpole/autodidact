@@ -86,9 +86,17 @@
         <q-input v-model="visit.notes" type="textarea" autogrow outlined label="Visit note" data-test="visit-note" />
       </q-card-section>
     </template>
-    <q-card-section v-else-if="visit.notes" class="q-pt-none text-body2 text-grey-8">
-      <q-icon name="notes" class="q-mr-xs" />{{ visit.notes }}
-    </q-card-section>
+    <template v-else>
+      <q-card-section v-if="doneTasks.length" class="q-pt-none">
+        <div class="text-overline text-grey-7">Tasks</div>
+        <div class="row q-gutter-xs" data-test="prev-tasks">
+          <q-chip v-for="t in doneTasks" :key="t" dense square icon="check" color="green-1" text-color="green-9" class="q-ml-none">{{ t }}</q-chip>
+        </div>
+      </q-card-section>
+      <q-card-section v-if="visit.notes" class="q-pt-none text-body2 text-grey-8">
+        <q-icon name="notes" class="q-mr-xs" />{{ visit.notes }}
+      </q-card-section>
+    </template>
   </q-card>
 </template>
 
@@ -114,6 +122,7 @@ const TASKS: { key: keyof Tasks; label: string }[] = [
 ];
 
 const dateLabel = computed(() => longDate(props.visit.visitedAt));
+const doneTasks = computed(() => TASKS.filter((t) => props.visit.tasks?.[t.key]).map((t) => t.label));
 const onSite = computed(() => (props.visit.timeLog?.segments.length ? humanDuration(timeLogSeconds(props.visit.timeLog)) : ''));
 
 const chemicalOptions = computed(() => data.activeChemicals.map((c) => ({ label: c.name, value: c._id })));

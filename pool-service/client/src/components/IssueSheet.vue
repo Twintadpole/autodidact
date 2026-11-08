@@ -185,11 +185,7 @@ const quadrantLabel = computed(() => {
   const q = QUADRANTS.find((x) => x.key === deriveQuadrant(form));
   return `Goes in: ${q?.label}`;
 });
-const poolLabel = computed(() => {
-  const pool = data.poolById.get(props.poolId);
-  if (!pool) return '';
-  return `${data.customerById.get(pool.customerId)?.name ?? ''} · ${pool.name}`;
-});
+const poolLabel = computed(() => (data.poolById.get(props.poolId) ? data.poolLabel(props.poolId) : ''));
 
 async function persist(body: Partial<Issue>) {
   busy.value = true;

@@ -27,6 +27,8 @@
     </q-list>
 
     <q-btn outline color="grey-8" icon="logout" label="Log out" data-test="logout" @click="logout" />
+
+    <div class="text-center text-caption text-grey-6" data-test="app-version">Pool Service v{{ version }} · built {{ builtAt }}</div>
   </q-page>
 </template>
 
@@ -46,6 +48,8 @@ const auth = useAuthStore();
 const data = useDataStore();
 const lastBackupAt = ref<string | null | undefined>(undefined);
 const sync = useSyncStore();
+const version = __APP_VERSION__;
+const builtAt = new Date(__BUILT_AT__).toLocaleDateString();
 const syncCaption = computed(() =>
   sync.failed ? `${sync.failed} change(s) need attention` : sync.pending ? `${sync.pending} change(s) waiting to upload` : 'Everything is uploaded',
 );

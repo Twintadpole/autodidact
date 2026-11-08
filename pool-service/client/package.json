@@ -1,6 +1,6 @@
 {
   "name": "@pool/client",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "private": true,
   "type": "module",
   "description": "Pool Service PWA (Quasar, Vue 3, Pinia)",

@@ -95,10 +95,26 @@ export const useDataStore = defineStore('data', () => {
     void sync.kick();
   }
 
-  const customerName = (poolId: string) => {
+  /**
+   * The pool's own name, or '' when it is just the default "Pool" and the customer
+   * has only one pool (then the customer's name says it all).
+   */
+  function poolName(pool: Pool | undefined): string {
+    if (!pool) return '';
+    const generic = !pool.name?.trim() || pool.name.trim().toLowerCase() === 'pool';
+    const siblings = pools.value.filter((p) => p.customerId === pool.customerId).length;
+    return generic && siblings <= 1 ? '' : pool.name;
+  }
+
+  /** "Customer" or "Customer · Backyard". */
+  function poolLabel(poolId: string): string {
     const p = poolById.value.get(poolId);
-    return p ? `${customerById.value.get(p.customerId)?.name ?? 'Customer'} · ${p.name}` : 'Pool';
-  };
+    if (!p) return 'Pool';
+    const name = poolName(p);
+    const customer = customerById.value.get(p.customerId)?.name ?? 'Customer';
+    return name ? `${customer} · ${name}` : customer;
+  }
+  const customerName = poolLabel;
 
   // ------------------------------------------------------------ customers / pools
   async function saveCustomer(id: string | null, body: Partial<Customer>): Promise<Customer> {
@@ -267,6 +283,19 @@ export const useDataStore = defineStore('data', () => {
     return local();
   }
 
+  /** One visit: from the phone if it has it, otherwise from the server (and remembered). */
+  async function getVisit(id: string): Promise<Visit | undefined> {
+    const local = await db.visits.get(id);
+    if (local && !local.deletedAt) return normalizeVisit(local);
+    try {
+      const remote = await api<Visit>(`/visits/${id}`);
+      await db.visits.put(remote);
+      return normalizeVisit(remote);
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Saves the visit on the phone and queues it (the same package the server already understands). */
   async function saveVisit(visit: Visit) {
     const doc = clone(visit);
@@ -380,6 +409,8 @@ export const useDataStore = defineStore('data', () => {
     activeChemicals,
     openIssues,
     openIssueCount,
+    poolName,
+    poolLabel,
     loadAll,
     refreshFromDb,
     saveCustomer,
@@ -394,6 +425,7 @@ export const useDataStore = defineStore('data', () => {
     deleteIssue,
     poolIssues,
     recentVisits,
+    getVisit,
     saveVisit,
     refreshTimers,
     uploadPhoto,

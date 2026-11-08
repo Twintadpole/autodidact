@@ -1,6 +1,9 @@
 // Quasar config: https://quasar.dev/quasar-cli-vite/quasar-config-file
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '#q-app';
+
+const appVersion = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
 export default defineConfig(() => ({
   boot: [],
@@ -11,6 +14,8 @@ export default defineConfig(() => ({
     target: { browser: ['es2022', 'chrome115', 'firefox115', 'safari15'], node: 'node22' },
     typescript: { strict: true, vueShim: true },
     vueRouterMode: 'history',
+    // Shown on the More screen.
+    define: { __APP_VERSION__: JSON.stringify(appVersion), __BUILT_AT__: JSON.stringify(new Date().toISOString()) },
     alias: {
       // Use the shared package's TypeScript source directly (no build step in dev).
       '@pool/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),

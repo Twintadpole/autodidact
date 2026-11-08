@@ -22,18 +22,6 @@
         <div v-for="n in pinnedNotes" :key="n._id" class="text-body2"><q-icon name="push_pin" size="xs" /> {{ n.body }}</div>
       </q-banner>
 
-      <q-card flat bordered>
-        <q-item tag="label" class="q-py-md">
-          <q-item-section>
-            <q-item-label class="text-weight-medium">Done this week</q-item-label>
-            <q-item-label caption>Same checkmark as the Route list</q-item-label>
-          </q-item-section>
-          <q-item-section side>
-            <q-toggle :model-value="pool.week.done" color="positive" size="lg" data-test="done-toggle" @update:model-value="toggleDone" />
-          </q-item-section>
-        </q-item>
-      </q-card>
-
       <div v-if="loadingVisits" class="flex flex-center q-pa-lg"><q-spinner size="32px" color="primary" /></div>
       <template v-else-if="draft">
         <!-- Time on site -->
@@ -43,7 +31,18 @@
           @action="onTimer"
           @edit="timeEditOpen = true"
           @history="historyOpen = true"
-        />
+        >
+          <!-- Same checkmark as the Route list -->
+          <q-separator />
+          <q-item tag="label" dense class="q-py-sm">
+            <q-item-section>
+              <q-item-label class="text-weight-medium">Done this week</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle :model-value="pool.week.done" color="positive" data-test="done-toggle" @update:model-value="toggleDone" />
+            </q-item-section>
+          </q-item>
+        </VisitTimer>
 
         <!-- Current visit (editable) -->
         <VisitCard :visit="draft" :title="editingExisting ? 'Today’s visit (saved)' : 'This visit'" />
@@ -70,20 +69,15 @@
       <q-btn outline color="orange-9" icon="add_alert" label="Add issue" no-caps data-test="add-issue" @click="issueOpen = true" />
 
       <!-- Sticky save -->
-      <q-page-sticky position="bottom" expand class="save-bar">
+      <!-- Save: a full button only when there is something to save -->
+      <q-page-sticky v-if="dirty && hasContent" position="bottom" expand class="save-bar">
         <div class="full-width q-pa-sm bg-white save-bar-inner">
-          <q-btn
-            color="primary"
-            unelevated
-            size="lg"
-            class="full-width"
-            icon="save"
-            :label="dirty ? 'Save visit' : editingExisting ? 'Saved' : 'Nothing to save yet'"
-            :disable="!dirty || !hasContent"
-            :loading="saving"
-            data-test="save-visit"
-            @click="save('manual')"
-          />
+          <q-btn color="primary" unelevated size="lg" class="full-width" icon="save" label="Save visit" :loading="saving" data-test="save-visit" @click="save('manual')" />
+        </div>
+      </q-page-sticky>
+      <q-page-sticky v-else-if="editingExisting" position="bottom" expand class="save-bar">
+        <div class="full-width q-py-xs text-center text-caption text-positive bg-white save-bar-inner" data-test="save-visit">
+          <q-icon name="check_circle" /> Saved
         </div>
       </q-page-sticky>
 
@@ -341,7 +335,7 @@ onBeforeUnmount(() => {
 watch(
   [pool, customer],
   () => {
-    if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', pool.value.name);
+    if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', data.poolName(pool.value));
   },
   { immediate: true },
 );

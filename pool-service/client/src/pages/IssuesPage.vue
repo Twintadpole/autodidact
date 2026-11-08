@@ -139,11 +139,7 @@ watch(sheetOpen, (open) => {
 
 const quadLabel = (i: Issue) => QUADRANTS.find((q) => q.key === deriveQuadrant(i))?.label ?? '';
 
-function poolName(id: string) {
-  const p = data.poolById.get(id);
-  if (!p) return '';
-  return `${data.customerById.get(p.customerId)?.name ?? ''} · ${p.name}`;
-}
+const poolName = (id: string) => data.poolLabel(id);
 
 function openIssue(i: Issue) {
   selected.value = i;

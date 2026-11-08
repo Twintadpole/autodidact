@@ -11,7 +11,7 @@
         <q-card-section class="row q-col-gutter-sm text-body2">
           <div class="col-6"><span class="text-grey-7">Type</span><br />{{ pool.type === 'salt' ? 'Salt' : 'Chlorine' }}</div>
           <div class="col-6"><span class="text-grey-7">Volume</span><br />{{ pool.volumeGal.toLocaleString() }} gal</div>
-          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ DAY_LABELS[pool.serviceDay] }} (#{{ pool.routeOrder }})</div>
+          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ DAY_LABELS[pool.serviceDay] }} · stop {{ pool.routeOrder }}</div>
           <div class="col-6"><span class="text-grey-7">Surface</span><br />{{ pool.surface || '–' }}</div>
           <div v-if="pool.accessNotes" class="col-12"><span class="text-grey-7">Access</span><br />{{ pool.accessNotes }}</div>
         </q-card-section>
@@ -25,7 +25,10 @@
 
       <!-- History -->
       <div>
-        <div class="text-subtitle1 q-mb-xs">Recent visits</div>
+        <div class="row items-center justify-between q-mb-xs">
+          <div class="text-subtitle1">Recent visits</div>
+          <q-btn flat dense no-caps color="primary" label="All visits" :to="`/pools/${pool._id}/visits`" data-test="all-visits" />
+        </div>
         <q-card flat bordered class="q-pa-sm">
           <div class="row q-col-gutter-md q-mb-sm">
             <TrendChart class="col-6" label="FC (ppm)" :points="trend('fc')" :band="{ min: 2, max: 5 }" />
@@ -40,7 +43,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="v in visits" :key="v._id">
+              <tr v-for="v in visits" :key="v._id" class="cursor-pointer" data-test="history-row" @click="router.push(`/pools/${pool._id}/visits/${v._id}`)">
                 <td class="text-left">{{ shortDate(v.visitedAt) }}</td>
                 <td v-for="k in HISTORY_KEYS" :key="k" class="text-right" :class="cellClass(k, v.readings[k])">{{ fmtNumber(v.readings[k]) }}</td>
                 <td class="text-right">{{ v.timeLog?.segments.length ? Math.round(timeLogSeconds(v.timeLog) / 60) + 'm' : '–' }}</td>
@@ -100,7 +103,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { deriveQuadrant, QUADRANTS, rateReading, READINGS, timeLogSeconds, type ReadingKey } from '@pool/shared';
 import ContactLinks from '@/components/ContactLinks.vue';
 import NotesList from '@/components/NotesList.vue';
@@ -118,6 +121,7 @@ defineOptions({ name: 'PoolOverviewPage' });
 const HISTORY_KEYS: ReadingKey[] = ['fc', 'ph', 'ta', 'cya', 'salt'];
 
 const route = useRoute();
+const router = useRouter();
 const data = useDataStore();
 const ui = useUiStore();
 const visits = ref<Visit[]>([]);
@@ -166,7 +170,7 @@ function openIssue(i: Issue) {
 watch(
   [pool, customer],
   () => {
-    if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', `${pool.value.name} · overview`);
+    if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', data.poolName(pool.value) ? `${data.poolName(pool.value)} · overview` : 'Pool overview');
   },
   { immediate: true },
 );

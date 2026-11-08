@@ -71,7 +71,7 @@
           </q-item-section>
           <q-item-section class="cursor-pointer" :data-test="`open-${p._id}`" @click="open(p._id)">
             <q-item-label class="text-weight-medium" :class="{ 'text-grey-6': p.week.done }">{{ customerName(p) }}</q-item-label>
-            <q-item-label caption>{{ p.name }} · {{ shortAddress(p) }}</q-item-label>
+            <q-item-label caption>{{ data.poolName(p) ? `${data.poolName(p)} · ` : '' }}{{ shortAddress(p) }}</q-item-label>
             <q-item-label v-if="runningAt.get(p._id)" class="q-mt-xs">
               <q-chip dense color="positive" text-color="white" icon="timer" class="q-ma-none" :data-test="`running-${p._id}`">{{ runningAt.get(p._id) }}</q-chip>
             </q-item-label>

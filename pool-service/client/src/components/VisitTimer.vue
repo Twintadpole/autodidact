@@ -25,6 +25,7 @@
         <q-btn class="full-width" outline color="primary" icon="play_arrow" label="Resume work" :loading="busy" data-test="timer-reopen" @click="emit('action', 'resume')" />
       </div>
     </q-card-actions>
+    <slot />
   </q-card>
 </template>
 

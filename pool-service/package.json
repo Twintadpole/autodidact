@@ -1,7 +1,7 @@
 {
   "name": "pool-service",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "description": "Single-user, offline-first pool service PWA (Quasar + Fastify + MongoDB)",
   "type": "module",
   "workspaces": [
