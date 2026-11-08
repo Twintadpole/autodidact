@@ -19,7 +19,7 @@
       ]"
     />
 
-    <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
+    <div v-if="!data.loaded" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
 
     <template v-else>
       <div v-if="!active.length" class="text-center text-grey-7 q-pa-md" data-test="no-issues">
@@ -32,10 +32,9 @@
         <div v-for="q in quadrants" :key="q.key" class="quad" :class="`quad--${q.key}`" :data-test="`quad-${q.key}`">
           <div class="quad-title">{{ q.label }} <span class="text-grey-7">({{ q.items.length }})</span></div>
           <div v-for="i in q.items" :key="i._id" class="quad-item" :data-test="`issue-${i._id}`" @click="openIssue(i)">
-            <div class="text-body2 text-weight-medium ellipsis-2-lines">
-              {{ i.title }}<q-icon v-if="i.photoIds?.length" name="photo_camera" size="14px" class="q-ml-xs text-grey-7" />
-            </div>
+            <div class="text-body2 text-weight-medium ellipsis-2-lines">{{ i.title }}</div>
             <div v-if="!poolId" class="text-caption text-grey-7 ellipsis">{{ poolName(i.poolId) }}</div>
+            <PhotoGrid v-if="photosOf(i).length" size="sm" class="q-mt-xs" :photos="photosOf(i).slice(0, 3)" :more="Math.max(0, photosOf(i).length - 3)" data-test="issue-strip" @open="openIssue(i)" />
           </div>
         </div>
       </div>
@@ -45,10 +44,11 @@
         <q-item v-for="i in sortedActive" :key="i._id" clickable :data-test="`issue-${i._id}`" @click="openIssue(i)">
           <q-item-section avatar><q-icon :name="QUAD_ICON[deriveQuadrant(i)]" :color="QUAD_COLOR[deriveQuadrant(i)]" /></q-item-section>
           <q-item-section>
-            <q-item-label>{{ i.title }}<q-icon v-if="i.photoIds?.length" name="photo_camera" size="14px" class="q-ml-xs text-grey-7" /></q-item-label>
+            <q-item-label>{{ i.title }}</q-item-label>
             <q-item-label caption>
               {{ quadLabel(i) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span><span v-if="i.status === 'in_progress'"> · in progress</span>
             </q-item-label>
+            <PhotoGrid v-if="photosOf(i).length" size="sm" class="q-mt-xs" :photos="photosOf(i).slice(0, 3)" :more="Math.max(0, photosOf(i).length - 3)" data-test="issue-strip" @open="openIssue(i)" />
           </q-item-section>
           <q-item-section side class="text-caption">{{ shortDate(i.createdAt) }}</q-item-section>
         </q-item>
@@ -61,6 +61,7 @@
             <q-item-section>
               <q-item-label>{{ i.title }}</q-item-label>
               <q-item-label caption>Postponed {{ shortDate(i.postponedAt) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span></q-item-label>
+              <PhotoGrid v-if="photosOf(i).length" size="sm" class="q-mt-xs" :photos="photosOf(i).slice(0, 3)" :more="Math.max(0, photosOf(i).length - 3)" data-test="issue-strip" @open="openIssue(i)" />
             </q-item-section>
           </q-item>
         </q-list>
@@ -81,19 +82,20 @@
       <q-btn v-if="poolId" outline color="orange-9" icon="add_alert" label="New issue" no-caps @click="openNew" />
     </template>
 
-    <IssueSheet v-model="sheetOpen" :issue="selected" :pool-id="selected?.poolId ?? poolId ?? ''" @saved="reload" />
+    <IssueSheet v-model="sheetOpen" :issue="selected" :pool-id="selected?.poolId ?? poolId ?? ''" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { deriveQuadrant, QUADRANTS, type QuadrantKey } from '@pool/shared';
 import IssueSheet from '@/components/IssueSheet.vue';
+import PhotoGrid from '@/components/PhotoGrid.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { shortDate } from '@/lib/format';
-import type { Issue } from '@/lib/types';
+import type { Issue, Photo } from '@/lib/types';
 
 defineOptions({ name: 'IssuesPage' });
 
@@ -107,13 +109,12 @@ const ui = useUiStore();
 const view = ref<'grid' | 'list'>('grid');
 const sheetOpen = ref(false);
 const selected = ref<Issue | null>(null);
-const poolIssueList = ref<Issue[]>([]);
-const loading = ref(false);
 
 const poolId = computed(() => (route.params.id ? String(route.params.id) : null));
 
 /** From the bottom nav: every open issue. From a pool: that pool's issues, completed ones included. */
-const all = computed(() => (poolId.value ? poolIssueList.value : data.openIssues));
+/** Live from the phone's copy, so it updates as soon as a sync brings new issues. */
+const all = computed(() => (poolId.value ? data.issues.filter((i) => i.poolId === poolId.value) : data.openIssues));
 const active = computed(() => all.value.filter((i) => i.status === 'open' || i.status === 'in_progress'));
 const postponed = computed(() => all.value.filter((i) => i.status === 'postponed'));
 const completed = computed(() => all.value.filter((i) => i.status === 'resolved').sort((a, b) => (b.resolvedAt ?? '').localeCompare(a.resolvedAt ?? '')));
@@ -124,6 +125,17 @@ const quadrants = computed(() =>
 const sortedActive = computed(() =>
   [...active.value].sort((a, b) => QUAD_ORDER.indexOf(deriveQuadrant(a)) - QUAD_ORDER.indexOf(deriveQuadrant(b)) || a.createdAt.localeCompare(b.createdAt)),
 );
+
+// Small photo strips under each issue
+const issuePhotos = ref(new Map<string, Photo[]>());
+const photosOf = (i: Issue) => issuePhotos.value.get(i._id) ?? [];
+async function loadPhotos() {
+  issuePhotos.value = await data.photosByIssue(all.value.map((i) => i._id)).catch(() => new Map());
+}
+watch(() => [all.value.map((i) => i._id).join(), data.version], loadPhotos, { immediate: true });
+watch(sheetOpen, (open) => {
+  if (!open) void loadPhotos();
+});
 
 const quadLabel = (i: Issue) => QUADRANTS.find((q) => q.key === deriveQuadrant(i))?.label ?? '';
 
@@ -143,15 +155,6 @@ function openNew() {
   sheetOpen.value = true;
 }
 
-async function reload() {
-  if (!poolId.value) return;
-  loading.value = poolIssueList.value.length === 0;
-  try {
-    poolIssueList.value = await data.poolIssues(poolId.value);
-  } finally {
-    loading.value = false;
-  }
-}
 
 watch(
   () => [poolId.value, data.loaded],
@@ -164,7 +167,6 @@ watch(
   { immediate: true },
 );
 
-onMounted(reload);
 </script>
 
 <style scoped>

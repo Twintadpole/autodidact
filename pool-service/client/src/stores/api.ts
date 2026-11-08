@@ -61,3 +61,20 @@ export async function apiForm<T = unknown>(path: string, form: FormData): Promis
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
+
+/**
+ * Tells the server about a problem on the phone (e.g. a photo that wouldn't load),
+ * so it can be diagnosed from the server logs. Best effort; never throws.
+ */
+export async function reportClientProblem(where: string, message: string, details: Record<string, unknown> = {}): Promise<void> {
+  try {
+    await fetch('/api/client-log', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ where, message: message.slice(0, 500), details, userAgent: navigator.userAgent }),
+    });
+  } catch {
+    // offline: nothing to do
+  }
+}

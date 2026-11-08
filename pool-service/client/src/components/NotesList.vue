@@ -70,6 +70,7 @@ function remove(n: Note) {
 }
 
 watch(() => props.parentId, load);
+watch(() => data.version, load); // new notes arrived from the server
 onMounted(load);
 </script>
 

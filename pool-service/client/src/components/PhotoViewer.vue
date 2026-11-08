@@ -7,7 +7,7 @@
         <q-btn flat round dense icon="close" aria-label="Close" @click="emit('close')" />
       </q-bar>
       <div class="col flex flex-center">
-        <PhotoImg :photo-id="photo._id" plain class="viewer-img" />
+        <PhotoImg :photo-id="photo._id" class="viewer-img" />
       </div>
       <q-card-actions class="bg-black q-pa-md">
         <q-toggle

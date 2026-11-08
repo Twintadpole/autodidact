@@ -33,23 +33,19 @@
           <!-- Photos -->
           <div>
             <div class="text-caption text-grey-7 q-mb-xs">Photos</div>
-            <div class="row q-gutter-sm items-start" data-test="issue-photos">
-              <div v-for="ph in photos" :key="ph._id" class="photo-tile" data-test="issue-photo">
-                <PhotoImg :photo-id="ph._id" thumb :ratio="1" class="rounded-borders cursor-pointer" @click="viewing = ph" />
+            <PhotoGrid :photos="photos" :pending="uploading" data-test="issue-photos" @open="(ph) => (viewing = ph)">
+              <template #below="{ photo: ph }">
                 <q-checkbox
                   :model-value="ph.savedToPool"
                   dense
                   size="sm"
                   label="Save to pool"
-                  class="text-caption"
+                  class="text-caption q-mt-xs"
                   data-test="photo-save-to-pool"
                   @update:model-value="(v: boolean) => setSaved(ph, v)"
                 />
-              </div>
-              <div v-for="n in uploading" :key="`up-${n}`" class="photo-tile flex flex-center bg-grey-2 rounded-borders" style="height: 88px">
-                <q-spinner color="primary" />
-              </div>
-            </div>
+              </template>
+            </PhotoGrid>
             <div class="row q-gutter-sm q-mt-xs">
               <q-btn outline dense no-caps color="primary" icon="photo_camera" label="Camera" data-test="photo-camera" @click="cameraInput?.click()" />
               <q-btn outline dense no-caps color="primary" icon="photo_library" label="Gallery" data-test="photo-gallery" @click="galleryInput?.click()" />
@@ -87,7 +83,8 @@ import PhotoViewer from '@/components/PhotoViewer.vue';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
 import { compressPhoto } from '@/lib/photos';
-import PhotoImg from '@/components/PhotoImg.vue';
+import { reportClientProblem } from '@/stores/api';
+import PhotoGrid from '@/components/PhotoGrid.vue';
 import { newId } from '@/lib/format';
 import type { Issue, Photo } from '@/lib/types';
 
@@ -122,6 +119,7 @@ async function onFiles(ev: Event) {
   const input = ev.target as HTMLInputElement;
   const files = [...(input.files ?? [])];
   input.value = '';
+  if (!files.length) return;
   for (const file of files) {
     uploading.value++;
     try {
@@ -129,7 +127,9 @@ async function onFiles(ev: Event) {
       const photo = await data.uploadPhoto(blob, { poolId: props.poolId, issueId: issueId.value, width, height });
       photos.value.push(photo);
     } catch (err) {
-      $q.notify({ type: 'negative', message: `Photo not saved: ${errorMessage(err)}` });
+      const message = errorMessage(err);
+      $q.notify({ type: 'negative', message: `Photo not added: ${message}`, timeout: 0, actions: [{ label: 'OK', color: 'white' }] });
+      void reportClientProblem('issue-photo', message, { name: file.name, type: file.type, size: file.size });
     } finally {
       uploading.value--;
     }
@@ -224,9 +224,6 @@ function quick(status: IssueStatus) {
 </script>
 
 <style scoped>
-.photo-tile {
-  width: 88px;
-}
 .issue-sheet {
   max-width: 600px;
   border-top-left-radius: 16px;

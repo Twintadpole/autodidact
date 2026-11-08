@@ -126,7 +126,7 @@ const { chromium, devices } = require('playwright');
       return btoa(s);
     });
     await page.locator('[data-test=photo-input]').setInputFiles({ name: 'crack.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(jpeg, 'base64') });
-    await page.locator('[data-test=issue-photo]').first().waitFor({ timeout: 20000 });
+    await page.locator('[data-test=issue-photos] [data-test=photo-tile]').first().waitFor({ timeout: 20000 });
     await page.locator('[data-test=photo-save-to-pool]').first().click();
     await shot('d4-issue-photo');
     await page.locator('[data-test=issue-save]').click();
@@ -138,10 +138,10 @@ const { chromium, devices } = require('playwright');
 
     // Pool gallery on the overview
     await page.goto(url(`/pools/${poolId}/overview`), { waitUntil: 'networkidle' });
-    await page.locator('[data-test=gallery-photo]').first().waitFor();
-    await page.locator('[data-test=gallery-photo]').first().scrollIntoViewIfNeeded();
+    await page.locator('[data-test=pool-gallery] [data-test=photo-tile]').first().waitFor();
+    await page.locator('[data-test=pool-gallery] [data-test=photo-tile]').first().scrollIntoViewIfNeeded();
     await shot('d5-gallery');
-    await page.locator('[data-test=gallery-photo]').first().click();
+    await page.locator('[data-test=pool-gallery] [data-test=photo-tile]').first().click();
     await page.locator('[data-test=photo-viewer]').waitFor();
     const loaded = await page.locator('[data-test=photo-viewer] img').evaluate((img) => img.complete && img.naturalWidth > 0);
     if (!loaded) throw new Error('full-size photo did not load');

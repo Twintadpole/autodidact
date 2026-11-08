@@ -103,3 +103,12 @@ describe('offline packages', () => {
     expect((await Visit.findById(vid).lean<any>()).deletedAt).toBeInstanceOf(Date);
   });
 });
+
+describe('client problem reports', () => {
+  it('accepts a report from a logged-in phone and rejects it without login', async () => {
+    const ok = await ctx.app.inject({ method: 'POST', url: '/api/client-log', headers: { cookie }, payload: { where: 'issue-photo', message: 'could not read image', details: { type: 'image/heic' } } });
+    expect(ok.statusCode).toBe(200);
+    const anon = await ctx.app.inject({ method: 'POST', url: '/api/client-log', payload: { where: 'x', message: 'y' } });
+    expect(anon.statusCode).toBe(401);
+  });
+});

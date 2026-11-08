@@ -36,6 +36,8 @@ export const useDataStore = defineStore('data', () => {
   const activeTimers = ref<Visit[]>([]);
   const loaded = ref(false);
   const loading = ref(false);
+  /** Bumped whenever the phone's copy changes (sync or local edit); screens that read it once watch this. */
+  const version = ref(0);
 
   const customerById = computed(() => new Map(customers.value.map((c) => [c._id, c])));
   const poolById = computed(() => new Map(pools.value.map((p) => [p._id, p])));
@@ -68,6 +70,7 @@ export const useDataStore = defineStore('data', () => {
     chemicals.value = live(ch).sort((a, b) => a.name.localeCompare(b.name));
     issues.value = live(i).filter((x) => livePools.has(x.poolId));
     activeTimers.value = running.filter((v) => livePools.has(v.poolId)).map(normalizeVisit);
+    version.value++;
   }
 
   /** First load: show what's on the phone right away, then sync in the background. */
@@ -307,6 +310,14 @@ export const useDataStore = defineStore('data', () => {
     return rows.sort((a, b) => b.takenAt.localeCompare(a.takenAt));
   }
 
+  /** Photos for several issues at once (issue lists show a small strip). */
+  async function photosByIssue(issueIds: string[]): Promise<Map<string, Photo[]>> {
+    const rows = live(await db.photos.where('issueId').anyOf(issueIds).toArray()).sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+    const map = new Map<string, Photo[]>();
+    for (const p of rows) map.set(p.issueId!, [...(map.get(p.issueId!) ?? []), p]);
+    return map;
+  }
+
   async function patchPhoto(id: string, body: { savedToPool?: boolean; caption?: string }): Promise<Photo> {
     const existing = await db.photos.get(id);
     if (!existing) throw new Error('Photo not found on this phone');
@@ -362,6 +373,7 @@ export const useDataStore = defineStore('data', () => {
     activeTimers,
     loaded,
     loading,
+    version,
     customerById,
     poolById,
     chemicalById,
@@ -386,6 +398,7 @@ export const useDataStore = defineStore('data', () => {
     refreshTimers,
     uploadPhoto,
     listPhotos,
+    photosByIssue,
     patchPhoto,
     deletePhoto,
     history,

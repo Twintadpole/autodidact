@@ -63,6 +63,14 @@
             <q-item-section>
               <q-item-label>{{ i.title }}</q-item-label>
               <q-item-label caption>{{ quadrantLabel(i) }}<span v-if="i.status === 'postponed'"> · postponed</span></q-item-label>
+              <PhotoGrid
+                v-if="issuePhotos.get(i._id)?.length"
+                size="sm"
+                class="q-mt-xs"
+                :photos="issuePhotos.get(i._id)!.slice(0, 3)"
+                :more="Math.max(0, issuePhotos.get(i._id)!.length - 3)"
+                @open="openIssue(i)"
+              />
             </q-item-section>
           </q-item>
         </q-list>
@@ -70,10 +78,14 @@
       </div>
 
       <!-- Photos -->
-      <div>
-        <div class="text-subtitle1 q-mb-xs">Photos</div>
-        <PoolGallery ref="gallery" :pool-id="pool._id" />
-      </div>
+      <q-card flat bordered data-test="photos-card">
+        <q-card-section class="q-pb-sm">
+          <div class="text-subtitle1">Photos<span v-if="photoCount" class="text-grey-7"> ({{ photoCount }})</span></div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <PoolGallery ref="gallery" :pool-id="pool._id" @count="(n) => (photoCount = n)" />
+        </q-card-section>
+      </q-card>
 
       <!-- Notes -->
       <div>
@@ -95,6 +107,7 @@ import NotesList from '@/components/NotesList.vue';
 import TrendChart from '@/components/TrendChart.vue';
 import IssueSheet from '@/components/IssueSheet.vue';
 import PoolGallery from '@/components/PoolGallery.vue';
+import PhotoGrid from '@/components/PhotoGrid.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS, fmtNumber, poolAddress, shortDate } from '@/lib/format';
@@ -111,9 +124,16 @@ const visits = ref<Visit[]>([]);
 const issueOpen = ref(false);
 const selectedIssue = ref<Issue | null>(null);
 const gallery = ref<InstanceType<typeof PoolGallery> | null>(null);
+const photoCount = ref(0);
+const issuePhotos = ref(new Map<string, import('@/lib/types').Photo[]>());
+async function loadIssuePhotos() {
+  issuePhotos.value = await data.photosByIssue(openIssues.value.map((i) => i._id)).catch(() => new Map());
+}
 
 watch(issueOpen, (open) => {
-  if (!open) void gallery.value?.load(); // "Save to pool" may have changed inside the sheet
+  if (open) return;
+  void gallery.value?.load(); // "Save to pool" may have changed inside the sheet
+  void loadIssuePhotos();
 });
 
 const poolId = computed(() => String(route.params.id));
@@ -149,6 +169,15 @@ watch(
     if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', `${pool.value.name} · overview`);
   },
   { immediate: true },
+);
+
+watch(() => [openIssues.value.map((i) => i._id).join(), data.version], () => void loadIssuePhotos(), { immediate: true });
+// History may arrive after the screen opens (first load on a new phone).
+watch(
+  () => data.version,
+  async () => {
+    visits.value = await data.recentVisits(poolId.value, 10);
+  },
 );
 
 onMounted(async () => {

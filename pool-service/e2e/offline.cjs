@@ -95,7 +95,7 @@ const { chromium, devices } = require('playwright');
       return btoa(s);
     });
     await page.locator('[data-test=photo-input]').setInputFiles({ name: 'leak.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(jpeg, 'base64') });
-    await page.locator('[data-test=issue-photo]').first().waitFor({ timeout: 20000 });
+    await page.locator('[data-test=issue-photos] [data-test=photo-tile]').first().waitFor({ timeout: 20000 });
     await page.locator('[data-test=issue-save]').click();
     await page.getByText('Issue added').waitFor();
 

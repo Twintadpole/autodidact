@@ -1,6 +1,5 @@
 <template>
-  <img v-if="plain && src" :src="src" v-bind="$attrs" alt="Photo" />
-  <q-img v-else-if="src" :src="src" :ratio="ratio" v-bind="$attrs" />
+  <img v-if="src" :src="src" alt="Photo" loading="lazy" decoding="async" />
 </template>
 
 <script setup lang="ts">
@@ -9,11 +8,11 @@ import { db } from '@/offline/db';
 import { photoUrl, thumbUrl } from '@/lib/photos';
 
 /**
- * Shows a photo from the phone's own storage while it is still waiting to
- * upload, otherwise from the server (thumbnails are cached for offline use).
+ * A plain <img> for a photo: from the phone's own storage while it is still
+ * waiting to upload, otherwise from the server (thumbnails are cached for
+ * offline use). Sizing is up to the parent (see PhotoGrid).
  */
-const props = defineProps<{ photoId: string; thumb?: boolean; ratio?: number; plain?: boolean }>();
-defineOptions({ inheritAttrs: false });
+const props = defineProps<{ photoId: string; thumb?: boolean }>();
 
 const src = ref('');
 let objectUrl = '';

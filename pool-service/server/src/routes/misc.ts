@@ -33,6 +33,29 @@ export const systemRoutes: FastifyPluginAsync<{ backupDir?: string }> = async (a
   });
 };
 
+/** Problems seen on the phone (e.g. a photo that wouldn't load), written to the server log for diagnosis. */
+export const clientLogRoutes: FastifyPluginAsync = async (parent) => {
+  const app = parent.withTypeProvider<ZodTypeProvider>();
+  app.post(
+    '/client-log',
+    {
+      schema: {
+        body: z.object({
+          where: z.string().max(60),
+          message: z.string().max(500),
+          details: z.record(z.string(), z.unknown()).optional(),
+          userAgent: z.string().max(300).optional(),
+        }),
+      },
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    },
+    async (req) => {
+      req.log.warn({ clientProblem: req.body }, `client problem: ${req.body.where}: ${req.body.message}`);
+      return { ok: true };
+    },
+  );
+};
+
 /** Weekly service list actions. */
 export const routeRoutes: FastifyPluginAsync = async (app) => {
   /** Clears every pool's weekly checkmark. */

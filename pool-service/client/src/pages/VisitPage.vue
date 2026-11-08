@@ -347,6 +347,20 @@ watch(
 );
 
 onMounted(load);
+
+/**
+ * When a sync brings new data (e.g. the first download on a new phone), refresh
+ * the previous-visit card and pinned notes. The visit being edited is left alone.
+ */
+watch(
+  () => data.version,
+  async () => {
+    if (loadingVisits.value || !draft.value) return;
+    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 3), data.notesFor('pool', poolId.value)]);
+    pinnedNotes.value = notes.filter((n) => n.pinned);
+    previous.value = visits.find((v) => v._id !== draft.value!._id && !isToday(parseISO(v.visitedAt))) ?? previous.value;
+  },
+);
 </script>
 
 <style scoped>
