@@ -16,6 +16,8 @@ const { chromium, devices } = require('playwright');
   let step = 0;
   const ok = (m) => console.log(`✓ ${++step}. ${m}`);
   const shot = (name) => page.screenshot({ path: `${out}/${name}.png` });
+  // Changes are saved on the phone first; wait until the outbox has uploaded before checking the server.
+  const waitSynced = () => page.locator('[data-test=sync-chip]').filter({ hasText: 'Synced' }).waitFor({ timeout: 30000 });
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   let customerId;
 
@@ -63,7 +65,10 @@ const { chromium, devices } = require('playwright');
     if (!/1 pause/.test(state)) throw new Error(`expected 1 pause in "${state}"`);
     ok(`pause → resume → stop (${state.trim()})`);
 
-    // Reload: stopped timer persisted; no longer running on Route
+    // Reload: stopped timer persisted (on the server too); no longer running on Route
+    await waitSynced();
+    const onServer = await page.evaluate(async (pid) => (await (await fetch(`/api/pools/${pid}/visits?limit=1`)).json())[0]?.timeLog?.finished, poolId);
+    if (onServer !== true) throw new Error('stopped timer should be on the server');
     await page.reload({ waitUntil: 'networkidle' });
     await page.locator('[data-test=timer-reopen]').waitFor();
     ok('reload: stopped timer was saved on the server');
@@ -91,7 +96,8 @@ const { chromium, devices } = require('playwright');
     if (!/^(29|30|31):\d\d$/.test(elapsed.trim())) throw new Error(`expected about 30 minutes, got ${elapsed}`);
     ok(`times edited (start moved 30 min earlier → ${elapsed.trim()}); bad edit rejected`);
 
-    // History shows the change
+    // History shows the change (kept on the server)
+    await waitSynced();
     await page.locator('[data-test=timer-history]').click();
     await page.locator('[data-test=history-entry]').first().waitFor();
     const hist = await page.locator('[data-test=history-dialog]').innerText();
@@ -125,6 +131,7 @@ const { chromium, devices } = require('playwright');
     await shot('d4-issue-photo');
     await page.locator('[data-test=issue-save]').click();
     await page.getByText('Issue added').waitFor();
+    await waitSynced();
     const meta = await page.evaluate(async (pid) => (await (await fetch(`/api/photos?poolId=${pid}`)).json())[0], poolId);
     if (!meta || Math.max(meta.width, meta.height) > 1600) throw new Error(`photo should be shrunk to ≤1600 px, got ${meta?.width}x${meta?.height}`);
     ok(`issue saved with a photo (shrunk on the phone to ${meta.width}×${meta.height}, ${Math.round(meta.bytes / 1024)} KB), marked Save to pool`);

@@ -4,11 +4,12 @@
       No photos yet. Turn on “Save to pool” on an issue photo to keep it here.
     </div>
     <div v-else class="gallery" data-test="pool-gallery">
-      <q-img
+      <PhotoImg
         v-for="ph in photos"
         :key="ph._id"
-        :src="thumbUrl(ph._id)"
-        ratio="1"
+        :photo-id="ph._id"
+        thumb
+        :ratio="1"
         class="rounded-borders cursor-pointer"
         data-test="gallery-photo"
         @click="viewing = ph"
@@ -22,7 +23,7 @@
 import { onMounted, ref, watch } from 'vue';
 import PhotoViewer from '@/components/PhotoViewer.vue';
 import { useDataStore } from '@/stores/data';
-import { thumbUrl } from '@/lib/photos';
+import PhotoImg from '@/components/PhotoImg.vue';
 import type { Photo } from '@/lib/types';
 
 const props = defineProps<{ poolId: string }>();

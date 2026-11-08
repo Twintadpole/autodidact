@@ -7,6 +7,19 @@
           <div class="ellipsis" data-test="page-title">{{ ui.title || route.meta.title || 'Pool Service' }}</div>
           <div v-if="ui.subtitle" class="text-caption ellipsis header-sub">{{ ui.subtitle }}</div>
         </q-toolbar-title>
+        <!-- Sync status: tap for the Sync screen -->
+        <q-chip
+          clickable
+          dense
+          :color="chip.color"
+          text-color="white"
+          :icon="chip.icon"
+          class="q-mr-xs"
+          data-test="sync-chip"
+          @click="router.push('/more/sync')"
+        >
+          {{ chip.label }}
+        </q-chip>
         <!-- Pages put their buttons here with <Teleport defer to="#header-actions"> -->
         <div id="header-actions" class="row no-wrap items-center" />
       </q-toolbar>
@@ -39,6 +52,8 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
+import { useSyncStore } from '@/stores/sync';
+import { requestPersistentStorage } from '@/offline/db';
 import { errorMessage } from '@/stores/api';
 
 defineOptions({ name: 'MainLayout' });
@@ -48,6 +63,21 @@ const router = useRouter();
 const ui = useUiStore();
 const data = useDataStore();
 const loadError = ref('');
+const sync = useSyncStore();
+
+const chip = computed(() => {
+  switch (sync.state) {
+    case 'failed':
+      return { label: `${sync.failed} failed`, color: 'negative', icon: 'sync_problem' };
+    case 'offline':
+      return { label: sync.pending ? `Offline · ${sync.pending}` : 'Offline', color: 'grey-7', icon: 'cloud_off' };
+    case 'syncing':
+    case 'waiting':
+      return { label: `${sync.pending} waiting`, color: 'orange-8', icon: 'cloud_upload' };
+    default:
+      return { label: 'Synced', color: 'positive', icon: 'cloud_done' };
+  }
+});
 
 const urgentCount = computed(() => data.openIssues.filter((i) => i.urgent && i.important && i.status !== 'postponed').length);
 
@@ -70,7 +100,11 @@ watch(
   () => ui.setTitle(''),
 );
 
-onMounted(() => void load());
+onMounted(() => {
+  sync.start();
+  void requestPersistentStorage();
+  void load();
+});
 </script>
 
 <style scoped>

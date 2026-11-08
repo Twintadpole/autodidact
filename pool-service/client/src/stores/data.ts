@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { IssueStatus } from '@pool/shared';
-import { api, apiForm } from './api';
+import { api } from './api';
+import { useSyncStore } from './sync';
 import { clone, newId } from '@/lib/format';
+import { db } from '@/offline/db';
+import { enqueue } from '@/offline/engine';
 import type { AuditEntry, Chemical, Customer, Issue, Note, Photo, Pool, Visit } from '@/lib/types';
 
 /** The database drops empty objects/arrays, so fill in what a visit always has. */
@@ -15,17 +18,21 @@ export function normalizeVisit(v: Visit): Visit {
   return v;
 }
 
+const live = <T extends { deletedAt: string | null }>(list: T[]) => list.filter((d) => !d.deletedAt);
+const isRunning = (v: Visit) => !!v.timeLog && !v.timeLog.finished && v.timeLog.segments.some((s) => !s.end);
+const nowIso = () => new Date().toISOString();
+
 /**
- * In-memory copy of the data the screens share (customers, pools, chemicals,
- * open issues). Phase 3 talks to the API directly; Phase 4 swaps this for the
- * IndexedDB cache + outbox without changing the screens.
+ * The data the screens use. Reads come from the phone's local database
+ * (IndexedDB), so everything works with no signal. Every change is written
+ * locally first and queued as a package in the outbox; the sync engine sends it
+ * when there is signal and pulls down changes from the server.
  */
 export const useDataStore = defineStore('data', () => {
   const customers = ref<Customer[]>([]);
   const pools = ref<Pool[]>([]);
   const chemicals = ref<Chemical[]>([]);
   const issues = ref<Issue[]>([]);
-  /** Visits with a running timer (at most one, but the server allows more after offline use). */
   const activeTimers = ref<Visit[]>([]);
   const loaded = ref(false);
   const loading = ref(false);
@@ -46,139 +53,231 @@ export const useDataStore = defineStore('data', () => {
     return counts;
   });
 
+  /** Re-reads the local database into memory (after a sync or a local change). */
+  async function refreshFromDb() {
+    const [c, p, ch, i, running] = await Promise.all([
+      db.customers.toArray(),
+      db.pools.toArray(),
+      db.chemicals.toArray(),
+      db.issues.toArray(),
+      db.visits.filter((v) => !v.deletedAt && isRunning(v)).toArray(),
+    ]);
+    const livePools = new Set(live(p).map((x) => x._id));
+    customers.value = live(c).sort((a, b) => a.name.localeCompare(b.name));
+    pools.value = live(p);
+    chemicals.value = live(ch).sort((a, b) => a.name.localeCompare(b.name));
+    issues.value = live(i).filter((x) => livePools.has(x.poolId));
+    activeTimers.value = running.filter((v) => livePools.has(v.poolId)).map(normalizeVisit);
+  }
+
+  /** First load: show what's on the phone right away, then sync in the background. */
   async function loadAll(force = false) {
     if ((loaded.value && !force) || loading.value) return;
     loading.value = true;
     try {
-      const [c, p, ch, i, t] = await Promise.all([
-        api<Customer[]>('/customers'),
-        api<Pool[]>('/pools'),
-        api<Chemical[]>('/chemicals'),
-        api<Issue[]>('/issues?status=open,in_progress,postponed'),
-        api<Visit[]>('/visits/active').then((list) => list.map(normalizeVisit)),
-      ]);
-      customers.value = c;
-      pools.value = p;
-      chemicals.value = ch;
-      issues.value = i;
-      activeTimers.value = t;
+      await refreshFromDb();
       loaded.value = true;
     } finally {
       loading.value = false;
     }
+    void useSyncStore().kick({ force });
   }
 
-  function upsert<T extends { _id: string }>(list: T[], doc: T) {
-    const idx = list.findIndex((d) => d._id === doc._id);
-    if (idx >= 0) list.splice(idx, 1, doc);
-    else list.push(doc);
+  /** Save locally, queue for the server, update the screens, nudge the sync. */
+  async function commit(pkg: Record<string, unknown>, summary: string, photoIds: string[] = []) {
+    await enqueue({ packageId: newId(), createdAt: nowIso(), ...pkg }, summary, photoIds);
+    const sync = useSyncStore();
+    await sync.refreshCounts(); // the header chip shows "1 waiting" right away
+    await refreshFromDb();
+    void sync.kick();
   }
+
+  const customerName = (poolId: string) => {
+    const p = poolById.value.get(poolId);
+    return p ? `${customerById.value.get(p.customerId)?.name ?? 'Customer'} · ${p.name}` : 'Pool';
+  };
 
   // ------------------------------------------------------------ customers / pools
   async function saveCustomer(id: string | null, body: Partial<Customer>): Promise<Customer> {
-    const doc = id
-      ? await api<Customer>(`/customers/${id}`, { method: 'PATCH', body })
-      : await api<Customer>('/customers', { method: 'POST', body: { _id: newId(), ...body } });
-    upsert(customers.value, doc);
-    customers.value.sort((a, b) => a.name.localeCompare(b.name));
+    const now = nowIso();
+    const existing = id ? await db.customers.get(id) : undefined;
+    const doc: Customer = existing
+      ? { ...existing, ...body, updatedAt: now }
+      : ({ phones: [], ...body, _id: body._id ?? newId(), createdAt: now, updatedAt: now, deletedAt: null } as Customer);
+    // Optional fields cleared in the form must disappear, not linger from the old copy.
+    for (const k of ['email', 'notes'] as const) if (existing && !(k in body)) delete doc[k];
+    await db.customers.put(clone(doc));
+    await commit({ customers: [doc] }, `${existing ? 'Edit' : 'New'} customer · ${doc.name}`);
     return doc;
   }
 
-  /** The server also hides the customer's pools and everything under them. */
+  /** Also hides the customer's pools and everything under them (the server does the same). */
   async function deleteCustomer(id: string) {
-    await api(`/customers/${id}`, { method: 'DELETE' });
-    const poolIds = new Set(pools.value.filter((p) => p.customerId === id).map((p) => p._id));
-    customers.value = customers.value.filter((c) => c._id !== id);
-    pools.value = pools.value.filter((p) => !poolIds.has(p._id));
-    issues.value = issues.value.filter((i) => !poolIds.has(i.poolId));
-    activeTimers.value = activeTimers.value.filter((v) => !poolIds.has(v.poolId));
+    const existing = await db.customers.get(id);
+    if (!existing) return;
+    const now = nowIso();
+    const doc = { ...existing, deletedAt: now, updatedAt: now };
+    await db.customers.put(doc);
+    for (const p of await db.pools.where('customerId').equals(id).toArray()) await hidePoolLocally(p._id, now);
+    await commit({ customers: [doc] }, `Delete customer · ${existing.name}`);
   }
 
   async function savePool(id: string | null, body: Partial<Pool>): Promise<Pool> {
-    const doc = id
-      ? await api<Pool>(`/pools/${id}`, { method: 'PATCH', body })
-      : await api<Pool>('/pools', { method: 'POST', body: { _id: newId(), ...body } });
-    upsert(pools.value, doc);
+    const now = nowIso();
+    const existing = id ? await db.pools.get(id) : undefined;
+    const doc: Pool = existing
+      ? { ...existing, ...body, updatedAt: now }
+      : ({
+          name: 'Pool',
+          routeOrder: 0,
+          accessNotes: '',
+          active: true,
+          week: { done: false, doneAt: null, changedAt: null },
+          ...body,
+          _id: body._id ?? newId(),
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        } as Pool);
+    for (const k of ['surface', 'address'] as const) if (existing && !(k in body)) delete doc[k];
+    await db.pools.put(clone(doc));
+    await commit({ pools: [doc] }, `${existing ? 'Edit' : 'New'} pool · ${customerById.value.get(doc.customerId)?.name ?? ''} · ${doc.name}`);
     return doc;
   }
 
-  /** The server also hides the pool's visits, issues, notes and photos. */
+  async function hidePoolLocally(poolId: string, now: string) {
+    const p = await db.pools.get(poolId);
+    if (p && !p.deletedAt) await db.pools.put({ ...p, deletedAt: now, updatedAt: now });
+    const hide = async <T extends { deletedAt: string | null }>(table: import('dexie').Table<T, string>, rows: T[]) => {
+      for (const r of rows) if (!r.deletedAt) await table.put({ ...r, deletedAt: now });
+    };
+    await hide(db.visits, await db.visits.where('poolId').equals(poolId).toArray());
+    await hide(db.issues, await db.issues.where('poolId').equals(poolId).toArray());
+    await hide(db.photos, await db.photos.where('poolId').equals(poolId).toArray());
+    await hide(db.notes, await db.notes.where('parentId').equals(poolId).toArray());
+  }
+
+  /** Also hides the pool's visits, issues, notes and photos (the server does the same). */
   async function deletePool(id: string) {
-    await api(`/pools/${id}`, { method: 'DELETE' });
-    pools.value = pools.value.filter((p) => p._id !== id);
-    issues.value = issues.value.filter((i) => i.poolId !== id);
-    activeTimers.value = activeTimers.value.filter((v) => v.poolId !== id);
+    const existing = await db.pools.get(id);
+    if (!existing) return;
+    const now = nowIso();
+    const label = customerName(id);
+    await hidePoolLocally(id, now);
+    await commit({ pools: [{ ...existing, deletedAt: now, updatedAt: now }] }, `Delete pool · ${label}`);
   }
 
   /** The weekly checkmark; the Route checkbox and the visit-screen toggle both use this. */
   async function setDone(poolId: string, done: boolean) {
-    const now = new Date().toISOString();
-    const pool = poolById.value.get(poolId);
-    if (pool) pool.week = { done, doneAt: done ? now : null, changedAt: now }; // optimistic
-    const doc = await api<Pool>(`/pools/${poolId}`, {
-      method: 'PATCH',
-      body: { week: { done, doneAt: done ? now : null, changedAt: now } },
-    });
-    upsert(pools.value, doc);
+    const at = nowIso();
+    const p = await db.pools.get(poolId);
+    if (p) await db.pools.put({ ...p, week: { done, doneAt: done ? at : null, changedAt: at } });
+    const inMemory = poolById.value.get(poolId);
+    if (inMemory) inMemory.week = { done, doneAt: done ? at : null, changedAt: at }; // instant checkbox
+    await commit({ poolId, weekToggle: { done, at } }, `${done ? 'Checked off' : 'Unchecked'} · ${customerName(poolId)}`);
   }
 
   async function resetWeek() {
-    await api('/route/reset-week', { method: 'POST' });
-    pools.value = await api<Pool[]>('/pools');
+    const at = nowIso();
+    for (const p of await db.pools.toArray()) {
+      if (!p.week.changedAt || p.week.changedAt < at) await db.pools.put({ ...p, week: { done: false, doneAt: null, changedAt: at } });
+    }
+    await commit({ resetWeek: { at } }, 'Reset week');
   }
 
   // ------------------------------------------------------------ chemicals
   async function saveChemical(id: string | null, body: Partial<Chemical>): Promise<Chemical> {
-    const doc = id
-      ? await api<Chemical>(`/chemicals/${id}`, { method: 'PATCH', body })
-      : await api<Chemical>('/chemicals', { method: 'POST', body: { _id: newId(), active: true, ...body } });
-    upsert(chemicals.value, doc);
-    chemicals.value.sort((a, b) => a.name.localeCompare(b.name));
+    const now = nowIso();
+    const existing = id ? await db.chemicals.get(id) : undefined;
+    const doc: Chemical = existing
+      ? { ...existing, ...body, updatedAt: now }
+      : ({ active: true, ...body, _id: newId(), createdAt: now, updatedAt: now, deletedAt: null } as Chemical);
+    await db.chemicals.put(clone(doc));
+    await commit({ chemicals: [doc] }, `${existing ? 'Edit' : 'New'} chemical · ${doc.name}`);
     return doc;
   }
 
   // ------------------------------------------------------------ issues
   async function saveIssue(id: string | null, body: Partial<Issue>): Promise<Issue> {
-    const doc = id
-      ? await api<Issue>(`/issues/${id}`, { method: 'PATCH', body })
-      : await api<Issue>('/issues', { method: 'POST', body: { _id: newId(), ...body } });
-    upsert(issues.value, doc);
+    const now = nowIso();
+    const existing = id ? await db.issues.get(id) : undefined;
+    let doc: Issue = existing
+      ? { ...existing, ...body, updatedAt: now }
+      : ({
+          urgent: false,
+          important: false,
+          status: 'open',
+          resolvedAt: null,
+          postponedAt: null,
+          photoIds: [],
+          ...body,
+          _id: body._id ?? newId(),
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        } as Issue);
+    // Same rule as the server's applyIssueStatus: stamp Completed/Postponed, clear on reopen.
+    const previous = existing ? existing.status : 'open';
+    if (doc.status !== previous) {
+      doc.resolvedAt = doc.status === 'resolved' ? (doc.resolvedAt ?? now) : null;
+      doc.postponedAt = doc.status === 'postponed' ? (doc.postponedAt ?? now) : null;
+    }
+    await db.issues.put(clone(doc));
+    await commit({ poolId: doc.poolId, issues: [doc] }, `${existing ? 'Issue update' : 'New issue'} · ${doc.title}`);
     return doc;
   }
 
   const setIssueStatus = (id: string, status: IssueStatus) => saveIssue(id, { status });
 
   async function deleteIssue(id: string) {
-    await api(`/issues/${id}`, { method: 'DELETE' });
-    issues.value = issues.value.filter((i) => i._id !== id);
+    const existing = await db.issues.get(id);
+    if (!existing) return;
+    const now = nowIso();
+    const doc = { ...existing, deletedAt: now, updatedAt: now };
+    await db.issues.put(doc);
+    await commit({ poolId: doc.poolId, issues: [doc] }, `Delete issue · ${doc.title}`);
   }
 
-  /** All issues for one pool, including completed ones (for the pool's own list). */
-  const poolIssues = (poolId: string) => api<Issue[]>(`/issues?poolId=${poolId}`);
+  /** All issues for one pool, including completed ones the phone has (last 30 days). */
+  const poolIssues = async (poolId: string) => live(await db.issues.where('poolId').equals(poolId).toArray());
 
   // ------------------------------------------------------------ visits
-  const recentVisits = async (poolId: string, limit = 2) => (await api<Visit[]>(`/pools/${poolId}/visits?limit=${limit}`)).map(normalizeVisit);
-
-  /** Saves a visit through the same package endpoint the offline outbox will use in Phase 4. */
-  async function saveVisit(visit: Visit) {
-    const res = await api<{ duplicate: boolean }>('/sync/package', {
-      method: 'POST',
-      body: { packageId: newId(), poolId: visit.poolId, createdAt: new Date().toISOString(), visit },
-    });
-    const running = !!visit.timeLog && !visit.timeLog.finished && visit.timeLog.segments.some((s) => !s.end);
-    activeTimers.value = activeTimers.value.filter((v) => v._id !== visit._id);
-    if (running) activeTimers.value.push(clone(visit));
-    return res;
+  /**
+   * Newest first. The phone keeps recent visits; for longer history (Overview)
+   * it also asks the server when there is signal and remembers the answer.
+   */
+  async function recentVisits(poolId: string, limit = 2): Promise<Visit[]> {
+    const local = async () =>
+      live(await db.visits.where('poolId').equals(poolId).toArray())
+        .sort((a, b) => b.visitedAt.localeCompare(a.visitedAt))
+        .slice(0, limit)
+        .map(normalizeVisit);
+    if (limit > 2 && navigator.onLine) {
+      try {
+        const remote = await api<Visit[]>(`/pools/${poolId}/visits?limit=${limit}`);
+        const existing = await db.visits.bulkGet(remote.map((v) => v._id));
+        await db.visits.bulkPut(remote.filter((v, i) => !existing[i] || existing[i]!.updatedAt <= v.updatedAt));
+      } catch {
+        // offline or server trouble: local history is fine
+      }
+    }
+    return local();
   }
 
-  const refreshTimers = async () => {
-    activeTimers.value = (await api<Visit[]>('/visits/active')).map(normalizeVisit);
-  };
+  /** Saves the visit on the phone and queues it (the same package the server already understands). */
+  async function saveVisit(visit: Visit) {
+    const doc = clone(visit);
+    await db.visits.put(doc);
+    await db.drafts.delete(doc.poolId);
+    await commit({ poolId: doc.poolId, visit: doc }, `Visit · ${customerName(doc.poolId)}`);
+  }
+
+  const refreshTimers = refreshFromDb;
 
   // ------------------------------------------------------------ photos
-  /** Uploads one (already compressed) image with its metadata; returns the photo record. */
+  /** Keeps the (already compressed) image on the phone and queues it with its metadata. */
   async function uploadPhoto(blob: Blob, meta: { poolId: string; issueId: string | null; width: number; height: number }): Promise<Photo> {
-    const now = new Date().toISOString();
+    const now = nowIso();
     const photo: Photo = {
       _id: newId(),
       poolId: meta.poolId,
@@ -192,36 +291,68 @@ export const useDataStore = defineStore('data', () => {
       updatedAt: now,
       deletedAt: null,
     };
-    const form = new FormData();
-    form.append('package', JSON.stringify({ packageId: newId(), poolId: meta.poolId, createdAt: now, photos: [photo] }));
-    form.append(photo._id, blob, `${photo._id}.jpg`);
-    await apiForm('/sync/package', form);
+    await db.transaction('rw', db.photos, db.photoBlobs, async () => {
+      await db.photoBlobs.put({ id: photo._id, blob });
+      await db.photos.put(photo);
+    });
+    await commit({ poolId: photo.poolId, photos: [photo] }, `Photo · ${customerName(photo.poolId)}`, [photo._id]);
     return photo;
   }
 
-  const listPhotos = (q: { poolId?: string; issueId?: string; savedToPool?: boolean }) => {
-    const params = new URLSearchParams();
-    if (q.poolId) params.set('poolId', q.poolId);
-    if (q.issueId) params.set('issueId', q.issueId);
-    if (q.savedToPool !== undefined) params.set('savedToPool', String(q.savedToPool));
-    return api<Photo[]>(`/photos?${params}`);
-  };
-  const patchPhoto = (id: string, body: { savedToPool?: boolean; caption?: string }) => api<Photo>(`/photos/${id}`, { method: 'PATCH', body });
-  const deletePhoto = (id: string) => api(`/photos/${id}`, { method: 'DELETE' });
+  async function listPhotos(q: { poolId?: string; issueId?: string; savedToPool?: boolean }): Promise<Photo[]> {
+    let rows = q.issueId ? await db.photos.where('issueId').equals(q.issueId).toArray() : q.poolId ? await db.photos.where('poolId').equals(q.poolId).toArray() : [];
+    rows = live(rows);
+    if (q.poolId) rows = rows.filter((p) => p.poolId === q.poolId);
+    if (q.savedToPool !== undefined) rows = rows.filter((p) => p.savedToPool === q.savedToPool);
+    return rows.sort((a, b) => b.takenAt.localeCompare(a.takenAt));
+  }
 
-  // ------------------------------------------------------------ edit history
+  async function patchPhoto(id: string, body: { savedToPool?: boolean; caption?: string }): Promise<Photo> {
+    const existing = await db.photos.get(id);
+    if (!existing) throw new Error('Photo not found on this phone');
+    const doc = { ...existing, ...body, updatedAt: nowIso() };
+    await db.photos.put(doc);
+    await commit({ poolId: doc.poolId, photos: [doc] }, `Photo ${body.savedToPool ? 'saved to pool' : 'updated'} · ${customerName(doc.poolId)}`);
+    return doc;
+  }
+
+  async function deletePhoto(id: string) {
+    const existing = await db.photos.get(id);
+    if (!existing) return;
+    const now = nowIso();
+    const doc = { ...existing, deletedAt: now, updatedAt: now };
+    await db.photos.put(doc);
+    await commit({ poolId: doc.poolId, photos: [doc] }, `Delete photo · ${customerName(doc.poolId)}`);
+  }
+
+  // ------------------------------------------------------------ edit history (server only)
   const history = (collection: string, docId: string) => api<AuditEntry[]>(`/audit?collection=${collection}&docId=${docId}`);
 
   // ------------------------------------------------------------ notes
-  const notesFor = (parentType: Note['parentType'], parentId: string) =>
-    api<Note[]>(`/notes?parentType=${parentType}&parentId=${parentId}`);
+  const notesFor = async (parentType: Note['parentType'], parentId: string) =>
+    live(await db.notes.where('parentId').equals(parentId).toArray())
+      .filter((n) => n.parentType === parentType)
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.createdAt.localeCompare(a.createdAt));
 
-  const saveNote = (id: string | null, body: Partial<Note>) =>
-    id
-      ? api<Note>(`/notes/${id}`, { method: 'PATCH', body })
-      : api<Note>('/notes', { method: 'POST', body: { _id: newId(), ...body } });
+  async function saveNote(id: string | null, body: Partial<Note>): Promise<Note> {
+    const now = nowIso();
+    const existing = id ? await db.notes.get(id) : undefined;
+    const doc: Note = existing
+      ? { ...existing, ...body, updatedAt: now }
+      : ({ pinned: false, ...body, _id: newId(), createdAt: now, updatedAt: now, deletedAt: null } as Note);
+    await db.notes.put(doc);
+    await commit({ notes: [doc] }, `${existing ? 'Edit' : 'New'} note`);
+    return doc;
+  }
 
-  const deleteNote = (id: string) => api(`/notes/${id}`, { method: 'DELETE' });
+  async function deleteNote(id: string) {
+    const existing = await db.notes.get(id);
+    if (!existing) return;
+    const now = nowIso();
+    const doc = { ...existing, deletedAt: now, updatedAt: now };
+    await db.notes.put(doc);
+    await commit({ notes: [doc] }, 'Delete note');
+  }
 
   return {
     customers,
@@ -238,6 +369,7 @@ export const useDataStore = defineStore('data', () => {
     openIssues,
     openIssueCount,
     loadAll,
+    refreshFromDb,
     saveCustomer,
     deleteCustomer,
     savePool,

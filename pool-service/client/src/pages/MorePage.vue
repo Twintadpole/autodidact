@@ -16,12 +16,13 @@
           <q-item-label caption>{{ backupText }}</q-item-label>
         </q-item-section>
       </q-item>
-      <q-item>
-        <q-item-section avatar><q-icon name="sync" color="grey-6" /></q-item-section>
+      <q-item clickable to="/more/sync" data-test="more-sync">
+        <q-item-section avatar><q-icon name="sync" color="primary" /></q-item-section>
         <q-item-section>
-          <q-item-label>Offline sync</q-item-label>
-          <q-item-label caption>Coming in Phase 4. For now the app needs signal to save.</q-item-label>
+          <q-item-label>Sync</q-item-label>
+          <q-item-label caption>{{ syncCaption }}</q-item-label>
         </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
       </q-item>
     </q-list>
 
@@ -36,6 +37,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuthStore } from '@/stores/auth';
 import { useDataStore } from '@/stores/data';
 import { api } from '@/stores/api';
+import { useSyncStore } from '@/stores/sync';
 
 defineOptions({ name: 'MorePage' });
 
@@ -43,15 +45,20 @@ const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
 const lastBackupAt = ref<string | null | undefined>(undefined);
+const sync = useSyncStore();
+const syncCaption = computed(() =>
+  sync.failed ? `${sync.failed} change(s) need attention` : sync.pending ? `${sync.pending} change(s) waiting to upload` : 'Everything is uploaded',
+);
 
 const backupText = computed(() => {
   if (lastBackupAt.value === undefined) return 'Checking…';
+  if (lastBackupAt.value === 'offline') return 'Needs a connection to check';
   if (!lastBackupAt.value) return 'No backup yet (runs nightly at 03:17 server time)';
   const d = parseISO(lastBackupAt.value);
   return `${formatDistanceToNow(d, { addSuffix: true })} · ${d.toLocaleString()}`;
 });
 const backupColor = computed(() => {
-  if (!lastBackupAt.value) return 'grey-6';
+  if (!lastBackupAt.value || lastBackupAt.value === 'offline') return 'grey-6';
   const ageHours = (Date.now() - parseISO(lastBackupAt.value).getTime()) / 3_600_000;
   return ageHours < 36 ? 'positive' : 'negative';
 });
@@ -65,7 +72,7 @@ onMounted(async () => {
   try {
     lastBackupAt.value = (await api<{ lastBackupAt: string | null }>('/system/status')).lastBackupAt;
   } catch {
-    lastBackupAt.value = null;
+    lastBackupAt.value = 'offline';
   }
 });
 </script>

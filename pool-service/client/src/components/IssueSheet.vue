@@ -35,7 +35,7 @@
             <div class="text-caption text-grey-7 q-mb-xs">Photos</div>
             <div class="row q-gutter-sm items-start" data-test="issue-photos">
               <div v-for="ph in photos" :key="ph._id" class="photo-tile" data-test="issue-photo">
-                <q-img :src="thumbUrl(ph._id)" ratio="1" class="rounded-borders cursor-pointer" @click="viewing = ph" />
+                <PhotoImg :photo-id="ph._id" thumb :ratio="1" class="rounded-borders cursor-pointer" @click="viewing = ph" />
                 <q-checkbox
                   :model-value="ph.savedToPool"
                   dense
@@ -86,7 +86,8 @@ import { deriveQuadrant, QUADRANTS, type IssueStatus } from '@pool/shared';
 import PhotoViewer from '@/components/PhotoViewer.vue';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
-import { compressPhoto, thumbUrl } from '@/lib/photos';
+import { compressPhoto } from '@/lib/photos';
+import PhotoImg from '@/components/PhotoImg.vue';
 import { newId } from '@/lib/format';
 import type { Issue, Photo } from '@/lib/types';
 

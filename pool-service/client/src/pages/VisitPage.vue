@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { isToday, parseISO } from 'date-fns';
@@ -104,8 +104,10 @@ import IssueSheet from '@/components/IssueSheet.vue';
 import VisitTimer, { type TimerAction } from '@/components/VisitTimer.vue';
 import TimeEditDialog from '@/components/TimeEditDialog.vue';
 import HistoryDialog from '@/components/HistoryDialog.vue';
-import { useDataStore } from '@/stores/data';
+import { normalizeVisit, useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
+import { useSyncStore } from '@/stores/sync';
+import { db } from '@/offline/db';
 import { errorMessage } from '@/stores/api';
 import { clone, newId } from '@/lib/format';
 import type { Note, TimeLog, Visit } from '@/lib/types';
@@ -116,6 +118,7 @@ const $q = useQuasar();
 const route = useRoute();
 const data = useDataStore();
 const ui = useUiStore();
+const sync = useSyncStore();
 
 const poolId = computed(() => String(route.params.id));
 const pool = computed(() => data.poolById.get(poolId.value));
@@ -183,6 +186,15 @@ async function load() {
       editingExisting.value = false;
     }
     savedSnapshot.value = snapshot(draft.value);
+    // Unsaved edits from before (app closed, crash, battery): pick up where you left off.
+    const kept = await db.drafts.get(poolId.value);
+    if (kept && isToday(parseISO(kept.visit.visitedAt)) && (!editingExisting.value || kept.visit._id === draft.value._id)) {
+      draft.value = normalizeVisit(kept.visit);
+      draft.value.notes ??= '';
+      $q.notify({ message: 'Restored your unsaved changes', color: 'grey-8', timeout: 1500 });
+    } else if (kept) {
+      await db.drafts.delete(poolId.value);
+    }
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });
   } finally {
@@ -250,7 +262,7 @@ async function onTimesEdited(timeLog: TimeLog) {
   await save('times');
 }
 
-async function save(reason: 'manual' | TimerAction | 'times' = 'manual'): Promise<boolean> {
+async function save(reason: 'manual' | 'auto' | TimerAction | 'times' = 'manual'): Promise<boolean> {
   const v = draft.value;
   if (!v) return true;
   const invalidDose = v.doses.find((d) => !d.chemicalId || !(d.amount > 0));
@@ -267,8 +279,10 @@ async function save(reason: 'manual' | TimerAction | 'times' = 'manual'): Promis
     v.updatedAt = body.updatedAt;
     savedSnapshot.value = snapshot(v);
     editingExisting.value = true;
+    const offline = !sync.online || !sync.reachable;
     const messages: Record<string, string> = {
-      manual: 'Visit saved',
+      manual: offline ? 'Saved on phone · uploads when there’s signal' : 'Visit saved',
+      auto: offline ? 'Visit saved on phone' : 'Visit saved',
       start: 'Timer started',
       resume: 'Timer resumed',
       pause: 'Timer paused',
@@ -297,20 +311,31 @@ function onIssueSaved() {
   $q.notify({ type: 'positive', message: 'Issue added', timeout: 1500 });
 }
 
-// Don't lose an unsaved visit when leaving the screen.
-onBeforeRouteLeave(() => {
-  if (!dirty.value || !hasContent.value) return true;
-  return new Promise<boolean>((resolve) => {
-    $q.dialog({
-      title: 'Save this visit?',
-      message: 'You have readings or notes that aren’t saved yet.',
-      persistent: true,
-      ok: { label: 'Save', color: 'primary', unelevated: true },
-      cancel: { label: 'Discard', flat: true, color: 'negative' },
-    })
-      .onOk(async () => resolve(await save()))
-      .onCancel(() => resolve(true));
-  });
+// Leaving the screen saves the visit (on the phone first; it uploads when there's signal).
+onBeforeRouteLeave(async () => {
+  if (dirty.value && hasContent.value) await save('auto');
+  return true;
+});
+
+// Every change is kept on the phone as a draft (300 ms after the last keystroke), so
+// closing the app or a crash loses nothing. Going to the background saves the visit.
+let draftTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+  draft,
+  (v) => {
+    clearTimeout(draftTimer);
+    if (!v || !dirty.value) return;
+    draftTimer = setTimeout(() => void db.drafts.put({ poolId: v.poolId, visit: clone(v), savedAt: new Date().toISOString() }), 300);
+  },
+  { deep: true },
+);
+function onHidden() {
+  if (document.visibilityState === 'hidden' && dirty.value && hasContent.value) void save('auto');
+}
+onMounted(() => document.addEventListener('visibilitychange', onHidden));
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onHidden);
+  clearTimeout(draftTimer);
 });
 
 watch(

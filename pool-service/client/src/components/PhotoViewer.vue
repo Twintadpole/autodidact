@@ -7,7 +7,7 @@
         <q-btn flat round dense icon="close" aria-label="Close" @click="emit('close')" />
       </q-bar>
       <div class="col flex flex-center">
-        <img :src="photoUrl(photo._id)" class="viewer-img" alt="Photo" />
+        <PhotoImg :photo-id="photo._id" plain class="viewer-img" />
       </div>
       <q-card-actions class="bg-black q-pa-md">
         <q-toggle
@@ -28,7 +28,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { format, parseISO } from 'date-fns';
-import { photoUrl } from '@/lib/photos';
+import PhotoImg from '@/components/PhotoImg.vue';
 import type { Photo } from '@/lib/types';
 
 const props = defineProps<{ photo: Photo | null }>();

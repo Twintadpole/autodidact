@@ -8,6 +8,7 @@
       </q-card-section>
       <q-card-section>
         <div v-if="loading" class="flex flex-center q-pa-md"><q-spinner color="primary" /></div>
+        <div v-else-if="error" class="text-grey-7" data-test="history-offline">{{ error }}</div>
         <div v-else-if="!entries.length" class="text-grey-7">No changes recorded yet.</div>
         <q-timeline v-else color="primary" layout="dense">
           <q-timeline-entry v-for="e in entries" :key="e._id" :subtitle="when(e.at)" :icon="ICON[e.action]" data-test="history-entry">
@@ -37,6 +38,7 @@ const emit = defineEmits<{ 'update:modelValue': [boolean] }>();
 const data = useDataStore();
 const entries = ref<AuditEntry[]>([]);
 const loading = ref(false);
+const error = ref('');
 
 const ACTION = { create: 'Created', update: 'Changed', delete: 'Deleted', bulk: 'Bulk change' } as const;
 const ICON = { create: 'add', update: 'edit', delete: 'delete', bulk: 'done_all' } as const;
@@ -73,8 +75,11 @@ watch(
   async (open) => {
     if (!open) return;
     loading.value = true;
+    error.value = '';
     try {
       entries.value = await data.history(props.collection, props.docId);
+    } catch {
+      error.value = 'The change history is kept on the server. It will show here once there’s a connection and this visit has uploaded.';
     } finally {
       loading.value = false;
     }

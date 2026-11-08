@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'customers/:id', name: 'customer', component: () => import('@/pages/CustomerPage.vue'), meta: { back: true } },
       { path: 'customers/:id/edit', name: 'customer-edit', component: () => import('@/pages/CustomerFormPage.vue'), meta: { back: true, title: 'Edit customer' } },
       { path: 'more', name: 'more', component: () => import('@/pages/MorePage.vue'), meta: { title: 'More' } },
+      { path: 'more/sync', name: 'sync', component: () => import('@/pages/SyncPage.vue'), meta: { back: true, title: 'Sync' } },
       { path: 'more/chemicals', name: 'chemicals', component: () => import('@/pages/ChemicalsPage.vue'), meta: { back: true, title: 'Chemicals' } },
     ],
   },

@@ -22,6 +22,8 @@ const DAY_LABEL = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thurs
   let step = 0;
   const ok = (m) => console.log(`✓ ${++step}. ${m}`);
   const shot = (name) => page.screenshot({ path: `${out}/${name}.png` });
+  // Changes are saved on the phone first; wait until the outbox has uploaded before checking the server.
+  const waitSynced = () => page.locator('[data-test=sync-chip]').filter({ hasText: 'Synced' }).waitFor({ timeout: 30000 });
   const expectText = async (locator, re, what) => {
     await locator.filter({ hasText: re }).first().waitFor({ timeout: 10000 }).catch(async () => {
       throw new Error(`${what}: expected ${re}, got "${(await locator.first().innerText().catch(() => '?')).slice(0, 200)}"`);
@@ -196,6 +198,7 @@ const DAY_LABEL = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thurs
   await page.getByRole('button', { name: 'Delete customer' }).click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.waitForURL(/\/customers$/);
+  await waitSynced();
   const gone = await page.evaluate(async (pid) => (await (await fetch('/api/pools')).json()).every((p) => p._id !== pid), poolId);
   if (!gone) throw new Error('test pool still listed after delete');
   ok('test customer and pool deleted');
