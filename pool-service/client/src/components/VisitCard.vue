@@ -3,7 +3,10 @@
     <q-card-section class="row items-center justify-between q-pb-sm">
       <div>
         <div class="text-subtitle1 text-weight-medium">{{ title }}</div>
-        <div class="text-caption text-grey-7">{{ dateLabel }}<span v-if="readonly && onSite" data-test="prev-duration"> · {{ onSite }} on site</span></div>
+        <div class="text-caption text-grey-7">{{ dateLabel }}</div>
+        <div v-if="readonly && timeSummary" class="text-body2 text-grey-8" data-test="prev-duration">
+          <q-icon name="timer" class="q-mr-xs" />{{ timeSummary }}
+        </div>
       </div>
       <slot name="actions" />
     </q-card-section>
@@ -79,7 +82,7 @@
       <q-card-section class="q-pt-none">
         <div class="text-overline text-grey-7">Tasks</div>
         <div class="row">
-          <q-checkbox v-for="t in TASKS" :key="t.key" v-model="visit.tasks[t.key]" :label="t.label" class="col-6" :data-test="`task-${t.key}`" />
+          <q-checkbox v-for="t in EDIT_TASKS" :key="t.key" v-model="visit.tasks[t.key]" :label="t.label" class="col-6" :data-test="`task-${t.key}`" />
         </div>
       </q-card-section>
       <q-card-section class="q-pt-none">
@@ -103,7 +106,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { READINGS, rateReading, timeLogSeconds, UNITS, type ReadingKey, type Unit } from '@pool/shared';
-import { humanDuration } from '@/lib/time';
+import { clock, humanDuration } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
 import { fmtNumber, longDate } from '@/lib/format';
 import type { Tasks, Visit } from '@/lib/types';
@@ -117,13 +120,31 @@ const TASKS: { key: keyof Tasks; label: string }[] = [
   { key: 'brushed', label: 'Brushed' },
   { key: 'skimmed', label: 'Skimmed' },
   { key: 'vacuumed', label: 'Vacuumed' },
-  { key: 'basketsEmptied', label: 'Baskets emptied' },
+  { key: 'skimmerBaskets', label: 'Skimmer baskets' },
+  { key: 'pumpBasket', label: 'Pump basket' },
   { key: 'filterCleaned', label: 'Filter cleaned' },
+  // Old combined task: shown on older visits only, not offered for new ones.
+  { key: 'basketsEmptied', label: 'Baskets emptied' },
 ];
+const EDIT_TASKS = TASKS.filter((t) => t.key !== 'basketsEmptied');
 
 const dateLabel = computed(() => longDate(props.visit.visitedAt));
 const doneTasks = computed(() => TASKS.filter((t) => props.visit.tasks?.[t.key]).map((t) => t.label));
-const onSite = computed(() => (props.visit.timeLog?.segments.length ? humanDuration(timeLogSeconds(props.visit.timeLog)) : ''));
+/** "9:05 AM – 9:42 AM · 1 pause (5 min) · 32 min on site" */
+const timeSummary = computed(() => {
+  const segs = props.visit.timeLog?.segments ?? [];
+  if (!segs.length) return '';
+  const first = segs[0]!;
+  const last = segs[segs.length - 1]!;
+  const parts = [`${clock(first.start)} – ${last.end ? clock(last.end) : 'not stopped'}`];
+  const gaps = segs.slice(1).map((s, i) => (new Date(s.start).getTime() - new Date(segs[i]!.end ?? s.start).getTime()) / 1000);
+  if (gaps.length) {
+    const total = gaps.reduce((a, b) => a + Math.max(0, b), 0);
+    parts.push(`${gaps.length} pause${gaps.length > 1 ? 's' : ''} (${humanDuration(total)})`);
+  }
+  parts.push(`${humanDuration(timeLogSeconds(props.visit.timeLog))} on site`);
+  return parts.join(' · ');
+});
 
 const chemicalOptions = computed(() => data.activeChemicals.map((c) => ({ label: c.name, value: c._id })));
 

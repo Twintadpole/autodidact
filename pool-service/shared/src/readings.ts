@@ -38,6 +38,8 @@ export const READINGS = [
   { key: 'salt', label: 'Salt', short: 'Salt', unit: 'ppm', step: 100, ideal: { min: 3000, max: 3500 }, acceptable: { min: 2700, max: 4000 } },
   { key: 'phosphate', label: 'Phosphate', short: 'PO₄', unit: 'ppb', step: 50, ideal: { max: 100 }, acceptable: { max: 500 } },
   { key: 'tempF', label: 'Water temp', short: 'Temp', unit: '°F', step: 1 },
+  // No range: normal pressure differs per filter.
+  { key: 'filterPsi', label: 'Filter pressure', short: 'Filter PSI', unit: 'psi', step: 1 },
 ] as const satisfies readonly ReadingDef[];
 
 export type ReadingKey = (typeof READINGS)[number]['key'];

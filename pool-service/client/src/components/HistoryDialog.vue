@@ -48,6 +48,10 @@ const LABELS: Record<string, string> = {
   notes: 'Note',
   doses: 'Doses',
   visitedAt: 'Visit date',
+  'tasks.skimmerBaskets': 'Skimmer baskets',
+  'tasks.pumpBasket': 'Pump basket',
+  'tasks.basketsEmptied': 'Baskets emptied',
+  'tasks.filterCleaned': 'Filter cleaned',
   ...Object.fromEntries(READINGS.map((r) => [`readings.${r.key}`, r.label])),
 };
 

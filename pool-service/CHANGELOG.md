@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased: visit screen extras (November 2026)
+
+- New **Filter PSI** reading. It has no amber or red range, because normal pressure differs per filter.
+- "Baskets emptied" is now two tasks: **Skimmer baskets** and **Pump basket**. Older visits still show "Baskets emptied".
+- The customer's **pinned notes** (gate code, dog…) show on the visit screen, above the timer, next to the pool's access notes. The notes lists explain that the pin puts a note there.
+- The previous-visit card shows its timer: start – end, pauses and how long they were, and time on site.
+- Additive only: existing visits are unchanged.
+
 ## v0.1.0-alpha (November 2026)
 
 First version in daily use, at https://poolapp.evolutiondfw.com.

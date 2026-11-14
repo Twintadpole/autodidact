@@ -58,14 +58,18 @@ export const doseSchema = z.object({
 });
 export type Dose = z.infer<typeof doseSchema>;
 
-export const TASK_KEYS = ['brushed', 'skimmed', 'vacuumed', 'basketsEmptied', 'filterCleaned'] as const;
+/** `basketsEmptied` is the old combined task: kept so older visits still show it; new visits use the two basket tasks. */
+export const TASK_KEYS = ['brushed', 'skimmed', 'vacuumed', 'skimmerBaskets', 'pumpBasket', 'filterCleaned', 'basketsEmptied'] as const;
 export const tasksSchema = z.object({
   brushed: z.boolean().default(false),
   skimmed: z.boolean().default(false),
   vacuumed: z.boolean().default(false),
-  basketsEmptied: z.boolean().default(false),
+  skimmerBaskets: z.boolean().default(false),
+  pumpBasket: z.boolean().default(false),
   filterCleaned: z.boolean().default(false),
+  basketsEmptied: z.boolean().default(false),
 });
+export const EMPTY_TASKS = Object.fromEntries(TASK_KEYS.map((k) => [k, false])) as Record<(typeof TASK_KEYS)[number], boolean>;
 
 /**
  * Time on site. Each Start/Resume opens a segment and each Pause/Stop closes it,
@@ -126,7 +130,7 @@ export const visit = collectionSchemas({
   visitedAt: dateSchema,
   readings: readingsSchema.default({}),
   doses: z.array(doseSchema).default([]),
-  tasks: tasksSchema.default({ brushed: false, skimmed: false, vacuumed: false, basketsEmptied: false, filterCleaned: false }),
+  tasks: tasksSchema.default({ ...EMPTY_TASKS }),
   notes: z.string().optional(),
   timeLog: timeLogSchema.default({ segments: [], finished: false }),
 });

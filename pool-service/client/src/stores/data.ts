@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { IssueStatus } from '@pool/shared';
+import { TASK_KEYS, type IssueStatus } from '@pool/shared';
 import { api } from './api';
 import { useSyncStore } from './sync';
 import { clone, newId } from '@/lib/format';
@@ -13,7 +13,7 @@ export function normalizeVisit(v: Visit): Visit {
   v.readings ??= {};
   v.doses ??= [];
   const t: Partial<Visit['tasks']> = v.tasks ?? {};
-  v.tasks = { brushed: !!t.brushed, skimmed: !!t.skimmed, vacuumed: !!t.vacuumed, basketsEmptied: !!t.basketsEmptied, filterCleaned: !!t.filterCleaned };
+  v.tasks = Object.fromEntries(TASK_KEYS.map((k) => [k, !!t[k]])) as Record<(typeof TASK_KEYS)[number], boolean>;
   v.timeLog = { finished: false, ...(v.timeLog ?? {}), segments: v.timeLog?.segments ?? [] };
   return v;
 }

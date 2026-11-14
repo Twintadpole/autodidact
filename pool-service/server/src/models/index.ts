@@ -94,8 +94,11 @@ const visitSchema = makeSchema({
     brushed: { type: Boolean, default: false },
     skimmed: { type: Boolean, default: false },
     vacuumed: { type: Boolean, default: false },
-    basketsEmptied: { type: Boolean, default: false },
+    skimmerBaskets: { type: Boolean, default: false },
+    pumpBasket: { type: Boolean, default: false },
     filterCleaned: { type: Boolean, default: false },
+    /** Old combined task, kept for older visits. */
+    basketsEmptied: { type: Boolean, default: false },
   },
   notes: String,
   timeLog: {

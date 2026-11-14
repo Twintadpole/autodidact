@@ -89,6 +89,21 @@ describe('POST /api/sync/package', () => {
     expect(await SyncLog.countDocuments({ _id: pkg.packageId })).toBe(1);
   });
 
+  it('saves filter PSI and the separate basket tasks; old visits keep "baskets emptied"', async () => {
+    const pkg = makePackage();
+    pkg.visit.readings = { fc: 3, filterPsi: 18 };
+    (pkg.visit as any).tasks = { skimmerBaskets: true, pumpBasket: false };
+    expect((await postJson(pkg)).statusCode).toBe(200);
+    const visit = await Visit.findById(pkg.visit._id).lean<any>();
+    expect(visit.readings.filterPsi).toBe(18);
+    expect(visit.tasks).toMatchObject({ skimmerBaskets: true, pumpBasket: false, basketsEmptied: false });
+
+    const old = makePackage();
+    (old.visit as any).tasks = { basketsEmptied: true };
+    expect((await postJson(old)).statusCode).toBe(200);
+    expect((await Visit.findById(old.visit._id).lean<any>()).tasks.basketsEmptied).toBe(true);
+  });
+
   it('is idempotent: retrying the same packageId applies it once and returns 200', async () => {
     const pkg = makePackage();
     const first = await postJson(pkg);

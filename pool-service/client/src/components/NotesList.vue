@@ -15,6 +15,9 @@
       </q-item>
     </q-list>
     <div v-else class="text-grey-6 text-body2 q-mb-sm">No notes yet.</div>
+    <div v-if="parentType !== 'visit'" class="text-caption text-grey-7 q-mb-sm" data-test="pin-hint">
+      <q-icon name="push_pin" color="amber-9" /> Tap the pin to show a note on the visit screen.
+    </div>
     <div class="row no-wrap items-start q-gutter-x-sm">
       <q-input v-model="draft" dense outlined autogrow placeholder="Add a note…" class="col" data-test="note-input" @keydown.enter.exact.prevent="add" />
       <q-btn unelevated color="primary" icon="add" :disable="!draft.trim()" aria-label="Add note" data-test="note-add" @click="add" />

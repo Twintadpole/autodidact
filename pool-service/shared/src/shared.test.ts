@@ -18,7 +18,7 @@ const now = new Date('2026-10-31T15:00:00Z');
 
 describe('READINGS', () => {
   it('includes every reading from the spec', () => {
-    expect(READING_KEYS).toEqual(['fc', 'cc', 'ph', 'ta', 'ch', 'cya', 'salt', 'phosphate', 'tempF']);
+    expect(READING_KEYS).toEqual(['fc', 'cc', 'ph', 'ta', 'ch', 'cya', 'salt', 'phosphate', 'tempF', 'filterPsi']);
   });
 
   it('rates values ok / warn / bad / none', () => {

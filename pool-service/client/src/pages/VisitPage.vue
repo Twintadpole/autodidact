@@ -19,7 +19,7 @@
       <q-banner v-if="pool.accessNotes || pinnedNotes.length" rounded class="bg-amber-1 text-grey-9" data-test="access-notes">
         <template #avatar><q-icon name="key" color="amber-9" /></template>
         <div v-if="pool.accessNotes" class="text-weight-medium">{{ pool.accessNotes }}</div>
-        <div v-for="n in pinnedNotes" :key="n._id" class="text-body2"><q-icon name="push_pin" size="xs" /> {{ n.body }}</div>
+        <div v-for="n in pinnedNotes" :key="n._id" class="text-body2 pre-wrap" :data-test="`pinned-${n.parentType}-note`"><q-icon name="push_pin" size="xs" /> {{ n.body }}</div>
       </q-banner>
 
       <div v-if="loadingVisits" class="flex flex-center q-pa-lg"><q-spinner size="32px" color="primary" /></div>
@@ -93,6 +93,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { isToday, parseISO } from 'date-fns';
+import { EMPTY_TASKS } from '@pool/shared';
 import VisitCard from '@/components/VisitCard.vue';
 import IssueSheet from '@/components/IssueSheet.vue';
 import VisitTimer, { type TimerAction } from '@/components/VisitTimer.vue';
@@ -155,17 +156,24 @@ function blankVisit(): Visit {
     deletedAt: null,
     readings: {},
     doses: [],
-    tasks: { brushed: false, skimmed: false, vacuumed: false, basketsEmptied: false, filterCleaned: false },
+    tasks: { ...EMPTY_TASKS },
     notes: '',
     timeLog: { segments: [], finished: false },
   };
 }
 
+/** Pinned notes for this customer (gate codes, dogs…) first, then this pool's. */
+async function pinnedNotesFor(): Promise<Note[]> {
+  const customerId = pool.value?.customerId;
+  const [c, p] = await Promise.all([customerId ? data.notesFor('customer', customerId) : [], data.notesFor('pool', poolId.value)]);
+  return [...c, ...p].filter((n) => n.pinned);
+}
+
 async function load() {
   loadingVisits.value = true;
   try {
-    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 2), data.notesFor('pool', poolId.value)]);
-    pinnedNotes.value = notes.filter((n) => n.pinned);
+    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 2), pinnedNotesFor()]);
+    pinnedNotes.value = notes;
     const latest = visits[0];
     if (latest && isToday(parseISO(latest.visitedAt))) {
       // Coming back to today's visit: keep editing it instead of starting a second one.
@@ -341,6 +349,13 @@ watch(
 );
 
 onMounted(load);
+// If the pool record arrives after the page opens, pick up the customer's pinned notes.
+watch(
+  () => pool.value?.customerId,
+  async (id, before) => {
+    if (id && id !== before && !loadingVisits.value) pinnedNotes.value = await pinnedNotesFor();
+  },
+);
 
 /**
  * When a sync brings new data (e.g. the first download on a new phone), refresh
@@ -350,8 +365,8 @@ watch(
   () => data.version,
   async () => {
     if (loadingVisits.value || !draft.value) return;
-    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 3), data.notesFor('pool', poolId.value)]);
-    pinnedNotes.value = notes.filter((n) => n.pinned);
+    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 3), pinnedNotesFor()]);
+    pinnedNotes.value = notes;
     previous.value = visits.find((v) => v._id !== draft.value!._id && !isToday(parseISO(v.visitedAt))) ?? previous.value;
   },
 );
@@ -360,6 +375,9 @@ watch(
 <style scoped>
 .save-bar {
   z-index: 10;
+}
+.pre-wrap {
+  white-space: pre-wrap;
 }
 .save-bar-inner {
   border-top: 1px solid rgba(0, 0, 0, 0.12);

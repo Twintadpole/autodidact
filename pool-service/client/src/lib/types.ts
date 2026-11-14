@@ -56,8 +56,11 @@ export interface Tasks {
   brushed: boolean;
   skimmed: boolean;
   vacuumed: boolean;
-  basketsEmptied: boolean;
+  skimmerBaskets: boolean;
+  pumpBasket: boolean;
   filterCleaned: boolean;
+  /** Old combined task (visits before Nov 2026). */
+  basketsEmptied: boolean;
 }
 
 export type Readings = Partial<Record<string, number | null>>;
