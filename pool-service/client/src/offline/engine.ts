@@ -7,12 +7,19 @@
  * - Network trouble → back off (5 s doubling to 5 min). A 4xx → marked failed
  *   and shown on the Sync screen with the error. 401 → stop until logged in again.
  * - When the outbox is empty, pull what changed on the server (newer updatedAt wins).
+ * - Nothing can hang forever: each request has a time limit, and a sync lock held
+ *   too long by another tab (e.g. one Chrome paused mid-upload) is taken over.
  */
 import { db, getMeta, setMeta, type OutboxRow } from './db';
 
 export const SYNC_TAG = 'pool-outbox';
 const MIN_BACKOFF = 5_000;
 const MAX_BACKOFF = 5 * 60_000;
+/** Time limits: a plain change, a change with photos, and how long to wait for another tab's sync. */
+const SEND_TIMEOUT = 60_000;
+const PHOTO_SEND_TIMEOUT = 3 * 60_000;
+const PULL_TIMEOUT = 60_000;
+const LOCK_WAIT = 90_000;
 
 export class NeedsLoginError extends Error {}
 
@@ -25,12 +32,30 @@ export interface SyncResult {
   needsLogin: boolean;
 }
 
-/** Runs `fn` with a lock shared by every tab and the service worker, so only one sync runs at a time. */
+type LockOptions = { signal?: AbortSignal; steal?: boolean };
+type Locks = { request<T>(name: string, opts: LockOptions, cb: () => Promise<T>): Promise<T> };
+
+/**
+ * Runs `fn` with a lock shared by every tab and the service worker, so normally only one
+ * sync runs at a time. If another holder keeps it longer than LOCK_WAIT (usually a tab that
+ * Chrome paused mid-sync), take it over: the server ignores packages it has already
+ * applied, so an overlap is harmless.
+ */
 async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
   // Works in a page and in the service worker (both have navigator.locks in Chrome).
-  const locks = (globalThis as { navigator?: { locks?: { request(name: string, cb: () => Promise<T>): Promise<T> } } }).navigator?.locks;
-  if (locks?.request) return locks.request('pool-sync', fn);
-  return fn();
+  const locks = (globalThis as { navigator?: { locks?: Locks } }).navigator?.locks;
+  if (!locks?.request) return fn();
+  let started = false;
+  const run = () => {
+    started = true;
+    return fn();
+  };
+  try {
+    return await locks.request('pool-sync', { signal: AbortSignal.timeout(LOCK_WAIT) }, run);
+  } catch (err) {
+    if (started) throw err; // fn itself failed; not a lock timeout
+    return locks.request('pool-sync', { steal: true }, run);
+  }
 }
 
 export async function enqueue(pkg: Record<string, unknown>, summary: string, photoIds: string[] = []): Promise<void> {
@@ -64,6 +89,7 @@ async function send(row: OutboxRow): Promise<Response> {
     return fetch('/api/sync/package', {
       method: 'POST',
       credentials: 'same-origin',
+      signal: AbortSignal.timeout(SEND_TIMEOUT),
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(row.pkg),
     });
@@ -74,7 +100,7 @@ async function send(row: OutboxRow): Promise<Response> {
     const b = await db.photoBlobs.get(id);
     if (b) form.append(id, b.blob, `${id}.jpg`);
   }
-  return fetch('/api/sync/package', { method: 'POST', credentials: 'same-origin', body: form });
+  return fetch('/api/sync/package', { method: 'POST', credentials: 'same-origin', body: form, signal: AbortSignal.timeout(PHOTO_SEND_TIMEOUT) });
 }
 
 async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, 'pulled'>> {
@@ -87,8 +113,8 @@ async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, '
     let res: Response;
     try {
       res = await send(row);
-    } catch {
-      await backoff(row, 'No connection');
+    } catch (err) {
+      await backoff(row, (err as { name?: string } | null)?.name === 'TimeoutError' ? 'Timed out' : 'No connection');
       return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: true, needsLogin: false };
     }
     if (res.ok) {
@@ -134,7 +160,7 @@ async function pullUnlocked(): Promise<boolean> {
   const since = await getMeta<string>('lastPull');
   let res: Response;
   try {
-    res = await fetch(`/api/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`, { credentials: 'same-origin' });
+    res = await fetch(`/api/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`, { credentials: 'same-origin', signal: AbortSignal.timeout(PULL_TIMEOUT) });
   } catch {
     return false;
   }
