@@ -10,6 +10,7 @@ The app runs with Docker Compose on the VPS, as the `claude` user, in `~/autodid
 | `update.sh` | After each new version | Safety backup first, then `git pull` and rebuild/restart; compares record counts before and after and fails loudly if anything is missing. Data and `.env` are kept |
 | `cleanup-orphans.sh` | One-time (Nov 2026) | Lists visits, issues, notes and photos left under already-deleted pools/customers; `--apply <count>` hides exactly those (soft delete, after a safety backup). New deletes cascade on their own |
 | `restore-check.sh` | Any time (safe) | Restores the newest backup into a scratch database, compares it with the live one, then deletes the scratch copy. `--offsite` does the same with the newest R2 copy, after reading every byte of it (weekly, Sundays 04:47 UTC, cron, logs to `backups/restore-check.log`) |
+| `monitor.sh` | Cron (see "Alerts") | Phone alerts: app down (10 min), disk over 80%, nightly backup / R2 copy / weekly restore check late or failed. One alert per problem, one "OK again" |
 | `set-password.sh` | Any time | Changes the app password (prompts twice; or `echo 'pw' \| bash deploy/set-password.sh -`) |
 | `backup.sh` | Nightly at 03:17 (cron), or by hand | `mongodump` to `backups/pool-<time>.archive.gz`, keeps the newest 14, writes `backups/LAST_BACKUP`. Then sends that dump and all photos to Cloudflare R2, encrypted (see below), and writes `backups/LAST_OFFSITE`. `backup.sh predeploy` (run by `update.sh`) keeps its own newest 10 and stays local |
 
@@ -68,3 +69,30 @@ restic_ -- dump latest /data/db.archive.gz | docker compose exec -T mongo mongor
 restic_ -v "$PWD/data:/restore" -- restore latest --target /restore --include /data/photos   # → data/data/photos
 # then move data/data/photos/* into data/photos and: sudo chown -R 1000:1000 data/photos
 ```
+
+## Alerts (self-hosted ntfy)
+
+The `ntfy` service in `docker-compose.yml` (image `binwiederhier/ntfy:v2.15.0`, data in `data/ntfy`)
+listens on `127.0.0.1:2586`. The Cloudflare Tunnel publishes it as **https://ntfy.evolutiondfw.com**.
+Logins are required for everything (`deny-all`, no sign-up, no web app):
+
+| Account | Access | Secret |
+| --- | --- | --- |
+| `owner` | read `pool-alerts` (the ntfy Android app) | `~/.config/pool-alerts/ntfy-owner-password` |
+| `monitor` | write `pool-alerts` | token in `~/.config/pool-alerts/ntfy-token` |
+
+`monitor.sh` posts to ntfy locally, so alerts don't depend on the tunnel. Cron (user `claude`):
+
+```
+*/5 * * * *  monitor.sh app       public site health; alert after 2 failures in a row; says whether the
+                                  app, the database or the tunnel is at fault
+7 * * * *    monitor.sh disk      alert when / is over 80% full
+17 5 * * *   monitor.sh backups   nightly backup or R2 copy older than 26 h, or no passing R2 restore check in 8 days
+```
+
+Log: `backups/monitor.log`. Open problems: `~/.local/state/pool-monitor/*.down`. Send a test: `bash deploy/monitor.sh test`.
+
+**Whole server down:** nothing on the server can report that. Cloudflare's "Tunnel health" notification
+(dashboard → Notifications) emails the owner when the tunnel disconnects.
+
+Manage ntfy accounts: `docker compose exec ntfy ntfy user list` (see `ntfy user --help`, `ntfy access --help`).

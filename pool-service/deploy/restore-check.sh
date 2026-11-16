@@ -33,4 +33,5 @@ live="$(record_counts pool)"
 dc exec -T mongo mongosh --quiet pool_restorecheck --eval 'db.dropDatabase()' >/dev/null
 say "Backup vs live (live can be higher if you've added records since the backup)"
 compare_counts "${restored}" "${live}" backup live || die "The live database has fewer records than the backup!"
+[[ "${1:-}" == "--offsite" ]] && date -u +%Y-%m-%dT%H:%M:%SZ > backups/LAST_RESTORE_CHECK
 echo "Restore check passed: ${archive} restores cleanly."
