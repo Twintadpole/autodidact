@@ -88,6 +88,7 @@ Logins are required for everything (`deny-all`, no sign-up, no web app):
                                   app, the database or the tunnel is at fault
 7 * * * *    monitor.sh disk      alert when / is over 80% full
 17 5 * * *   monitor.sh backups   nightly backup or R2 copy older than 26 h, or no passing R2 restore check in 8 days
+@reboot      monitor.sh boot      2 min after a restart: phone report (containers healthy, site reachable)
 ```
 
 Log: `backups/monitor.log`. Open problems: `~/.local/state/pool-monitor/*.down`. Send a test: `bash deploy/monitor.sh test`.

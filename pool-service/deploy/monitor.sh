@@ -6,6 +6,7 @@
 #   bash deploy/monitor.sh disk      hourly: alerts when / is over DISK_LIMIT % full (default 80)
 #   bash deploy/monitor.sh backups   daily: alerts if the nightly backup or its R2 copy is over 26 h old,
 #                                    or the weekly R2 restore check hasn't passed in 8 days
+#   bash deploy/monitor.sh boot      after a restart (cron @reboot): reports to the phone whether everything came back
 #   bash deploy/monitor.sh test      sends a test alert
 # A whole-server outage can't be reported from here: Cloudflare's tunnel health email covers that.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -95,10 +96,34 @@ check_backups() {
   fi
 }
 
+report_boot() {
+  local lines=() ok=1 svc
+  for svc in api mongo ntfy; do
+    if [[ "$(docker_ inspect -f '{{.State.Health.Status}}' "pool-service-${svc}-1" 2>/dev/null)" == healthy ]]; then
+      lines+=("${svc}: healthy")
+    else
+      lines+=("${svc}: NOT healthy"); ok=0
+    fi
+  done
+  if curl -fsS --max-time 20 "${APP_URL}" 2>/dev/null | grep -q '"mongo":true'; then
+    lines+=("site: reachable through Cloudflare")
+  else
+    lines+=("site: NOT reachable"); ok=0
+  fi
+  [[ -e /var/run/reboot-required ]] && lines+=("reboot still required")
+  local IFS=$'\n'
+  if (( ok )); then
+    notify "Server restarted: all OK" "Up since $(uptime -s).${IFS}${lines[*]}" default white_check_mark
+  else
+    notify "Server restarted: PROBLEM" "Up since $(uptime -s).${IFS}${lines[*]}" high warning
+  fi
+}
+
 case "${1:-}" in
+  boot) report_boot ;;
   app) check_app ;;
   disk) check_disk ;;
   backups) check_backups ;;
   test) notify "Test alert" "Alerts from the pool server reach this phone." default bell ;;
-  *) die "Usage: monitor.sh app|disk|backups|test" ;;
+  *) die "Usage: monitor.sh app|disk|backups|boot|test" ;;
 esac
