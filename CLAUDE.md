@@ -54,9 +54,13 @@ Then start the VPS session:
 4. e2e against the public URL. Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
+## Commits made on the VPS
+The VPS has no GitHub login, so commits made there (`65d644a` sync fix, `8146086` offsite backups) are local only.
+Before new work in the cloud, bring them to GitHub, e.g. have the VPS session make `git format-patch` files to copy across.
+
 ## Next up (owner's roadmap)
 - **Phase 6, hardening** (needs the owner's approval of a plan first):
-  - encrypted offsite backups to Cloudflare R2 (owner creates a bucket and token, about 2 minutes)
+  - ✅ encrypted offsite backups to Cloudflare R2 (Nov 16): restic, bucket `pool-backup`, keys in `~/.config/pool-backup/` on the VPS. See `pool-service/deploy/README.md`
   - uptime and disk-space alerts
   - Cloudflare Access login
   - SSH lockdown
