@@ -32,3 +32,11 @@ describe('GET /api/system/status', () => {
     expect(after.json().lastBackupAt).toBe('2026-11-05T03:17:02.000Z');
   });
 });
+
+describe('GET /api/access-login', () => {
+  it('sends the browser back to the app, without needing the app login', async () => {
+    const res = await ctx.app.inject({ method: 'GET', url: '/api/access-login' });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('/');
+  });
+});

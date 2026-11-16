@@ -7,10 +7,12 @@
  * - Network trouble → back off (5 s doubling to 5 min). A 4xx → marked failed
  *   and shown on the Sync screen with the error. 401 → stop until logged in again.
  * - When the outbox is empty, pull what changed on the server (newer updatedAt wins).
+ * - Cloudflare Access login expired → stop and keep everything waiting (needsAccess).
  * - Nothing can hang forever: each request has a time limit, and a sync lock held
  *   too long by another tab (e.g. one Chrome paused mid-upload) is taken over.
  */
 import { db, getMeta, setMeta, type OutboxRow } from './db';
+import { API_REDIRECT, isAccessBlocked } from './access';
 
 export const SYNC_TAG = 'pool-outbox';
 const MIN_BACKOFF = 5_000;
@@ -22,6 +24,7 @@ const PULL_TIMEOUT = 60_000;
 const LOCK_WAIT = 90_000;
 
 export class NeedsLoginError extends Error {}
+export class NeedsAccessError extends Error {}
 
 export interface SyncResult {
   sent: number;
@@ -30,6 +33,8 @@ export interface SyncResult {
   pulled: boolean;
   offline: boolean;
   needsLogin: boolean;
+  /** Cloudflare Access wants its emailed-code login again. */
+  needsAccess: boolean;
 }
 
 type LockOptions = { signal?: AbortSignal; steal?: boolean };
@@ -89,6 +94,7 @@ async function send(row: OutboxRow): Promise<Response> {
     return fetch('/api/sync/package', {
       method: 'POST',
       credentials: 'same-origin',
+      redirect: API_REDIRECT,
       signal: AbortSignal.timeout(SEND_TIMEOUT),
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(row.pkg),
@@ -100,7 +106,7 @@ async function send(row: OutboxRow): Promise<Response> {
     const b = await db.photoBlobs.get(id);
     if (b) form.append(id, b.blob, `${id}.jpg`);
   }
-  return fetch('/api/sync/package', { method: 'POST', credentials: 'same-origin', body: form, signal: AbortSignal.timeout(PHOTO_SEND_TIMEOUT) });
+  return fetch('/api/sync/package', { method: 'POST', credentials: 'same-origin', body: form, redirect: API_REDIRECT, signal: AbortSignal.timeout(PHOTO_SEND_TIMEOUT) });
 }
 
 async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, 'pulled'>> {
@@ -115,7 +121,10 @@ async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, '
       res = await send(row);
     } catch (err) {
       await backoff(row, (err as { name?: string } | null)?.name === 'TimeoutError' ? 'Timed out' : 'No connection');
-      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: true, needsLogin: false };
+      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: true, needsLogin: false, needsAccess: false };
+    }
+    if (isAccessBlocked(res)) {
+      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: false, needsAccess: true };
     }
     if (res.ok) {
       await db.transaction('rw', db.outbox, db.photoBlobs, async () => {
@@ -126,11 +135,11 @@ async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, '
       continue;
     }
     if (res.status === 401) {
-      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: true };
+      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: true, needsAccess: false };
     }
     if (res.status >= 500 || res.status === 408 || res.status === 429) {
       await backoff(row, `Server error ${res.status}`);
-      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: false };
+      return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: false, needsAccess: false };
     }
     // 4xx: the server will never accept this package as it is. Park it for the Sync screen.
     let message = `${res.status}`;
@@ -141,7 +150,7 @@ async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, '
     }
     await db.outbox.update(row.id, { status: 'failed', lastError: message, attempts: row.attempts + 1 });
   }
-  return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: false };
+  return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: false, needsAccess: false };
 }
 
 async function backoff(row: OutboxRow, error: string) {
@@ -160,10 +169,11 @@ async function pullUnlocked(): Promise<boolean> {
   const since = await getMeta<string>('lastPull');
   let res: Response;
   try {
-    res = await fetch(`/api/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`, { credentials: 'same-origin', signal: AbortSignal.timeout(PULL_TIMEOUT) });
+    res = await fetch(`/api/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ''}`, { credentials: 'same-origin', redirect: API_REDIRECT, signal: AbortSignal.timeout(PULL_TIMEOUT) });
   } catch {
     return false;
   }
+  if (isAccessBlocked(res)) throw new NeedsAccessError();
   if (res.status === 401) throw new NeedsLoginError();
   if (!res.ok) return false;
   const data = (await res.json()) as Record<string, { _id: string; updatedAt: string }[]> & { serverTime: string };
@@ -189,13 +199,15 @@ export async function syncNow(opts: { force?: boolean; pull?: boolean } = {}): P
     const out = await processOutboxUnlocked(!!opts.force);
     let pulled = false;
     let needsLogin = out.needsLogin;
-    if (!out.offline && !needsLogin && out.remaining === 0 && opts.pull !== false) {
+    let needsAccess = out.needsAccess;
+    if (!out.offline && !needsLogin && !needsAccess && out.remaining === 0 && opts.pull !== false) {
       try {
         pulled = await pullUnlocked();
       } catch (err) {
         if (err instanceof NeedsLoginError) needsLogin = true;
+        if (err instanceof NeedsAccessError) needsAccess = true;
       }
     }
-    return { ...out, pulled, needsLogin };
+    return { ...out, pulled, needsLogin, needsAccess };
   });
 }

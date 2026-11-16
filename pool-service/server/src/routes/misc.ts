@@ -17,6 +17,15 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
   });
 };
 
+/**
+ * Public: the app's "Log in again" button opens this page when Cloudflare Access (the emailed-code
+ * login in front of the site) has expired. Cloudflare shows its login on the way; once a request
+ * gets here, the browser is logged in, so send it back to the app.
+ */
+export const accessLoginRoutes: FastifyPluginAsync = async (app) => {
+  app.get('/access-login', async (_request, reply) => reply.redirect('/'));
+};
+
 /** App/server info for the More screen. */
 export const systemRoutes: FastifyPluginAsync<{ backupDir?: string }> = async (app, { backupDir }) => {
   app.get('/system/status', async () => {

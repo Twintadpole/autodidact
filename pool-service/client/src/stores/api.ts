@@ -1,3 +1,7 @@
+import { API_REDIRECT, isAccessBlocked, reportAccess } from '@/offline/access';
+
+const ACCESS_MESSAGE = 'Cloudflare login needed. Tap "Log in again".';
+
 /** Small fetch wrapper for the API (same origin, session cookie). Phase 4 routes writes through the outbox instead. */
 export class ApiError extends Error {
   constructor(
@@ -15,7 +19,7 @@ export function onUnauthorized(handler: () => void) {
 }
 
 export async function api<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const req: RequestInit = { method: init.method ?? 'GET', credentials: 'same-origin' };
+  const req: RequestInit = { method: init.method ?? 'GET', credentials: 'same-origin', redirect: API_REDIRECT };
   if (init.body !== undefined) {
     req.headers = { 'content-type': 'application/json' };
     req.body = JSON.stringify(init.body);
@@ -26,6 +30,11 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
   } catch {
     throw new ApiError(0, 'No connection to the server. Check your signal and try again.');
   }
+  if (isAccessBlocked(res)) {
+    reportAccess(true);
+    throw new ApiError(0, ACCESS_MESSAGE);
+  }
+  reportAccess(false);
   const text = await res.text();
   let data: { message?: string } | null = null;
   try {
@@ -44,10 +53,15 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
 export async function apiForm<T = unknown>(path: string, form: FormData): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, { method: 'POST', credentials: 'same-origin', body: form });
+    res = await fetch(`/api${path}`, { method: 'POST', credentials: 'same-origin', body: form, redirect: API_REDIRECT });
   } catch {
     throw new ApiError(0, 'No connection to the server. Check your signal and try again.');
   }
+  if (isAccessBlocked(res)) {
+    reportAccess(true);
+    throw new ApiError(0, ACCESS_MESSAGE);
+  }
+  reportAccess(false);
   const text = await res.text();
   const data = text ? (JSON.parse(text) as { message?: string }) : null;
   if (!res.ok) {
@@ -71,6 +85,7 @@ export async function reportClientProblem(where: string, message: string, detail
     await fetch('/api/client-log', {
       method: 'POST',
       credentials: 'same-origin',
+      redirect: API_REDIRECT,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ where, message: message.slice(0, 500), details, userAgent: navigator.userAgent }),
     });

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { db, getMeta, type OutboxRow } from '@/offline/db';
 import { failedCount, pendingCount, syncNow } from '@/offline/engine';
+import { onAccessChange } from '@/offline/access';
 import { useAuthStore } from './auth';
 import { useDataStore } from './data';
 
@@ -18,6 +19,11 @@ export const useSyncStore = defineStore('sync', () => {
   const syncing = ref(false);
   const lastPullAt = ref<string | null>(null);
   const lastError = ref('');
+  /** Cloudflare Access wants its emailed-code login again (App.vue shows "Log in again"). */
+  const accessBlocked = ref(false);
+  onAccessChange((blocked) => {
+    accessBlocked.value = blocked;
+  });
   let again = false;
   let started = false;
 
@@ -49,6 +55,11 @@ export const useSyncStore = defineStore('sync', () => {
         const r = await syncNow({ force: !!opts.force });
         reachable.value = !r.offline;
         lastError.value = '';
+        if (r.needsAccess) {
+          accessBlocked.value = true;
+          break;
+        }
+        if (!r.offline) accessBlocked.value = false;
         if (r.needsLogin) {
           useAuthStore().expired();
           break;
@@ -130,5 +141,5 @@ export const useSyncStore = defineStore('sync', () => {
     await useDataStore().refreshFromDb();
   }
 
-  return { online, reachable, pending, failed, syncing, lastPullAt, lastError, state, kick, start, refreshCounts, outbox, loadOutbox, retry, discard, reloadFromServer };
+  return { online, reachable, pending, failed, syncing, lastPullAt, lastError, accessBlocked, state, kick, start, refreshCounts, outbox, loadOutbox, retry, discard, reloadFromServer };
 });

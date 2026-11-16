@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 import type { AppConfig } from './config.js';
 import { registerSessions, requireAuth } from './plugins/auth.js';
 import { authRoutes } from './routes/auth.js';
-import { clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
+import { accessLoginRoutes, clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
 import { PhotoStore } from './services/photoStore.js';
@@ -57,6 +57,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
     async (api) => {
       // Public routes
       await api.register(healthRoutes);
+      await api.register(accessLoginRoutes);
       await api.register(authRoutes, { config });
 
       // Everything else requires the session cookie

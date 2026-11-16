@@ -7,6 +7,7 @@
 - The customer's **pinned notes** (gate code, dog…) show on the visit screen, above the timer, next to the pool's access notes. The notes lists explain that the pin puts a note there.
 - The previous-visit card shows its timer: start – end, pauses and how long they were, and time on site.
 - Additive only: existing visits are unchanged.
+- **Ready for the Cloudflare login (emailed code).** If that login expires while the app runs from the phone, a "Cloudflare login needed · Log in again" message shows on every screen instead of looking like no signal. Waiting changes stay on the phone and upload after you log in.
 - **Uploads can't get stuck any more.** Each upload has a time limit (1 minute, or 3 with photos). It shows "Timed out" on the Sync screen and is retried. If another tab has held the upload lock for 90 seconds (for example a tab Chrome paused mid-upload), this tab takes over. A repeated upload is still ignored by the server.
 
 ## v0.1.0-alpha (November 2026)

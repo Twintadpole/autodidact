@@ -97,3 +97,22 @@ Log: `backups/monitor.log`. Open problems: `~/.local/state/pool-monitor/*.down`.
 (dashboard → Notifications) emails the owner when the tunnel disconnects.
 
 Manage ntfy accounts: `docker compose exec ntfy ntfy user list` (see `ntfy user --help`, `ntfy access --help`).
+
+## Cloudflare Access (emailed-code login)
+
+Access (Cloudflare Zero Trust → Access → Applications) sits in front of `poolapp.evolutiondfw.com`:
+
+| Access application | Policy | Why |
+| --- | --- | --- |
+| `poolapp.evolutiondfw.com` | **Allow**: the owner's email, login method One-time PIN; session 30 days | the app |
+| `poolapp.evolutiondfw.com/api/health` | **Bypass**: Everyone | `monitor.sh app` (every 5 min) and the boot report |
+| `poolapp.evolutiondfw.com/manifest.json`, `/icons/` | **Bypass**: Everyone | the home-screen app (browsers fetch these without cookies) |
+
+`ntfy.evolutiondfw.com` is **not** behind Access (the ntfy app can't do the login; it has its own).
+
+When the Access login expires, API calls get a redirect to Cloudflare instead of an answer. The app
+(`client/src/offline/access.ts`) uses `redirect: 'manual'` to spot it, keeps the outbox waiting, and
+shows "Cloudflare login needed · Log in again", which opens `/api/access-login`: Cloudflare's login,
+then the server sends the browser back to `/`. Test: `e2e/access-expired.cjs` (simulated).
+
+Live e2e checks run against `http://127.0.0.1:3000/` on the VPS (not through Cloudflare).
