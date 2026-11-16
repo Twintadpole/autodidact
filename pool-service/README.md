@@ -28,7 +28,7 @@ Out of scope for now: multiple users, customer-facing access.
 | D | Visit timer, edit log, issue photos, safe deploys | ✅ |
 | 4 | Offline mode: local DB, outbox, background sync, sync chip | ✅ |
 | Alpha polish | Labels, badge, visit history, update message, version | ✅ v0.1.0-alpha |
-| 6 | Hardening: encrypted offsite backups (Cloudflare R2), alerts, Cloudflare Access, SSH lockdown, OS upgrade plan | next |
+| 6 | Hardening: encrypted offsite backups (Cloudflare R2) ✅, alerts, Cloudflare Access, SSH lockdown, OS upgrade plan | in progress |
 | 7 | Desktop layout, fuller customer records, money tools with simple invoices, exports | planned |
 
 ## Layout

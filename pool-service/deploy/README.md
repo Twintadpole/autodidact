@@ -9,9 +9,9 @@ The app runs with Docker Compose on the VPS, as the `claude` user, in `~/autodid
 | `first-deploy.sh` | Once: `bash deploy/first-deploy.sh` | Builds the image, writes `.env` with a fresh session secret and a random app password (printed once and saved to `~/pool-app-initial-password.txt`), starts the stack, installs the nightly backup |
 | `update.sh` | After each new version | Safety backup first, then `git pull` and rebuild/restart; compares record counts before and after and fails loudly if anything is missing. Data and `.env` are kept |
 | `cleanup-orphans.sh` | One-time (Nov 2026) | Lists visits, issues, notes and photos left under already-deleted pools/customers; `--apply <count>` hides exactly those (soft delete, after a safety backup). New deletes cascade on their own |
-| `restore-check.sh` | Any time (safe) | Restores the newest backup into a scratch database, compares it with the live one, then deletes the scratch copy |
+| `restore-check.sh` | Any time (safe) | Restores the newest backup into a scratch database, compares it with the live one, then deletes the scratch copy. `--offsite` does the same with the newest R2 copy, after reading every byte of it (weekly, Sundays 04:47 UTC, cron, logs to `backups/restore-check.log`) |
 | `set-password.sh` | Any time | Changes the app password (prompts twice; or `echo 'pw' \| bash deploy/set-password.sh -`) |
-| `backup.sh` | Nightly at 03:17 (cron), or by hand | `mongodump` to `backups/pool-<time>.archive.gz`, keeps the newest 14, writes `backups/LAST_BACKUP`. `backup.sh predeploy` (run by `update.sh`) keeps its own newest 10 |
+| `backup.sh` | Nightly at 03:17 (cron), or by hand | `mongodump` to `backups/pool-<time>.archive.gz`, keeps the newest 14, writes `backups/LAST_BACKUP`. Then sends that dump and all photos to Cloudflare R2, encrypted (see below), and writes `backups/LAST_OFFSITE`. `backup.sh predeploy` (run by `update.sh`) keeps its own newest 10 and stays local |
 
 Useful commands, run from `~/autodidact/pool-service`:
 
@@ -35,4 +35,36 @@ sudo docker run --rm --network host -v "$PWD/e2e:/e2e" -w /e2e mcr.microsoft.com
 docker compose exec -T mongo mongorestore --drop --archive --gzip < backups/pool-<time>.archive.gz
 ```
 
-Photos (`data/photos`) aren't in these dumps yet. Phase 6 adds photos and offsite copies.
+Photos (`data/photos`) aren't in the local dumps; they are in the offsite copies.
+
+## Offsite backups (Cloudflare R2)
+
+Every night, `backup.sh` sends the database dump and `data/photos` to the R2 bucket `pool-backup` with
+[restic](https://restic.net) (Docker image `restic/restic:0.18.1`). restic encrypts everything on this
+server before upload. It keeps 14 daily, 8 weekly and 12 monthly copies. If the offsite step fails, the
+local backup is kept, the script exits 2, and `backups/backup.log` says `OFFSITE BACKUP FAILED`.
+
+Keys live in `~/.config/pool-backup/` (folder 700, files 600), never in git:
+
+| File | What |
+| --- | --- |
+| `r2.env` | `R2_ENDPOINT` (the bucket's S3 API address), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (an R2 API token with Object Read & Write on `pool-backup` only) |
+| `restic-password` | The encryption key. **The owner keeps a copy off this server** (password manager): without it, nobody can read the R2 copies |
+
+Helper in `lib.sh`: `restic_ [docker run options] -- <restic command>`, e.g.
+
+```bash
+source deploy/lib.sh
+restic_ -- snapshots              # list the copies in R2
+restic_ -- check --read-data      # prove every byte is readable
+```
+
+**If this server is lost:** on a new server, set up the app (`first-deploy.sh`), put `r2.env` and
+`restic-password` back in `~/.config/pool-backup/`, then:
+
+```bash
+source deploy/lib.sh
+restic_ -- dump latest /data/db.archive.gz | docker compose exec -T mongo mongorestore --drop --archive --gzip
+restic_ -v "$PWD/data:/restore" -- restore latest --target /restore --include /data/photos   # → data/data/photos
+# then move data/data/photos/* into data/photos and: sudo chown -R 1000:1000 data/photos
+```

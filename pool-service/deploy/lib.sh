@@ -56,3 +56,26 @@ compare_counts() {
     }
     if (lost) quit(3);"
 }
+
+# ---- Offsite backups (Cloudflare R2, encrypted by restic before upload)
+# Keys: ~/.config/pool-backup/r2.env (R2_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+# Encryption key: ~/.config/pool-backup/restic-password. Keep a copy off this server:
+# without it the offsite backups can't be read.
+OFFSITE_DIR="${HOME}/.config/pool-backup"
+OFFSITE_ENV="${OFFSITE_DIR}/r2.env"
+OFFSITE_KEY="${OFFSITE_DIR}/restic-password"
+OFFSITE_BUCKET="pool-backup"
+RESTIC_IMAGE="restic/restic:0.18.1"
+offsite_configured() { [[ -s "${OFFSITE_ENV}" && -s "${OFFSITE_KEY}" ]]; }
+# restic_ [docker run options…] -- <restic args…>
+restic_() {
+  local opts=()
+  while [[ $# -gt 0 && "$1" != "--" ]]; do opts+=("$1"); shift; done
+  shift
+  local endpoint
+  endpoint="$(grep '^R2_ENDPOINT=' "${OFFSITE_ENV}" | cut -d= -f2-)"
+  docker_ run --rm -i --env-file "${OFFSITE_ENV}" \
+    -e RESTIC_REPOSITORY="s3:${endpoint%/}/${OFFSITE_BUCKET}/restic" \
+    -e RESTIC_PASSWORD_FILE=/run/restic-password -v "${OFFSITE_KEY}:/run/restic-password:ro" \
+    "${opts[@]}" "${RESTIC_IMAGE}" --no-cache "$@"
+}
