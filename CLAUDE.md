@@ -72,10 +72,11 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     The owner builds the server; Claude moves the app when it's ready. Keep new work portable: config in env and
     `~/.config/…`, data in `data/`, no new host-only pieces where a container will do.
   - optionally set Remote Control back to asking permission
-- **Phase 7:**
-  - desktop layout
-  - fuller customer records: service plan and price, equipment per pool
-  - money tools: income, payments, expenses, mileage, profit and loss, profit per customer
-  - **simple PDF invoices**
-  - CSV/Excel import and export
+- **Phase 7** (owner's decisions, Nov 17; plan each segment for approval):
+  - **Every field optional** (no forced entry). Billing is a **flat monthly rate per customer, chemicals included, no sales tax**; payments by check, cash and electronic.
+  - **7A customer records:** customer class **current / prospect / past**; billing fields; **distance from HQ** (miles, owner fills it; used by 7C); pool **equipment**: pump, filter, heater, salt cell/chlorinator, cleaner, automation, lights, timers, plus custom items, each with notes and optional photos.
+  - **7B invoices:** simple PDF, flat rate; **chemical costs tracked but never shown to customers**; an optional **visit recap email** the owner can choose to send (via the phone's own share/email, no outside email service).
+  - **7C money tools:** income, payments, expenses, mileage (from distance-from-HQ), chemical cost per dose, P&L, profit per customer.
+  - **7D desktop layout:** "some modular features, nothing too fancy" (ask what modular means before planning).
+  - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
