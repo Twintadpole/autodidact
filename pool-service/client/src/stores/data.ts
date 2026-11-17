@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { TASK_KEYS, type IssueStatus } from '@pool/shared';
+import { customerStatus, TASK_KEYS, type IssueStatus } from '@pool/shared';
 import { api } from './api';
 import { useSyncStore } from './sync';
 import { clone, newId } from '@/lib/format';
 import { db } from '@/offline/db';
 import { enqueue } from '@/offline/engine';
-import type { AuditEntry, Chemical, Customer, Issue, Note, Photo, Pool, Visit } from '@/lib/types';
+import type { AuditEntry, Chemical, Customer, Equipment, Issue, Note, Photo, Pool, Visit } from '@/lib/types';
 
 /** The database drops empty objects/arrays, so fill in what a visit always has. */
 export function normalizeVisit(v: Visit): Visit {
@@ -44,8 +44,19 @@ export const useDataStore = defineStore('data', () => {
   const chemicalById = computed(() => new Map(chemicals.value.map((c) => [c._id, c])));
   const activeChemicals = computed(() => chemicals.value.filter((c) => c.active));
 
-  /** Open = anything not completed (open, in progress, postponed). */
-  const openIssues = computed(() => issues.value.filter((i) => i.status !== 'resolved'));
+  /** Prospects and past customers stay off the Route, the Issues tab and the weekly count. */
+  const currentCustomerIds = computed(() => new Set(customers.value.filter((c) => customerStatus(c) === 'current').map((c) => c._id)));
+  /** Active pools of current customers: the Route. */
+  const routePools = computed(() => pools.value.filter((p) => p.active && currentCustomerIds.value.has(p.customerId)));
+  const isCurrentPool = (poolId: string) => {
+    const p = poolById.value.get(poolId);
+    return !!p && currentCustomerIds.value.has(p.customerId);
+  };
+
+  /** Open = anything not completed (open, in progress, postponed), any customer. A pool's own screens use this. */
+  const openIssuesAll = computed(() => issues.value.filter((i) => i.status !== 'resolved'));
+  /** Open issues of current customers: the Issues tab and its badge. */
+  const openIssues = computed(() => openIssuesAll.value.filter((i) => isCurrentPool(i.poolId)));
   const openIssueCount = computed(() => {
     const counts = new Map<string, number>();
     for (const i of openIssues.value) {
@@ -124,7 +135,7 @@ export const useDataStore = defineStore('data', () => {
       ? { ...existing, ...body, updatedAt: now }
       : ({ phones: [], ...body, _id: body._id ?? newId(), createdAt: now, updatedAt: now, deletedAt: null } as Customer);
     // Optional fields cleared in the form must disappear, not linger from the old copy.
-    for (const k of ['email', 'notes'] as const) if (existing && !(k in body)) delete doc[k];
+    for (const k of ['email', 'notes', 'address'] as const) if (existing && !(k in body)) delete doc[k];
     await db.customers.put(clone(doc));
     await commit({ customers: [doc] }, `${existing ? 'Edit' : 'New'} customer · ${doc.name}`);
     return doc;
@@ -308,12 +319,13 @@ export const useDataStore = defineStore('data', () => {
 
   // ------------------------------------------------------------ photos
   /** Keeps the (already compressed) image on the phone and queues it with its metadata. */
-  async function uploadPhoto(blob: Blob, meta: { poolId: string; issueId: string | null; width: number; height: number }): Promise<Photo> {
+  async function uploadPhoto(blob: Blob, meta: { poolId: string; issueId: string | null; equipmentId?: string | null; width: number; height: number }): Promise<Photo> {
     const now = nowIso();
     const photo: Photo = {
       _id: newId(),
       poolId: meta.poolId,
       issueId: meta.issueId,
+      equipmentId: meta.equipmentId ?? null,
       savedToPool: false,
       width: meta.width,
       height: meta.height,
@@ -354,6 +366,34 @@ export const useDataStore = defineStore('data', () => {
     await db.photos.put(doc);
     await commit({ poolId: doc.poolId, photos: [doc] }, `Photo ${body.savedToPool ? 'saved to pool' : 'updated'} · ${customerName(doc.poolId)}`);
     return doc;
+  }
+
+  /** Equipment photos of a pool, by equipment item. */
+  async function equipmentPhotos(poolId: string): Promise<Map<string, Photo[]>> {
+    const rows = live(await db.photos.where('poolId').equals(poolId).toArray())
+      .filter((p) => p.equipmentId)
+      .sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+    const map = new Map<string, Photo[]>();
+    for (const r of rows) map.set(r.equipmentId!, [...(map.get(r.equipmentId!) ?? []), r]);
+    return map;
+  }
+
+  /**
+   * Saves the pool's equipment list. Photos of items no longer in the list are hidden too,
+   * in the same package.
+   */
+  async function saveEquipment(poolId: string, equipment: Equipment[], summary: string) {
+    const existing = await db.pools.get(poolId);
+    if (!existing) throw new Error('Pool not found');
+    const now = nowIso();
+    const doc: Pool = { ...existing, equipment: clone(equipment), updatedAt: now };
+    const keep = new Set(equipment.map((e) => e._id));
+    const orphaned = live(await db.photos.where('poolId').equals(poolId).toArray())
+      .filter((p) => p.equipmentId && !keep.has(p.equipmentId))
+      .map((p) => ({ ...p, deletedAt: now, updatedAt: now }));
+    await db.pools.put(clone(doc));
+    for (const p of orphaned) await db.photos.put(p);
+    await commit({ poolId, pools: [doc], ...(orphaned.length && { photos: orphaned }) }, `${summary} · ${customerName(poolId)}`);
   }
 
   async function deletePhoto(id: string) {
@@ -408,7 +448,10 @@ export const useDataStore = defineStore('data', () => {
     chemicalById,
     activeChemicals,
     openIssues,
+    openIssuesAll,
     openIssueCount,
+    currentCustomerIds,
+    routePools,
     poolName,
     poolLabel,
     loadAll,
@@ -433,6 +476,8 @@ export const useDataStore = defineStore('data', () => {
     photosByIssue,
     patchPhoto,
     deletePhoto,
+    equipmentPhotos,
+    saveEquipment,
     history,
     notesFor,
     saveNote,

@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model } from 'mongoose';
-import { ISSUE_STATUSES, NOTE_PARENT_TYPES, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
+import { CUSTOMER_STATUSES, EQUIPMENT_KINDS, ISSUE_STATUSES, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
 
 /**
  * Every document:
@@ -28,24 +28,24 @@ function makeSchema(fields: Record<string, unknown>) {
   return schema;
 }
 
-const addressSchema = new Schema(
-  {
-    line1: { type: String, required: true },
-    line2: String,
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    zip: { type: String, required: true },
-  },
-  { _id: false },
-);
+/** Every part optional (Phase 7: no forced fields). */
+const addressSchema = new Schema({ line1: String, line2: String, city: String, state: String, zip: String }, { _id: false });
 
 // ---------------------------------------------------------------- customers
 const customerSchema = makeSchema({
   name: { type: String, required: true },
   phones: [new Schema({ label: String, number: { type: String, required: true } }, { _id: false })],
   email: String,
-  address: { type: addressSchema, required: true },
+  address: { type: addressSchema, default: undefined },
   notes: String,
+  // Phase 7. No defaults: a missing status means "current", and a sender that leaves these out keeps them.
+  status: { type: String, enum: [...CUSTOMER_STATUSES, null] },
+  monthlyRate: Number,
+  billingEmail: String,
+  paymentMethod: { type: String, enum: [...PAYMENT_METHODS, null] },
+  startDate: Date,
+  endDate: Date,
+  distanceMiles: Number,
 });
 customerSchema.index({ name: 1 });
 
@@ -54,10 +54,10 @@ const poolSchema = makeSchema({
   customerId: { type: String, required: true, index: true },
   name: { type: String, required: true },
   address: { type: addressSchema, default: undefined },
-  type: { type: String, enum: POOL_TYPES, required: true },
+  type: { type: String, enum: [...POOL_TYPES, null] },
   surface: String,
-  volumeGal: { type: Number, required: true },
-  serviceDay: { type: String, enum: SERVICE_DAYS, required: true },
+  volumeGal: Number,
+  serviceDay: { type: String, enum: [...SERVICE_DAYS, null] },
   routeOrder: { type: Number, default: 0 },
   accessNotes: { type: String, default: '' },
   active: { type: Boolean, default: true },
@@ -66,6 +66,24 @@ const poolSchema = makeSchema({
     doneAt: { type: Date, default: null },
     /** When the checkmark last changed; a stale offline toggle loses to a later reset. */
     changedAt: { type: Date, default: null },
+  },
+  equipment: {
+    type: [
+      new Schema(
+        {
+          _id: { type: String, required: true },
+          kind: { type: String, enum: EQUIPMENT_KINDS, required: true },
+          name: String,
+          model: String,
+          serial: String,
+          installedOn: Date,
+          notes: String,
+        },
+        { _id: false },
+      ),
+    ],
+    // No default: an older app that leaves it out keeps the stored list (see upsertLww preserve).
+    default: undefined,
   },
 });
 poolSchema.index({ serviceDay: 1, routeOrder: 1 });
@@ -144,6 +162,8 @@ noteSchema.index({ parentType: 1, parentId: 1 });
 const photoSchema = makeSchema({
   poolId: { type: String, required: true },
   issueId: { type: String, default: null },
+  /** A photo of one piece of the pool's equipment (Phase 7). */
+  equipmentId: { type: String, default: null },
   savedToPool: { type: Boolean, default: false },
   /** Path relative to PHOTO_DIR, e.g. "2026/10/<id>.jpg". */
   file: { type: String, required: true },

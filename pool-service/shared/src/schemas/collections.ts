@@ -8,13 +8,40 @@ export const phoneSchema = z.object({
   number: e164Schema,
 });
 
+export const CUSTOMER_STATUSES = ['current', 'prospect', 'past'] as const;
+export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number];
+export const PAYMENT_METHODS = ['check', 'cash', 'electronic', 'other'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/** Missing status means "current" (customers made before Phase 7). */
+export function customerStatus(c: { status?: CustomerStatus | null }): CustomerStatus {
+  return c.status ?? 'current';
+}
+
+/**
+ * Only the name is required. Phase 7 fields are optional and nullable: the app sends null
+ * when one is cleared, and the server keeps them when a sender leaves them out (an older
+ * app version), so they have no defaults here.
+ */
 export const customer = collectionSchemas({
   name: z.string().trim().min(1),
   phones: z.array(phoneSchema).default([]),
   email: z.email().optional(),
-  address: addressSchema,
+  address: addressSchema.optional(),
   notes: z.string().optional(),
+  status: z.enum(CUSTOMER_STATUSES).nullable().optional(),
+  /** Flat monthly rate in dollars (chemicals included). */
+  monthlyRate: z.number().nonnegative().nullable().optional(),
+  /** Where invoices go; the main email when empty. */
+  billingEmail: z.email().nullable().optional(),
+  paymentMethod: z.enum(PAYMENT_METHODS).nullable().optional(),
+  startDate: dateSchema.nullable().optional(),
+  endDate: dateSchema.nullable().optional(),
+  /** Miles from HQ, one way (for mileage). */
+  distanceMiles: z.number().nonnegative().nullable().optional(),
 });
+/** Customer fields the server keeps when a sender leaves them out. */
+export const CUSTOMER_PRESERVED_FIELDS = ['status', 'monthlyRate', 'billingEmail', 'paymentMethod', 'startDate', 'endDate', 'distanceMiles'] as const;
 export type Customer = z.infer<typeof customer.doc>;
 
 // ---------------------------------------------------------------- pools
@@ -27,21 +54,41 @@ export const weekSchema = z.object({
   changedAt: dateSchema.nullable().default(null),
 });
 
+export const EQUIPMENT_KINDS = ['pump', 'filter', 'heater', 'saltCell', 'cleaner', 'automation', 'lights', 'timer', 'other'] as const;
+export type EquipmentKind = (typeof EQUIPMENT_KINDS)[number];
+
+/** One piece of pool equipment. Photos point at it with `equipmentId`. */
+export const equipmentSchema = z.object({
+  _id: idSchema,
+  kind: z.enum(EQUIPMENT_KINDS),
+  /** Own name, e.g. "Booster pump" (needed only for "other"). */
+  name: z.string().trim().optional(),
+  model: z.string().trim().optional(),
+  serial: z.string().trim().optional(),
+  installedOn: dateSchema.nullable().optional(),
+  notes: z.string().optional(),
+});
+export type Equipment = z.infer<typeof equipmentSchema>;
+
 export const pool = collectionSchemas({
   customerId: idSchema,
   name: z.string().trim().min(1).default('Pool'),
   /** Overrides the customer's address when present. */
   address: addressSchema.optional(),
-  type: z.enum(POOL_TYPES),
+  type: z.enum(POOL_TYPES).nullable().optional(),
   surface: z.string().optional(),
-  volumeGal: z.number().positive(),
-  serviceDay: z.enum(SERVICE_DAYS),
+  volumeGal: z.number().positive().nullable().optional(),
+  /** No day: the pool shows under "Not scheduled" on the Route. */
+  serviceDay: z.enum(SERVICE_DAYS).nullable().optional(),
   routeOrder: z.number().default(0),
   accessNotes: z.string().default(''),
   active: z.boolean().default(true),
   week: weekSchema.default({ done: false, doneAt: null, changedAt: null }),
+  /** No default: an older app that leaves it out must not wipe it (see POOL_PRESERVED_FIELDS). */
+  equipment: z.array(equipmentSchema).optional(),
 });
 export type Pool = z.infer<typeof pool.doc>;
+export const POOL_PRESERVED_FIELDS = ['equipment'] as const;
 
 // ---------------------------------------------------------------- visits
 const readingShape = Object.fromEntries(READING_KEYS.map((k) => [k, z.number().nullable().optional()])) as Record<
@@ -197,6 +244,8 @@ export type Note = z.infer<typeof note.doc>;
 export const photo = collectionSchemas({
   poolId: idSchema,
   issueId: idSchema.nullable().default(null),
+  /** A photo of one piece of the pool's equipment. */
+  equipmentId: idSchema.nullable().optional(),
   savedToPool: z.boolean().default(false),
   width: z.number().int().nonnegative(),
   height: z.number().int().nonnegative(),

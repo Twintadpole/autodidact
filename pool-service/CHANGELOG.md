@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased: Phase 7A, fuller customer records (November 2026)
+
+- **Only a customer's name is required now.** Address, phones, pool type, gallons and service day can all be left blank.
+  A pool without a service day is listed under **Not scheduled** on the Route and isn't counted in the week.
+- **Customer class: Current, Prospect or Past.** The Customers screen has filter buttons with counts; a search looks through all three.
+  Prospects and past customers stay off the Route, the Issues tab and the weekly count; their history is kept.
+  Existing customers are Current.
+- **Billing and service details** (all optional): monthly rate, usual payment method, billing email, service start and end dates, distance from HQ.
+- **Pool equipment** on the pool's overview: pump, filter, heater, salt cell/chlorinator, cleaner, automation, lights, timer, plus any other item with its own name.
+  Each can have brand and model, serial number, install date, notes and photos.
+- Additive only: existing records are unchanged.
+
 ## Unreleased: visit screen extras (November 2026)
 
 - New **Filter PSI** reading. It has no amber or red range, because normal pressure differs per filter.

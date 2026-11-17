@@ -2,14 +2,15 @@
  * Documents as they arrive over JSON (dates are ISO strings).
  * The Zod schemas in @pool/shared are the source of truth for what the server accepts.
  */
-import type { IssueStatus, ServiceDay, Unit } from '@pool/shared';
+import type { CustomerStatus, EquipmentKind, IssueStatus, PaymentMethod, ServiceDay, Unit } from '@pool/shared';
 
+/** Every part optional. */
 export interface Address {
-  line1: string;
+  line1?: string;
   line2?: string;
-  city: string;
-  state: string;
-  zip: string;
+  city?: string;
+  state?: string;
+  zip?: string;
 }
 
 interface Base {
@@ -28,7 +29,25 @@ export interface Customer extends Base {
   name: string;
   phones: Phone[];
   email?: string;
-  address: Address;
+  address?: Address;
+  notes?: string;
+  /** Missing = current (use customerStatus()). Null = cleared in the app. */
+  status?: CustomerStatus | null;
+  monthlyRate?: number | null;
+  billingEmail?: string | null;
+  paymentMethod?: PaymentMethod | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  distanceMiles?: number | null;
+}
+
+export interface Equipment {
+  _id: string;
+  kind: EquipmentKind;
+  name?: string;
+  model?: string;
+  serial?: string;
+  installedOn?: string | null;
   notes?: string;
 }
 
@@ -36,14 +55,16 @@ export interface Pool extends Base {
   customerId: string;
   name: string;
   address?: Address;
-  type: 'chlorine' | 'salt';
+  type?: 'chlorine' | 'salt' | null;
   surface?: string;
-  volumeGal: number;
-  serviceDay: ServiceDay;
+  volumeGal?: number | null;
+  /** No day: "Not scheduled" on the Route. */
+  serviceDay?: ServiceDay | null;
   routeOrder: number;
   accessNotes: string;
   active: boolean;
   week: { done: boolean; doneAt: string | null; changedAt: string | null };
+  equipment?: Equipment[];
 }
 
 export interface Dose {
@@ -88,6 +109,8 @@ export interface Visit extends Base {
 export interface Photo extends Base {
   poolId: string;
   issueId: string | null;
+  /** A photo of one piece of the pool's equipment. */
+  equipmentId?: string | null;
   savedToPool: boolean;
   width: number;
   height: number;

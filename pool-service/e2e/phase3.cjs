@@ -34,7 +34,10 @@ const DAY_LABEL = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thurs
   const today = DAYS[new Date().getDay()];
 
   // 1. Login redirect + login
-  await page.goto(url('/'), { waitUntil: 'networkidle' });
+  // With an e2e session (VPS runs, see local-cookies.cjs) the browser starts logged in, so the
+  // logged-out redirect can't be seen; open the login screen directly instead.
+  if (process.env.E2E_SESSION) await page.goto(url('/login'), { waitUntil: 'networkidle' });
+  else await page.goto(url('/'), { waitUntil: 'networkidle' });
   await page.waitForURL(/\/login/);
   await shot('01-login');
   await page.getByLabel('Password').fill(password);

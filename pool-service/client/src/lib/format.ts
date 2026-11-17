@@ -12,18 +12,25 @@ export const DAY_LABELS: Record<ServiceDay, string> = {
   sun: 'Sunday',
 };
 
-export function addressText(a: Address | undefined): string {
+/** "1 Main St, Dallas, TX 75201", leaving out whatever is blank. */
+export function addressText(a: Address | undefined | null): string {
   if (!a) return '';
-  return [a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`].filter(Boolean).join(', ');
+  const stateZip = [a.state, a.zip].filter((x) => x?.trim()).join(' ');
+  return [a.line1, a.line2, a.city, stateZip].filter((x) => x?.trim()).join(', ');
+}
+
+/** True when there is enough address to navigate to. */
+export function hasAddress(a: Address | undefined | null): boolean {
+  return !!addressText(a);
 }
 
 /** The pool's own address if set, otherwise the customer's. */
 export function poolAddress(pool: Pool, customer: Customer | undefined): Address | undefined {
-  return pool.address ?? customer?.address;
+  return hasAddress(pool.address) ? pool.address : customer?.address;
 }
 
 /** Google Maps turn-by-turn directions to an address. */
-export function mapsUrl(a: Address | undefined): string {
+export function mapsUrl(a: Address | undefined | null): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addressText(a))}`;
 }
 

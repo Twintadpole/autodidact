@@ -1,5 +1,5 @@
 import mongoose, { type ClientSession, type Model } from 'mongoose';
-import { applyIssueStatus, type SyncPackage, type SyncPackageResponse } from '@pool/shared';
+import { applyIssueStatus, CUSTOMER_PRESERVED_FIELDS, POOL_PRESERVED_FIELDS, type SyncPackage, type SyncPackageResponse } from '@pool/shared';
 import { Chemical, Customer, Issue, Note, Photo, Pool, SyncLog, Visit } from '../models/index.js';
 import { cascadeCustomerDelete, cascadePoolDelete } from './cascade.js';
 import { HttpError } from '../util.js';
@@ -10,7 +10,9 @@ export type UpsertResult = 'inserted' | 'updated' | 'stale';
 /**
  * Last-write-wins upsert: insert if new, replace if the incoming `updatedAt`
  * is at least as new as the stored one, otherwise keep the stored document.
- * `preserve` lists server-owned fields that the phone never sends (e.g. photo `file`).
+ * `preserve` lists fields kept from the stored copy when the sender leaves them out: server-owned
+ * ones the phone never sends (photo `file`), and Phase 7 fields an older app version doesn't know.
+ * A field sent as null is a deliberate clear and is not preserved.
  */
 export async function upsertLww(
   model: Model<any>,
@@ -108,7 +110,7 @@ export async function applyPackage(pkg: SyncPackage, opts: ApplyOptions): Promis
       for (const raw of pkg.customers) {
         const doc = clampClock(raw, now);
         const before = await Customer.findById(doc._id).session(session).lean<{ deletedAt?: Date | null }>();
-        if ((await upsertLww(Customer, doc, session, now)) !== 'stale') {
+        if ((await upsertLww(Customer, doc, session, now, [...CUSTOMER_PRESERVED_FIELDS])) !== 'stale') {
           applied.customers++;
           if (doc.deletedAt && !before?.deletedAt) deletedCustomers.push(doc._id);
         }
@@ -121,7 +123,7 @@ export async function applyPackage(pkg: SyncPackage, opts: ApplyOptions): Promis
         const serverWeekAt = before?.week?.changedAt ? new Date(before.week.changedAt).getTime() : -1;
         const incomingWeekAt = doc.week?.changedAt ? new Date(doc.week.changedAt).getTime() : -1;
         const merged = before && serverWeekAt > incomingWeekAt ? { ...doc, week: before.week } : doc;
-        if ((await upsertLww(Pool, merged, session, now)) !== 'stale') {
+        if ((await upsertLww(Pool, merged, session, now, [...POOL_PRESERVED_FIELDS])) !== 'stale') {
           applied.pools++;
           if (doc.deletedAt && !before?.deletedAt) deletedPools.push(doc._id);
         }
@@ -159,7 +161,7 @@ export async function applyPackage(pkg: SyncPackage, opts: ApplyOptions): Promis
         if (!file && !(await Photo.exists({ _id: photo._id }).session(session))) {
           throw new HttpError(400, `Missing image file for photo ${photo._id}`);
         }
-        if ((await upsertLww(Photo, doc, session, now, ['file'])) !== 'stale') applied.photos++;
+        if ((await upsertLww(Photo, doc, session, now, ['file', 'equipmentId'])) !== 'stale') applied.photos++;
       }
 
       if (pkg.weekToggle && pool) {

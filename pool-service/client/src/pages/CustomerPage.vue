@@ -9,7 +9,17 @@
       <div v-else class="text-grey-7">Customer not found.</div>
     </div>
     <template v-else>
+      <div class="row items-center q-gutter-sm">
+        <q-badge :color="STATUS_COLOR[status]" :label="STATUS_LABEL[status]" class="text-body2 q-px-sm" data-test="customer-status-badge" />
+        <span v-if="status !== 'current'" class="text-caption text-grey-7">Not on the Route or Issues lists</span>
+      </div>
       <ContactLinks :customer="customer" :address="customer.address" />
+      <q-list v-if="billing.length" dense bordered class="bg-white rounded-borders" data-test="customer-billing">
+        <q-item v-for="b in billing" :key="b.label">
+          <q-item-section class="text-grey-7">{{ b.label }}</q-item-section>
+          <q-item-section side class="text-grey-10">{{ b.value }}</q-item-section>
+        </q-item>
+      </q-list>
       <div v-if="customer.notes" class="text-body2 text-grey-8 q-px-sm"><q-icon name="info" /> {{ customer.notes }}</div>
 
       <div>
@@ -22,7 +32,7 @@
             <q-item-section avatar><q-icon name="pool" color="primary" /></q-item-section>
             <q-item-section>
               <q-item-label>{{ p.name }}<span v-if="!p.active" class="text-grey-6"> (inactive)</span></q-item-label>
-              <q-item-label caption>{{ DAY_LABELS[p.serviceDay] }} · {{ p.type }} · {{ p.volumeGal.toLocaleString() }} gal</q-item-label>
+              <q-item-label caption>{{ poolCaption(p) }}</q-item-label>
             </q-item-section>
             <q-item-section side>
               <q-btn flat round color="primary" icon="assignment" aria-label="Log visit" :to="`/pools/${p._id}`" @click.stop />
@@ -48,6 +58,10 @@ import NotesList from '@/components/NotesList.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS } from '@/lib/format';
+import { money, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL } from '@/lib/customer';
+import { customerStatus } from '@pool/shared';
+import { format, parseISO } from 'date-fns';
+import type { Pool } from '@/lib/types';
 
 defineOptions({ name: 'CustomerPage' });
 
@@ -56,6 +70,27 @@ const data = useDataStore();
 const ui = useUiStore();
 const customer = computed(() => data.customerById.get(String(route.params.id)));
 const pools = computed(() => data.pools.filter((p) => p.customerId === customer.value?._id));
+const status = computed(() => (customer.value ? customerStatus(customer.value) : 'current'));
+
+const day = (iso: string) => format(parseISO(iso.slice(0, 10)), 'MMM d, yyyy');
+/** Only the billing details that are filled in. */
+const billing = computed(() => {
+  const c = customer.value;
+  if (!c) return [];
+  const rows: { label: string; value: string }[] = [];
+  if (c.monthlyRate != null) rows.push({ label: 'Monthly rate', value: money(c.monthlyRate) });
+  if (c.paymentMethod) rows.push({ label: 'Usually pays by', value: PAYMENT_LABEL[c.paymentMethod] });
+  if (c.billingEmail) rows.push({ label: 'Billing email', value: c.billingEmail });
+  if (c.startDate) rows.push({ label: 'Service started', value: day(c.startDate) });
+  if (c.endDate) rows.push({ label: 'Service ended', value: day(c.endDate) });
+  if (c.distanceMiles != null) rows.push({ label: 'Distance from HQ', value: `${c.distanceMiles} mi` });
+  return rows;
+});
+
+const poolCaption = (p: Pool) =>
+  [p.serviceDay ? DAY_LABELS[p.serviceDay] : 'Not scheduled', p.type === 'salt' ? 'Salt' : p.type === 'chlorine' ? 'Chlorine' : '', p.volumeGal ? `${p.volumeGal.toLocaleString()} gal` : '']
+    .filter(Boolean)
+    .join(' · ');
 
 watch(
   customer,

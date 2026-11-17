@@ -20,10 +20,10 @@
     <!-- Progress + filter -->
     <div class="q-px-md q-pt-md q-pb-sm">
       <div class="row items-baseline justify-between">
-        <div class="text-h6" data-test="done-count">{{ doneCount }} / {{ activePools.length }} done</div>
+        <div class="text-h6" data-test="done-count">{{ doneCount }} / {{ scheduledPools.length }} done</div>
         <div class="text-caption text-grey-7">Week of {{ weekLabel }}</div>
       </div>
-      <q-linear-progress :value="activePools.length ? doneCount / activePools.length : 0" rounded size="8px" color="positive" class="q-mt-xs" />
+      <q-linear-progress :value="scheduledPools.length ? doneCount / scheduledPools.length : 0" rounded size="8px" color="positive" class="q-mt-xs" />
       <q-btn-toggle
         v-model="filter"
         spread
@@ -51,11 +51,11 @@
     </div>
 
     <template v-for="group in groups" :key="group.day">
-      <q-item-label header class="row items-center justify-between q-pb-xs">
+      <q-item-label header class="row items-center justify-between q-pb-xs" :data-test="`route-group-${group.day}`">
         <span :class="group.isToday ? 'text-primary text-weight-bold' : ''">
           {{ group.label }}<span v-if="group.isToday"> · Today</span>
         </span>
-        <span class="text-caption">{{ group.done }}/{{ group.total }}</span>
+        <span v-if="group.day !== 'none'" class="text-caption">{{ group.done }}/{{ group.total }}</span>
       </q-item-label>
       <q-list bordered separator class="bg-white">
         <q-item v-for="p in group.pools" :key="p._id" class="route-row" :data-test="`route-row-${p._id}`">
@@ -78,7 +78,7 @@
           </q-item-section>
           <q-item-section side class="row no-wrap items-center">
             <q-badge v-if="data.openIssueCount.get(p._id)" color="orange-8" class="q-mr-sm" :label="`${data.openIssueCount.get(p._id)} issue${data.openIssueCount.get(p._id)! > 1 ? 's' : ''}`" />
-            <q-btn flat round color="primary" icon="directions" :href="mapsUrl(poolAddress(p, data.customerById.get(p.customerId)))" target="_blank" aria-label="Navigate" @click.stop />
+            <q-btn v-if="hasAddress(poolAddress(p, data.customerById.get(p.customerId)))" flat round color="primary" icon="directions" :href="mapsUrl(poolAddress(p, data.customerById.get(p.customerId)))" target="_blank" aria-label="Navigate" @click.stop />
           </q-item-section>
         </q-item>
       </q-list>
@@ -91,11 +91,11 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { format, startOfISOWeek } from 'date-fns';
-import { serviceDaysFrom, timeLogSeconds } from '@pool/shared';
+import { serviceDaysFrom, timeLogSeconds, type ServiceDay } from '@pool/shared';
 import { hms } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
-import { DAY_LABELS, mapsUrl, poolAddress } from '@/lib/format';
+import { DAY_LABELS, hasAddress, mapsUrl, poolAddress } from '@/lib/format';
 import type { Pool } from '@/lib/types';
 
 defineOptions({ name: 'RoutePage' });
@@ -105,7 +105,10 @@ const router = useRouter();
 const data = useDataStore();
 const filter = ref<'all' | 'remaining' | 'done'>('all');
 
-const activePools = computed(() => data.pools.filter((p) => p.active));
+/** Active pools of current customers (prospects and past customers aren't on the Route). */
+const activePools = computed(() => data.routePools);
+/** Pools with a service day: the weekly count. Pools without one are listed under "Not scheduled". */
+const scheduledPools = computed(() => activePools.value.filter((p) => p.serviceDay));
 
 // Live "on site" time for pools whose timer is running.
 const now = ref(new Date());
@@ -116,18 +119,20 @@ onMounted(() => {
 });
 onBeforeUnmount(() => clearInterval(tick));
 const runningAt = computed(() => new Map(data.activeTimers.map((v) => [v.poolId, hms(timeLogSeconds(v.timeLog, now.value))])));
-const doneCount = computed(() => activePools.value.filter((p) => p.week.done).length);
+const doneCount = computed(() => scheduledPools.value.filter((p) => p.week.done).length);
 const weekLabel = format(startOfISOWeek(new Date()), 'MMM d');
 
 const groups = computed(() => {
-  const days = serviceDaysFrom(new Date());
+  const days: (ServiceDay | 'none')[] = [...serviceDaysFrom(new Date()), 'none'];
   return days
     .map((day, i) => {
-      const all = activePools.value.filter((p) => p.serviceDay === day).sort((a, b) => a.routeOrder - b.routeOrder);
+      const all = activePools.value
+        .filter((p) => (day === 'none' ? !p.serviceDay : p.serviceDay === day))
+        .sort((a, b) => a.routeOrder - b.routeOrder || customerName(a).localeCompare(customerName(b)));
       const shown = all.filter((p) => (filter.value === 'all' ? true : filter.value === 'done' ? p.week.done : !p.week.done));
       return {
         day,
-        label: DAY_LABELS[day],
+        label: day === 'none' ? 'Not scheduled' : DAY_LABELS[day],
         isToday: i === 0,
         pools: shown,
         total: all.length,
@@ -143,7 +148,7 @@ function customerName(p: Pool) {
 
 function shortAddress(p: Pool) {
   const a = poolAddress(p, data.customerById.get(p.customerId));
-  return a ? `${a.line1}, ${a.city}` : '';
+  return [a?.line1, a?.city].filter((x) => x?.trim()).join(', ');
 }
 
 function open(id: string) {

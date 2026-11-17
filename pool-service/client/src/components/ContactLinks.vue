@@ -11,7 +11,7 @@
         <q-btn round flat color="primary" icon="sms" :href="smsHref(ph.number)" aria-label="Text" data-test="sms-link" />
       </q-item-section>
     </q-item>
-    <q-item v-if="address" clickable tag="a" :href="mapsUrl(address)" target="_blank" data-test="maps-link">
+    <q-item v-if="hasAddress(address)" clickable tag="a" :href="mapsUrl(address)" target="_blank" data-test="maps-link">
       <q-item-section avatar><q-icon name="directions" color="primary" /></q-item-section>
       <q-item-section>
         <q-item-label>{{ addressText(address) }}</q-item-label>
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { addressText, formatPhone, mapsUrl, smsHref, telHref } from '@/lib/format';
+import { addressText, formatPhone, hasAddress, mapsUrl, smsHref, telHref } from '@/lib/format';
 import type { Address, Customer } from '@/lib/types';
 
 defineProps<{ customer: Customer; address: Address | undefined }>();

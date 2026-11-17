@@ -17,12 +17,13 @@ export const baseDocFields = {
   deletedAt: dateSchema.nullable().default(null),
 };
 
+/** Every part optional (the owner fills in what they know). */
 export const addressSchema = z.object({
-  line1: z.string().trim().min(1),
+  line1: z.string().trim().optional(),
   line2: z.string().trim().optional(),
-  city: z.string().trim().min(1),
-  state: z.string().trim().min(1),
-  zip: z.string().trim().min(1),
+  city: z.string().trim().optional(),
+  state: z.string().trim().optional(),
+  zip: z.string().trim().optional(),
 });
 export type Address = z.infer<typeof addressSchema>;
 

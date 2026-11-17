@@ -118,7 +118,7 @@ const sync = useSyncStore();
 const poolId = computed(() => String(route.params.id));
 const pool = computed(() => data.poolById.get(poolId.value));
 const customer = computed(() => (pool.value ? data.customerById.get(pool.value.customerId) : undefined));
-const openIssues = computed(() => data.openIssues.filter((i) => i.poolId === poolId.value && i.status !== 'postponed'));
+const openIssues = computed(() => data.openIssuesAll.filter((i) => i.poolId === poolId.value && i.status !== 'postponed'));
 
 const draft = ref<Visit | null>(null);
 const previous = ref<Visit | null>(null);

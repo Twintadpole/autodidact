@@ -9,9 +9,9 @@
       <!-- Details -->
       <q-card flat bordered>
         <q-card-section class="row q-col-gutter-sm text-body2">
-          <div class="col-6"><span class="text-grey-7">Type</span><br />{{ pool.type === 'salt' ? 'Salt' : 'Chlorine' }}</div>
-          <div class="col-6"><span class="text-grey-7">Volume</span><br />{{ pool.volumeGal.toLocaleString() }} gal</div>
-          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ DAY_LABELS[pool.serviceDay] }} · stop {{ pool.routeOrder }}</div>
+          <div class="col-6"><span class="text-grey-7">Type</span><br />{{ pool.type === 'salt' ? 'Salt' : pool.type === 'chlorine' ? 'Chlorine' : '–' }}</div>
+          <div class="col-6"><span class="text-grey-7">Volume</span><br />{{ pool.volumeGal ? `${pool.volumeGal.toLocaleString()} gal` : '–' }}</div>
+          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ pool.serviceDay ? `${DAY_LABELS[pool.serviceDay]} · stop ${pool.routeOrder}` : 'Not scheduled' }}</div>
           <div class="col-6"><span class="text-grey-7">Surface</span><br />{{ pool.surface || '–' }}</div>
           <div v-if="pool.accessNotes" class="col-12"><span class="text-grey-7">Access</span><br />{{ pool.accessNotes }}</div>
         </q-card-section>
@@ -22,6 +22,8 @@
       </q-card>
 
       <ContactLinks v-if="customer" :customer="customer" :address="poolAddress(pool, customer)" />
+
+      <EquipmentSection :pool="pool" />
 
       <!-- History -->
       <div>
@@ -111,6 +113,7 @@ import TrendChart from '@/components/TrendChart.vue';
 import IssueSheet from '@/components/IssueSheet.vue';
 import PoolGallery from '@/components/PoolGallery.vue';
 import PhotoGrid from '@/components/PhotoGrid.vue';
+import EquipmentSection from '@/components/EquipmentSection.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS, fmtNumber, poolAddress, shortDate } from '@/lib/format';
@@ -143,7 +146,7 @@ watch(issueOpen, (open) => {
 const poolId = computed(() => String(route.params.id));
 const pool = computed(() => data.poolById.get(poolId.value));
 const customer = computed(() => (pool.value ? data.customerById.get(pool.value.customerId) : undefined));
-const openIssues = computed(() => data.openIssues.filter((i) => i.poolId === poolId.value));
+const openIssues = computed(() => data.openIssuesAll.filter((i) => i.poolId === poolId.value));
 
 const readingLabel = (k: ReadingKey) => READINGS.find((r) => r.key === k)?.short ?? k;
 const quadrantLabel = (i: Issue) => QUADRANTS.find((q) => q.key === deriveQuadrant(i))?.label ?? '';

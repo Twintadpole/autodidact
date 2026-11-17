@@ -11,6 +11,7 @@
       </div>
       <q-card-actions class="bg-black q-pa-md">
         <q-toggle
+          v-if="!noGallery"
           :model-value="photo.savedToPool"
           color="positive"
           dark
@@ -31,7 +32,8 @@ import { format, parseISO } from 'date-fns';
 import PhotoImg from '@/components/PhotoImg.vue';
 import type { Photo } from '@/lib/types';
 
-const props = defineProps<{ photo: Photo | null }>();
+/** noGallery: hide "In pool gallery" (equipment photos). */
+const props = defineProps<{ photo: Photo | null; noGallery?: boolean }>();
 const emit = defineEmits<{ close: []; 'save-to-pool': [boolean]; delete: [] }>();
 const when = computed(() => (props.photo ? format(parseISO(props.photo.takenAt), 'MMM d, yyyy h:mm a') : ''));
 </script>
