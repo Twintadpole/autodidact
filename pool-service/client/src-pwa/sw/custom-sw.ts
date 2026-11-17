@@ -29,10 +29,12 @@ registerRoute(
 );
 
 if (import.meta.env.QUASAR_PROD) {
-  // SPA navigation fallback to the cached index.html, except API and SW files.
+  // SPA navigation fallback to the cached index.html, except API and SW files, and Cloudflare's
+  // own pages: after the emailed-code login, Cloudflare Access sends the browser to
+  // /cdn-cgi/access/authorized to save the login; serving the app there would lose it.
   registerRoute(
     new NavigationRoute(createHandlerBoundToURL(import.meta.env.QUASAR_PWA_FALLBACK_HTML), {
-      denylist: [/^\/api\//, new RegExp(import.meta.env.QUASAR_PWA_SERVICE_WORKER_REGEX), /workbox-(.)*\.js$/],
+      denylist: [/^\/api\//, /^\/cdn-cgi\//, new RegExp(import.meta.env.QUASAR_PWA_SERVICE_WORKER_REGEX), /workbox-(.)*\.js$/],
     }),
   );
 }

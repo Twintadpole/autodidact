@@ -3,8 +3,11 @@
 //     (simulated here): the app shows "Cloudflare login needed · Log in again",
 //     not "no connection".
 //  2. A visit saved meanwhile stays waiting on the phone (not failed) and doesn't reach the server.
-//  3. "Log in again" opens /api/access-login; after Cloudflare's login (simulated by lifting the
-//     block) the server sends the browser back to the app, the notice goes and the visit uploads.
+//  3. "Log in again" opens /api/access-login. Cloudflare's login is simulated the way it really
+//     ends: a redirect to /cdn-cgi/access/authorized, which must reach the network (not the
+//     service worker's saved app) so Cloudflare can save the login; then back to
+//     /api/access-login, and the server sends the browser to the app. The notice goes and
+//     the visit uploads.
 // Creates its own "E2E test …" customer and hides it at the end.
 //
 //   node access-expired.cjs <baseUrl> <password> <outDir>
@@ -79,9 +82,31 @@ const { chromium, devices } = require('playwright');
     // ---- 3. "Log in again" → /api/access-login (Cloudflare login simulated by lifting the block) → back in the app
     const opened = page.waitForRequest((r) => r.isNavigationRequest() && new URL(r.url()).pathname === '/api/access-login');
     await ctx.unroute('**/api/**', block);
+    // Cloudflare's side: the first visit to /api/access-login goes through its login and comes back
+    // to /cdn-cgi/access/authorized, which saves the login cookie and sends the browser on.
+    let loggedIn = false;
+    let authorizedReachedNetwork = false;
+    // (Cloudflare's login page sends the browser on with a new page load; a faked 302 here would hide
+    // the next request from ctx.route, which only sees the first request of a redirect chain.)
+    await ctx.route('**/api/access-login', (route) =>
+      loggedIn
+        ? route.continue()
+        : route.fulfill({
+            status: 200,
+            contentType: 'text/html',
+            body: '<p>Cloudflare login (simulated)</p><script>location.assign("/cdn-cgi/access/authorized?token=e2e")</script>',
+          }),
+    );
+    await ctx.route('**/cdn-cgi/**', (route) => {
+      authorizedReachedNetwork = true;
+      loggedIn = true;
+      return route.fulfill({ status: 302, headers: { location: '/api/access-login', 'set-cookie': 'CF_Authorization=e2e; Path=/; Secure; HttpOnly' } });
+    });
     await notice.getByRole('button', { name: /Log in again/i }).click();
     await opened;
-    await page.waitForURL((u) => u.pathname === '/', { timeout: 20000 });
+    await page.waitForURL((u) => u.pathname === '/', { timeout: 20000 }).catch(() => undefined);
+    if (!authorizedReachedNetwork) throw new Error(`Cloudflare's /cdn-cgi/access/authorized never reached the network (the app's saved copy took it): ended at ${page.url()}`);
+    if (new URL(page.url()).pathname !== '/') throw new Error(`did not land back on the app: ${page.url()}`);
     await page.locator('[data-test=done-count]').waitFor({ timeout: 20000 });
     let v = null;
     for (let i = 0; i < 30 && !(v && v.readings.filterPsi === 21); i++) {
@@ -90,7 +115,7 @@ const { chromium, devices } = require('playwright');
     }
     if (!v || v.readings.filterPsi !== 21) throw new Error('visit did not upload after logging in again');
     if (await notice.count()) throw new Error('"Cloudflare login needed" should be gone');
-    ok('"Log in again" → /api/access-login → back to the route; the visit uploaded (filter PSI 21), notice gone');
+    ok('"Log in again" → Cloudflare login → /cdn-cgi/access/authorized (reached Cloudflare) → back to the route; the visit uploaded (filter PSI 21), notice gone');
 
     if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
   } finally {
