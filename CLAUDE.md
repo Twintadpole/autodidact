@@ -63,7 +63,7 @@ Before new work in the cloud, bring them to GitHub, e.g. have the VPS session ma
   - ✅ encrypted offsite backups to Cloudflare R2 (Nov 16): restic, bucket `pool-backup`, keys in `~/.config/pool-backup/` on the VPS. See `pool-service/deploy/README.md`
   - ✅ uptime and disk-space alerts (Nov 16): self-hosted ntfy + `deploy/monitor.sh` in cron; Cloudflare tunnel-health email for a whole-server outage
   - ✅ Cloudflare Access login (Nov 17): emailed code, 30-day session, locks `/api/*` only (app files stay open so updates download); open paths `/api/health`, `/manifest.json`, `/icons/*`; ntfy not behind Access. The app shows "Log in again" when it expires
-  - SSH lockdown
+  - ✅ SSH lockdown (Nov 17): keys only, root by key (`phone-termux`); the owner's workstation key comes later. See `pool-service/deploy/README.md` "SSH"
   - delete `~/pool-app-initial-password.txt` once the owner has changed the password
   - plan the move off Ubuntu 26.10 (short support) to 26.04 LTS
   - optionally set Remote Control back to asking permission

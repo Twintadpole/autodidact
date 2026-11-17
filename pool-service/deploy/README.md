@@ -122,3 +122,19 @@ then the server sends the browser back to `/`. The service worker never serves t
 `/cdn-cgi/` pages: Cloudflare saves its login at `/cdn-cgi/access/authorized`. Test: `e2e/access-expired.cjs` (simulated).
 
 Live e2e checks run against `http://127.0.0.1:3000/` on the VPS (not through Cloudflare).
+
+## SSH (keys only)
+
+`/etc/ssh/sshd_config.d/00-hardening.conf` (read before cloud-init's `50-cloud-init.conf`; sshd keeps
+the first value): password and keyboard-interactive logins off, root by key only
+(`PermitRootLogin prohibit-password`), `MaxAuthTries 3`, `LoginGraceTime 30`, `X11Forwarding no`.
+Nothing automated logs in over SSH; this Claude session (Remote Control), the tunnel, backups and
+alerts all connect outward or run locally.
+
+Keys in `/root/.ssh/authorized_keys`, one line per device, labelled at the end (`phone-termux`, …).
+**Add a device:** on it, `ssh-keygen -t ed25519 -C "<device-name>"`, then append its **public** key
+(`~/.ssh/id_ed25519.pub`) to that file from a logged-in session:
+`echo '<public key line>' | sudo tee -a /root/.ssh/authorized_keys`. Remove a lost device by deleting its line.
+
+**Locked out?** Use the hosting provider's web console, then
+`sudo rm /etc/ssh/sshd_config.d/00-hardening.conf && sudo systemctl reload ssh` brings password logins back.
