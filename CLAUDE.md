@@ -66,7 +66,11 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   - ✅ Cloudflare Access login (Nov 17): emailed code, 30-day session, locks `/api/*` only (app files stay open so updates download); open paths `/api/health`, `/manifest.json`, `/icons/*`; ntfy not behind Access. The app shows "Log in again" when it expires
   - ✅ SSH lockdown (Nov 17): keys only, root by key (`phone-termux`); the owner's workstation key comes later. See `pool-service/deploy/README.md` "SSH"
   - ✅ owner set their own app password (Nov 17); `~/pool-app-initial-password.txt` deleted; tests use e2e sessions
-  - plan the move off Ubuntu 26.10 (short support) to 26.04 LTS
+  - ~~move to a new 26.04 LTS VPS~~ declined (Nov 17). Instead, **before July 2027** (26.10 support ends), the owner
+    moves everything to an Ubuntu server in their **home lab**: Docker containers on a Docker network / trunk
+    network, **Traefik** in front, reached only through a **Cloudflare Tunnel** on the same Cloudflare domain.
+    The owner builds the server; Claude moves the app when it's ready. Keep new work portable: config in env and
+    `~/.config/…`, data in `data/`, no new host-only pieces where a container will do.
   - optionally set Remote Control back to asking permission
 - **Phase 7:**
   - desktop layout
