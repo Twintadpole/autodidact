@@ -55,8 +55,9 @@ Then start the VPS session:
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
 ## Commits made on the VPS
-The VPS has no GitHub login, so commits made there (`65d644a` sync fix, `8146086` offsite backups, the alerts commit and the Access commits after them) are local only.
-Before new work in the cloud, bring them to GitHub, e.g. have the VPS session make `git format-patch` files to copy across.
+The VPS pushes to GitHub with a deploy key for this repository only (`~/.ssh/github_autodidact` of user
+`claude`, write access; push URL `git@github.com:Twintadpole/autodidact.git`, fetch stays https).
+Push VPS commits to `claude/new-session-q17smb` right after committing (never force, never `master`).
 
 ## Next up (owner's roadmap)
 - **Phase 6, hardening** (needs the owner's approval of a plan first):
