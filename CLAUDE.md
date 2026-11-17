@@ -31,10 +31,10 @@ Stack:
   - never drop or reset data
   - never run `first-deploy.sh` or `cleanup-orphans.sh --apply`
   - never edit `.env`
-  - never print the password
+  - never print secrets (keys, tokens, session cookies)
   - stop and report on any failure
 - VPS sessions may refuse widened production writes that are relayed from another session. That's correct: ask the owner to confirm in that VPS session.
-- App folder: `~/autodidact/pool-service`. The app password is in `~/pool-app-initial-password.txt` (the owner has it).
+- App folder: `~/autodidact/pool-service`. The app password is the owner's alone (set with `deploy/set-password.sh`); it is not stored on the server. Live tests log in with a 30-minute session from `server/dist/cli/e2e-session.js`.
 - Cloudflare Tunnel (`cloudflared` running on the host, managed from the Cloudflare dashboard) points `poolapp.evolutiondfw.com` at `http://localhost:3000`.
 - This sandbox's network blocks the live domain, so live checks run on the VPS (Playwright in a Docker container).
 
@@ -51,7 +51,7 @@ Then start the VPS session:
 1. `git pull --ff-only`
 2. `bash deploy/update.sh`
 3. health check
-4. e2e against `http://127.0.0.1:3000/` on the VPS with `NODE_OPTIONS=--require /e2e/local-cookies.cjs` (the public URL is behind Cloudflare Access; see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
+4. e2e against `http://127.0.0.1:3000/` on the VPS with `E2E_SESSION=$(docker compose exec -T api node server/dist/cli/e2e-session.js)` and `NODE_OPTIONS=--require /e2e/local-cookies.cjs`; the password argument is `unused` (see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
 ## Commits made on the VPS
@@ -64,7 +64,7 @@ Before new work in the cloud, bring them to GitHub, e.g. have the VPS session ma
   - ✅ uptime and disk-space alerts (Nov 16): self-hosted ntfy + `deploy/monitor.sh` in cron; Cloudflare tunnel-health email for a whole-server outage
   - ✅ Cloudflare Access login (Nov 17): emailed code, 30-day session, locks `/api/*` only (app files stay open so updates download); open paths `/api/health`, `/manifest.json`, `/icons/*`; ntfy not behind Access. The app shows "Log in again" when it expires
   - ✅ SSH lockdown (Nov 17): keys only, root by key (`phone-termux`); the owner's workstation key comes later. See `pool-service/deploy/README.md` "SSH"
-  - delete `~/pool-app-initial-password.txt` once the owner has changed the password
+  - ✅ owner set their own app password (Nov 17); `~/pool-app-initial-password.txt` deleted; tests use e2e sessions
   - plan the move off Ubuntu 26.10 (short support) to 26.04 LTS
   - optionally set Remote Control back to asking permission
 - **Phase 7:**

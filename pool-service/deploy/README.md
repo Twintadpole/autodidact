@@ -6,7 +6,7 @@ The app runs with Docker Compose on the VPS, as the `claude` user, in `~/autodid
 | --- | --- | --- |
 | `bootstrap-claude-user.sh` | Once, as root, on a fresh VPS | Creates the `claude` user (sudo), sets up the firewall and swap, installs Claude Code, clones the repo |
 | `install-docker.sh` | Once: `sudo bash deploy/install-docker.sh` | Docker Engine and the compose plugin (Docker's repo, or Ubuntu's packages as a fallback); adds `claude` to the docker group |
-| `first-deploy.sh` | Once: `bash deploy/first-deploy.sh` | Builds the image, writes `.env` with a fresh session secret and a random app password (printed once and saved to `~/pool-app-initial-password.txt`), starts the stack, installs the nightly backup |
+| `first-deploy.sh` | Once: `bash deploy/first-deploy.sh` | Builds the image, writes `.env` with a fresh session secret and a random app password (printed once and saved to `~/pool-app-initial-password.txt`; delete that file once the owner has set their own password), starts the stack, installs the nightly backup |
 | `update.sh` | After each new version | Safety backup first, then `git pull` and rebuild/restart; compares record counts before and after and fails loudly if anything is missing. Data and `.env` are kept |
 | `cleanup-orphans.sh` | One-time (Nov 2026) | Lists visits, issues, notes and photos left under already-deleted pools/customers; `--apply <count>` hides exactly those (soft delete, after a safety backup). New deletes cascade on their own |
 | `restore-check.sh` | Any time (safe) | Restores the newest backup into a scratch database, compares it with the live one, then deletes the scratch copy. `--offsite` does the same with the newest R2 copy, after reading every byte of it (weekly, Sundays 04:47 UTC, cron, logs to `backups/restore-check.log`) |
@@ -23,14 +23,15 @@ curl -s http://127.0.0.1:3000/api/health
 ```
 
 **End-to-end check (phone-size browser, against the live app):** creates and then hides its own "E2E test" customer.
-The public URL is behind Cloudflare Access, so run on the VPS against `http://127.0.0.1:3000/`;
-`e2e/local-cookies.cjs` lets the test's own API calls send the app's Secure session cookie over plain http.
+The public URL's API is behind Cloudflare Access, so run on the VPS against `http://127.0.0.1:3000/`.
+No password is stored for the tests: `server/dist/cli/e2e-session.js` makes a 30-minute app session, and
+`e2e/local-cookies.cjs` starts each test browser with it (and answers the login screen itself).
 
 ```bash
-PW=$(cat ~/pool-app-initial-password.txt)
-sudo docker run --rm --network host -e PW="$PW" -v "$PWD/e2e:/e2e:ro" -v /tmp/e2e-out:/out mcr.microsoft.com/playwright:v1.56.1-noble \
+S=$(docker compose exec -T api node server/dist/cli/e2e-session.js)
+sudo docker run --rm --network host -e E2E_SESSION="$S" -v "$PWD/e2e:/e2e:ro" -v /tmp/e2e-out:/out mcr.microsoft.com/playwright:v1.56.1-noble \
   bash -c 'cd /tmp && npm i -s playwright@1.56.1 >/dev/null && NODE_PATH=/tmp/node_modules NODE_OPTIONS="--require /e2e/local-cookies.cjs" \
-  node /e2e/visit-extras.cjs http://127.0.0.1:3000/ "$PW" /out'
+  node /e2e/visit-extras.cjs http://127.0.0.1:3000/ unused /out'
 ```
 
 **Restore a backup:**
