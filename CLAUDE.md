@@ -51,18 +51,18 @@ Then start the VPS session:
 1. `git pull --ff-only`
 2. `bash deploy/update.sh`
 3. health check
-4. e2e against the public URL. Login limit: 5 per 15 min, so run at most 4 tests per deploy.
+4. e2e against `http://127.0.0.1:3000/` on the VPS with `NODE_OPTIONS=--require /e2e/local-cookies.cjs` (the public URL is behind Cloudflare Access; see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
 ## Commits made on the VPS
-The VPS has no GitHub login, so commits made there (`65d644a` sync fix, `8146086` offsite backups, and the alerts commit after them) are local only.
+The VPS has no GitHub login, so commits made there (`65d644a` sync fix, `8146086` offsite backups, the alerts commit and the Access commits after them) are local only.
 Before new work in the cloud, bring them to GitHub, e.g. have the VPS session make `git format-patch` files to copy across.
 
 ## Next up (owner's roadmap)
 - **Phase 6, hardening** (needs the owner's approval of a plan first):
   - ✅ encrypted offsite backups to Cloudflare R2 (Nov 16): restic, bucket `pool-backup`, keys in `~/.config/pool-backup/` on the VPS. See `pool-service/deploy/README.md`
   - ✅ uptime and disk-space alerts (Nov 16): self-hosted ntfy + `deploy/monitor.sh` in cron; Cloudflare tunnel-health email for a whole-server outage
-  - Cloudflare Access login
+  - ✅ Cloudflare Access login (Nov 17): emailed code, 30-day session; open paths `/api/health`, `/manifest.json`, `/icons/*`; ntfy not behind Access. The app shows "Log in again" when it expires
   - SSH lockdown
   - delete `~/pool-app-initial-password.txt` once the owner has changed the password
   - plan the move off Ubuntu 26.10 (short support) to 26.04 LTS

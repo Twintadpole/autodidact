@@ -22,12 +22,15 @@ docker compose logs -f api
 curl -s http://127.0.0.1:3000/api/health
 ```
 
-**End-to-end check (phone-size browser, against the live site):** creates and then deletes its own "E2E test" customer.
+**End-to-end check (phone-size browser, against the live app):** creates and then hides its own "E2E test" customer.
+The public URL is behind Cloudflare Access, so run on the VPS against `http://127.0.0.1:3000/`;
+`e2e/local-cookies.cjs` lets the test's own API calls send the app's Secure session cookie over plain http.
 
 ```bash
-PW=<app password>
-sudo docker run --rm --network host -v "$PWD/e2e:/e2e" -w /e2e mcr.microsoft.com/playwright:v1.56.1-noble \
-  bash -c "npm i -s playwright@1.56.1 >/dev/null && node phase3.cjs https://poolapp.evolutiondfw.com/ \"$PW\" /e2e/out"
+PW=$(cat ~/pool-app-initial-password.txt)
+sudo docker run --rm --network host -e PW="$PW" -v "$PWD/e2e:/e2e:ro" -v /tmp/e2e-out:/out mcr.microsoft.com/playwright:v1.56.1-noble \
+  bash -c 'cd /tmp && npm i -s playwright@1.56.1 >/dev/null && NODE_PATH=/tmp/node_modules NODE_OPTIONS="--require /e2e/local-cookies.cjs" \
+  node /e2e/visit-extras.cjs http://127.0.0.1:3000/ "$PW" /out'
 ```
 
 **Restore a backup:**
