@@ -62,7 +62,7 @@ Before new work in the cloud, bring them to GitHub, e.g. have the VPS session ma
 - **Phase 6, hardening** (needs the owner's approval of a plan first):
   - ✅ encrypted offsite backups to Cloudflare R2 (Nov 16): restic, bucket `pool-backup`, keys in `~/.config/pool-backup/` on the VPS. See `pool-service/deploy/README.md`
   - ✅ uptime and disk-space alerts (Nov 16): self-hosted ntfy + `deploy/monitor.sh` in cron; Cloudflare tunnel-health email for a whole-server outage
-  - ✅ Cloudflare Access login (Nov 17): emailed code, 30-day session; open paths `/api/health`, `/manifest.json`, `/icons/*`; ntfy not behind Access. The app shows "Log in again" when it expires
+  - ✅ Cloudflare Access login (Nov 17): emailed code, 30-day session, locks `/api/*` only (app files stay open so updates download); open paths `/api/health`, `/manifest.json`, `/icons/*`; ntfy not behind Access. The app shows "Log in again" when it expires
   - SSH lockdown
   - delete `~/pool-app-initial-password.txt` once the owner has changed the password
   - plan the move off Ubuntu 26.10 (short support) to 26.04 LTS

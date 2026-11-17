@@ -103,12 +103,14 @@ Manage ntfy accounts: `docker compose exec ntfy ntfy user list` (see `ntfy user 
 
 ## Cloudflare Access (emailed-code login)
 
-Access (Cloudflare Zero Trust → Access → Applications) sits in front of `poolapp.evolutiondfw.com`:
+Access (Cloudflare Zero Trust → Access → Applications) sits in front of the API of `poolapp.evolutiondfw.com`.
+The app's own files (screens, icons, service worker) stay open: they hold no data, and the phone must be
+able to download app updates even while its Access login has expired.
 
 | Access application | Policy | Why |
 | --- | --- | --- |
-| `poolapp.evolutiondfw.com` | **Allow**: the owner's email, login method One-time PIN; session 30 days | the app |
-| `poolapp.evolutiondfw.com/api/health` | **Bypass**: Everyone | `monitor.sh app` (every 5 min) and the boot report |
+| `poolapp.evolutiondfw.com/api/*` (app "Pool app") | **Allow**: the owner's email, login method One-time PIN; session 30 days | all data and the app's own login |
+| `poolapp.evolutiondfw.com/api/health` (app "Pool app – open paths") | **Bypass**: Everyone | `monitor.sh app` (every 5 min) and the boot report |
 | `poolapp.evolutiondfw.com/manifest.json`, `/icons/` | **Bypass**: Everyone | the home-screen app (browsers fetch these without cookies) |
 
 `ntfy.evolutiondfw.com` is **not** behind Access (the ntfy app can't do the login; it has its own).
@@ -116,6 +118,7 @@ Access (Cloudflare Zero Trust → Access → Applications) sits in front of `poo
 When the Access login expires, API calls get a redirect to Cloudflare instead of an answer. The app
 (`client/src/offline/access.ts`) uses `redirect: 'manual'` to spot it, keeps the outbox waiting, and
 shows "Cloudflare login needed · Log in again", which opens `/api/access-login`: Cloudflare's login,
-then the server sends the browser back to `/`. Test: `e2e/access-expired.cjs` (simulated).
+then the server sends the browser back to `/`. The service worker never serves the app for
+`/cdn-cgi/` pages: Cloudflare saves its login at `/cdn-cgi/access/authorized`. Test: `e2e/access-expired.cjs` (simulated).
 
 Live e2e checks run against `http://127.0.0.1:3000/` on the VPS (not through Cloudflare).
