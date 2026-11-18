@@ -12,6 +12,9 @@ import {
   customer,
   applyIssueStatus,
   routeSlot,
+  invoiceBalance,
+  invoiceState,
+  invoiceTotal,
 } from './index.js';
 
 const POOL_ID = '019a3c4e-0000-7000-8000-000000000001';
@@ -168,3 +171,21 @@ describe('routeSlot (one-time dates, Phase 7B)', () => {
   });
 });
 
+
+describe('invoice math and status (Phase 7B)', () => {
+  const now = new Date(2026, 10, 18, 12, 0);
+  const inv = (over: Record<string, unknown> = {}) => ({ lines: [{ amount: 150 }, { amount: 0.1 }, { amount: 0.2 }], payments: [] as { amount: number }[], status: 'sent' as const, dueDate: '2026-11-30', ...over });
+  it('adds up in cents', () => {
+    expect(invoiceTotal(inv())).toBe(150.3);
+    expect(invoiceBalance(inv({ payments: [{ amount: 100.1 }] }))).toBe(50.2);
+  });
+  it('draft, sent, part-paid, paid, overdue, void', () => {
+    expect(invoiceState(inv({ status: 'draft' }), now)).toBe('draft');
+    expect(invoiceState(inv(), now)).toBe('sent');
+    expect(invoiceState(inv({ payments: [{ amount: 50 }] }), now)).toBe('sent');
+    expect(invoiceState(inv({ payments: [{ amount: 150.3 }] }), now)).toBe('paid');
+    expect(invoiceState(inv({ dueDate: '2026-11-17' }), now)).toBe('overdue');
+    expect(invoiceState(inv({ dueDate: '2026-11-18' }), now)).toBe('sent'); // due today: not overdue yet
+    expect(invoiceState(inv({ status: 'void', payments: [{ amount: 150.3 }] }), now)).toBe('void');
+  });
+});

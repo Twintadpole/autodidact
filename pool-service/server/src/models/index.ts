@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model } from 'mongoose';
-import { CUSTOMER_STATUSES, EQUIPMENT_KINDS, ISSUE_STATUSES, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
+import { BILLING_TIMINGS, CUSTOMER_STATUSES, EQUIPMENT_KINDS, INVOICE_STATUSES, INVOICE_TERMS, ISSUE_STATUSES, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
 
 /**
  * Every document:
@@ -106,6 +106,8 @@ const visitSchema = makeSchema({
         chemicalId: { type: String, required: true },
         amount: { type: Number, required: true },
         unit: { type: String, enum: UNITS, required: true },
+        /** Owner-only cost when saved (Phase 7B). */
+        cost: Number,
       },
       { _id: false },
     ),
@@ -125,6 +127,9 @@ const visitSchema = makeSchema({
     segments: [new Schema({ start: { type: Date, required: true }, end: { type: Date, default: null } }, { _id: false })],
     finished: { type: Boolean, default: false },
   },
+  // Phase 7B: written for the customer's recap; when one was sent.
+  customerNote: String,
+  recapSentAt: Date,
 });
 visitSchema.index({ poolId: 1, visitedAt: -1 });
 // Finds running timers quickly (Route list chip, one-timer-at-a-time rule).
@@ -135,6 +140,48 @@ const chemicalSchema = makeSchema({
   name: { type: String, required: true },
   defaultUnit: { type: String, enum: UNITS, required: true },
   active: { type: Boolean, default: true },
+  // Phase 7B, owner-only.
+  price: Number,
+  priceUnit: { type: String, enum: [...UNITS, null] },
+});
+
+// ---------------------------------------------------------------- business settings (one record, Phase 7B)
+const settingsSchema = makeSchema({
+  businessName: String,
+  address: { type: addressSchema, default: undefined },
+  phone: String,
+  email: String,
+  logoDataUrl: String,
+  paymentInstructions: String,
+  terms: { type: String, enum: [...INVOICE_TERMS, null] },
+  billingTiming: { type: String, enum: [...BILLING_TIMINGS, null] },
+  firstInvoiceNumber: Number,
+});
+
+// ---------------------------------------------------------------- invoices (Phase 7B)
+const invoiceSchema = makeSchema({
+  customerId: { type: String, required: true, index: true },
+  // Not unique: two offline devices could pick the same number; the app warns instead of failing a sync.
+  number: { type: Number, required: true, index: true },
+  period: String,
+  issueDate: { type: Date, required: true },
+  dueDate: Date,
+  lines: [new Schema({ _id: { type: String, required: true }, description: { type: String, default: '' }, amount: { type: Number, required: true } }, { _id: false })],
+  notes: String,
+  status: { type: String, enum: INVOICE_STATUSES, default: 'draft' },
+  sentAt: Date,
+  payments: [
+    new Schema(
+      {
+        _id: { type: String, required: true },
+        date: { type: Date, required: true },
+        amount: { type: Number, required: true },
+        method: { type: String, enum: [...PAYMENT_METHODS, null] },
+        reference: String,
+      },
+      { _id: false },
+    ),
+  ],
 });
 
 // ---------------------------------------------------------------- issues
@@ -234,6 +281,8 @@ export const Chemical = model('Chemical', chemicalSchema, 'chemicals');
 export const Issue = model('Issue', issueSchema, 'issues');
 export const Note = model('Note', noteSchema, 'notes');
 export const Photo = model('Photo', photoSchema, 'photos');
+export const Settings = model('Settings', settingsSchema, 'settings');
+export const Invoice = model('Invoice', invoiceSchema, 'invoices');
 export const SyncLog = model('SyncLog', syncLogSchema, 'syncLog');
 export const SessionDoc = model('Session', sessionSchema, 'sessions');
 export const AuditLog = model('AuditLog', auditLogSchema, 'auditLog');
@@ -247,6 +296,8 @@ export const SYNC_MODELS = {
   issues: Issue,
   notes: Note,
   photos: Photo,
+  settings: Settings,
+  invoices: Invoice,
 } as const;
 
 /** Create collections and indexes up front (transactions can't create collections implicitly on older servers). */

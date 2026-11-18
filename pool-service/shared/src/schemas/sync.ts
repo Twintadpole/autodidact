@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { dateSchema, idSchema } from './common.js';
-import { chemical, customer, issue, note, photo, pool, visit } from './collections.js';
+import { chemical, customer, invoice, issue, note, photo, pool, settings, visit } from './collections.js';
 
 /**
  * One "package": a batch of changes made on the phone, queued in its outbox and
@@ -26,6 +26,9 @@ export const syncPackageSchema = z
     /** Metadata only; the image bytes travel as multipart files named by photo `_id`. */
     photos: z.array(photo.doc).default([]),
     weekToggle: z.object({ done: z.boolean(), at: dateSchema }).optional(),
+    /** Business settings (Phase 7B). */
+    settings: z.array(settings.doc).default([]),
+    invoices: z.array(invoice.doc).default([]),
     /** Reset week pressed offline: clears checkmarks set before `at`. */
     resetWeek: z.object({ at: dateSchema }).optional(),
   })
@@ -57,7 +60,7 @@ export const syncPullQuerySchema = z.object({
   since: dateSchema.optional(),
 });
 
-export const SYNC_COLLECTIONS = ['customers', 'pools', 'visits', 'chemicals', 'issues', 'notes', 'photos'] as const;
+export const SYNC_COLLECTIONS = ['customers', 'pools', 'visits', 'chemicals', 'issues', 'notes', 'photos', 'settings', 'invoices'] as const;
 export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];
 
 export interface SyncPullResponse {
@@ -69,6 +72,8 @@ export interface SyncPullResponse {
   issues: z.infer<typeof issue.doc>[];
   notes: z.infer<typeof note.doc>[];
   photos: z.infer<typeof photo.doc>[];
+  settings: z.infer<typeof settings.doc>[];
+  invoices: z.infer<typeof invoice.doc>[];
 }
 
 export interface SyncPackageResponse {
@@ -82,6 +87,8 @@ export interface SyncPackageResponse {
     issues: number;
     notes: number;
     photos: number;
+    settings: number;
+    invoices: number;
     weekToggle: boolean;
     resetWeek: number;
   };

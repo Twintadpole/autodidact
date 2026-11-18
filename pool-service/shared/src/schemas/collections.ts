@@ -104,6 +104,8 @@ export const doseSchema = z.object({
   chemicalId: idSchema,
   amount: z.number().positive(),
   unit: z.enum(UNITS),
+  /** Owner-only: what this dose cost (USD) when the visit was saved. Never on invoices or recaps. */
+  cost: z.number().nonnegative().nullable().optional(),
 });
 export type Dose = z.infer<typeof doseSchema>;
 
@@ -182,14 +184,22 @@ export const visit = collectionSchemas({
   tasks: tasksSchema.default({ ...EMPTY_TASKS }),
   notes: z.string().optional(),
   timeLog: timeLogSchema.default({ segments: [], finished: false }),
+  /** Written for the customer (visit recap); `notes` stay private. */
+  customerNote: z.string().optional(),
+  /** When a recap of this visit was last sent. */
+  recapSentAt: dateSchema.nullable().optional(),
 });
 export type Visit = z.infer<typeof visit.doc>;
+export const VISIT_PRESERVED_FIELDS = ['customerNote', 'recapSentAt'] as const;
 
 // ---------------------------------------------------------------- chemicals
 export const chemical = collectionSchemas({
   name: z.string().trim().min(1),
   defaultUnit: z.enum(UNITS),
   active: z.boolean().default(true),
+  /** Owner-only price, e.g. 4.5 per gal. */
+  price: z.number().nonnegative().nullable().optional(),
+  priceUnit: z.enum(UNITS).nullable().optional(),
 });
 export type Chemical = z.infer<typeof chemical.doc>;
 
@@ -256,3 +266,83 @@ export const photo = collectionSchemas({
   caption: z.string().optional(),
 });
 export type Photo = z.infer<typeof photo.doc> & { file?: string };
+
+// ---------------------------------------------------------------- business settings (one record)
+/** The single business-settings record's ID. */
+export const BUSINESS_SETTINGS_ID = '00000000-0000-4000-8000-000000000001';
+export const INVOICE_TERMS = ['receipt', 'net15', 'net30'] as const;
+export type InvoiceTerms = (typeof INVOICE_TERMS)[number];
+export const BILLING_TIMINGS = ['start', 'end'] as const;
+export type BillingTiming = (typeof BILLING_TIMINGS)[number];
+
+/** Everything optional. Missing terms = due on receipt; timing = start of month; first number = 1001. */
+export const settings = collectionSchemas({
+  businessName: z.string().trim().optional(),
+  address: addressSchema.optional(),
+  phone: z.string().trim().optional(),
+  email: z.string().trim().optional(),
+  /** Small logo image as a data: URL (shown on invoices). */
+  logoDataUrl: z.string().max(600_000).optional(),
+  /** Printed on every invoice, e.g. "Checks payable to … · Zelle: …". */
+  paymentInstructions: z.string().optional(),
+  terms: z.enum(INVOICE_TERMS).nullable().optional(),
+  billingTiming: z.enum(BILLING_TIMINGS).nullable().optional(),
+  firstInvoiceNumber: z.number().int().positive().nullable().optional(),
+});
+export type Settings = z.infer<typeof settings.doc>;
+
+// ---------------------------------------------------------------- invoices
+export const INVOICE_STATUSES = ['draft', 'sent', 'void'] as const;
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
+export const invoiceLineSchema = z.object({
+  _id: idSchema,
+  description: z.string().trim().default(''),
+  /** Dollars; negative for a discount. */
+  amount: z.number(),
+});
+export const paymentSchema = z.object({
+  _id: idSchema,
+  date: dateSchema,
+  amount: z.number().positive(),
+  method: z.enum(PAYMENT_METHODS).nullable().optional(),
+  /** Check number or transfer reference. */
+  reference: z.string().trim().optional(),
+});
+
+/** Payments live on their invoice. Paid and overdue are worked out (see invoiceState). */
+export const invoice = collectionSchemas({
+  customerId: idSchema,
+  number: z.number().int().positive(),
+  /** Month billed, "2026-11". */
+  period: z.string().regex(/^\d{4}-\d{2}$/).nullable().optional(),
+  issueDate: dateSchema,
+  dueDate: dateSchema.nullable().optional(),
+  lines: z.array(invoiceLineSchema).default([]),
+  /** Printed on the invoice for the customer. */
+  notes: z.string().optional(),
+  status: z.enum(INVOICE_STATUSES).default('draft'),
+  sentAt: dateSchema.nullable().optional(),
+  payments: z.array(paymentSchema).default([]),
+});
+export type Invoice = z.infer<typeof invoice.doc>;
+
+const cents = (n: number) => Math.round(n * 100);
+type InvoiceLike = { lines: { amount: number }[]; payments: { amount: number }[]; status: InvoiceStatus; dueDate?: Date | string | null };
+export const invoiceTotal = (i: InvoiceLike) => i.lines.reduce((s, l) => s + cents(l.amount), 0) / 100;
+export const invoicePaid = (i: InvoiceLike) => i.payments.reduce((s, p) => s + cents(p.amount), 0) / 100;
+export const invoiceBalance = (i: InvoiceLike) => (cents(invoiceTotal(i)) - cents(invoicePaid(i))) / 100;
+
+/** What the owner sees: draft, sent, paid, overdue or void. */
+export function invoiceState(i: InvoiceLike, now: Date = new Date()): 'draft' | 'sent' | 'paid' | 'overdue' | 'void' {
+  if (i.status === 'void') return 'void';
+  if (invoiceBalance(i) <= 0 && (i.status === 'sent' || i.payments.length)) return 'paid';
+  if (i.status === 'draft') return 'draft';
+  if (i.dueDate) {
+    const due = new Date(new Date(i.dueDate).toISOString().slice(0, 10) + 'T23:59:59');
+    if (due < now) return 'overdue';
+  }
+  return 'sent';
+}
+
+export const CHEMICAL_PRESERVED_FIELDS = ['price', 'priceUnit'] as const;

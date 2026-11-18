@@ -154,3 +154,42 @@ describe('7B: one-time service date', () => {
     expect(await Pool.findById(base._id).lean<Record<string, any>>()).toMatchObject({ oneTimeDate: null, serviceDay: 'wed' });
   });
 });
+
+describe('7B: settings, invoices, prices', () => {
+  it('business settings and an invoice with a payment sync up and come back down', async () => {
+    const at = later();
+    const s = { _id: '00000000-0000-4000-8000-000000000001', businessName: 'Evolution Home Solutions', terms: 'net15', firstInvoiceNumber: 1001, createdAt: at, updatedAt: at };
+    const c = { _id: newId(), name: 'Invoice Ivy', createdAt: at, updatedAt: at };
+    const inv = {
+      _id: newId(),
+      customerId: c._id,
+      number: 1001,
+      period: '2026-11',
+      issueDate: '2026-11-01',
+      dueDate: '2026-11-16',
+      lines: [{ _id: newId(), description: 'Monthly pool service · November 2026', amount: 150 }],
+      status: 'sent',
+      sentAt: at,
+      payments: [{ _id: newId(), date: '2026-11-05', amount: 100, method: 'check', reference: '#2231' }],
+      createdAt: at,
+      updatedAt: at,
+    };
+    const res = await post(pkg({ customers: [c], settings: [s], invoices: [inv] }));
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().applied).toMatchObject({ settings: 1, invoices: 1 });
+    const pull = (await ctx.app.inject({ method: 'GET', url: '/api/sync/pull', headers: { cookie } })).json();
+    expect(pull.settings.find((x: any) => x._id === s._id)).toMatchObject({ businessName: 'Evolution Home Solutions', terms: 'net15' });
+    expect(pull.invoices.find((x: any) => x._id === inv._id)).toMatchObject({ number: 1001, payments: [{ amount: 100, method: 'check', reference: '#2231' }] });
+  });
+
+  it('a chemical price and visit recap fields survive an older app', async () => {
+    let at = later();
+    const chem = { _id: newId(), name: 'Liquid chlorine 7B', defaultUnit: 'gal', active: true, price: 4.5, priceUnit: 'gal', createdAt: at, updatedAt: at };
+    expect((await post(pkg({ chemicals: [chem] }))).statusCode).toBe(200);
+    at = later();
+    const { price: _p, priceUnit: _u, ...oldChem } = chem;
+    expect((await post(pkg({ chemicals: [{ ...oldChem, name: 'Liquid chlorine 12.5%', updatedAt: at }] }))).statusCode).toBe(200);
+    const pull = (await ctx.app.inject({ method: 'GET', url: '/api/sync/pull', headers: { cookie } })).json();
+    expect(pull.chemicals.find((x: any) => x._id === chem._id)).toMatchObject({ name: 'Liquid chlorine 12.5%', price: 4.5, priceUnit: 'gal' });
+  });
+});

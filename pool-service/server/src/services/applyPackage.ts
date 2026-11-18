@@ -1,6 +1,6 @@
 import mongoose, { type ClientSession, type Model } from 'mongoose';
-import { applyIssueStatus, CUSTOMER_PRESERVED_FIELDS, POOL_PRESERVED_FIELDS, type SyncPackage, type SyncPackageResponse } from '@pool/shared';
-import { Chemical, Customer, Issue, Note, Photo, Pool, SyncLog, Visit } from '../models/index.js';
+import { applyIssueStatus, CHEMICAL_PRESERVED_FIELDS, CUSTOMER_PRESERVED_FIELDS, POOL_PRESERVED_FIELDS, VISIT_PRESERVED_FIELDS, type SyncPackage, type SyncPackageResponse } from '@pool/shared';
+import { Chemical, Customer, Invoice, Issue, Note, Photo, Pool, Settings, SyncLog, Visit } from '../models/index.js';
 import { cascadeCustomerDelete, cascadePoolDelete } from './cascade.js';
 import { HttpError } from '../util.js';
 import { diff, recordAudit } from './audit.js';
@@ -66,6 +66,8 @@ const EMPTY_APPLIED = (): ApplyResult['applied'] => ({
   issues: 0,
   notes: 0,
   photos: 0,
+  settings: 0,
+  invoices: 0,
   weekToggle: false,
   resetWeek: 0,
 });
@@ -129,7 +131,14 @@ export async function applyPackage(pkg: SyncPackage, opts: ApplyOptions): Promis
         }
       }
       for (const raw of pkg.chemicals) {
-        if ((await upsertLww(Chemical, clampClock(raw, now), session, now)) !== 'stale') applied.chemicals++;
+        if ((await upsertLww(Chemical, clampClock(raw, now), session, now, [...CHEMICAL_PRESERVED_FIELDS])) !== 'stale') applied.chemicals++;
+      }
+      // Phase 7B: business settings and invoices (payments travel on their invoice).
+      for (const raw of pkg.settings) {
+        if ((await upsertLww(Settings, clampClock(raw, now), session, now)) !== 'stale') applied.settings++;
+      }
+      for (const raw of pkg.invoices) {
+        if ((await upsertLww(Invoice, clampClock(raw, now), session, now)) !== 'stale') applied.invoices++;
       }
 
       const pool = pkg.poolId ? await Pool.findById(pkg.poolId).session(session).lean<Record<string, any>>() : null;
@@ -141,7 +150,7 @@ export async function applyPackage(pkg: SyncPackage, opts: ApplyOptions): Promis
           const found = await Chemical.countDocuments({ _id: { $in: chemicalIds } }).session(session);
           if (found !== chemicalIds.length) throw new HttpError(422, 'Visit references an unknown chemical');
         }
-        if ((await upsertLww(Visit, clampClock(pkg.visit, now), session, now)) !== 'stale') applied.visit = 1;
+        if ((await upsertLww(Visit, clampClock(pkg.visit, now), session, now, [...VISIT_PRESERVED_FIELDS])) !== 'stale') applied.visit = 1;
       }
 
       for (const incoming of pkg.issues) {

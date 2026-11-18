@@ -6,14 +6,16 @@ import {
   chemical,
   customer,
   idSchema,
+  invoice,
   ISSUE_STATUSES,
   issue,
   NOTE_PARENT_TYPES,
   note,
   pool,
   SERVICE_DAYS,
+  settings,
 } from '@pool/shared';
-import { AuditLog, Chemical, Customer, Issue, Note, Pool, Visit } from '../models/index.js';
+import { AuditLog, Chemical, Customer, Invoice, Issue, Note, Pool, Settings, Visit } from '../models/index.js';
 import { registerCrud } from '../services/crud.js';
 import { cascadeCustomerDelete, cascadePoolDelete } from '../services/cascade.js';
 import { queryBool } from '../util.js';
@@ -41,6 +43,17 @@ export const resourceRoutes: FastifyPluginAsync = async (parent) => {
       ...(q.active !== undefined && { active: q.active }),
     }),
   });
+
+  // Phase 7B. Invoices are kept when their customer is deleted (financial records).
+  registerCrud(app, {
+    path: '/invoices',
+    model: Invoice,
+    schemas: invoice,
+    sort: { number: -1 },
+    listQuery: z.object({ customerId: idSchema.optional() }),
+    toFilter: (q) => (q.customerId ? { customerId: q.customerId } : {}),
+  });
+  registerCrud(app, { path: '/settings', model: Settings, schemas: settings, sort: { _id: 1 } });
 
   registerCrud(app, {
     path: '/chemicals',
