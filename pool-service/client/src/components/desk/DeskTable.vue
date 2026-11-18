@@ -1,11 +1,12 @@
 <template>
   <div class="desk-table column q-gutter-sm">
     <!-- Toolbar: search, the page's own filters, columns -->
-    <div class="row items-center q-gutter-sm no-wrap">
+    <div class="row items-center q-gutter-sm">
       <q-input v-model="search" dense outlined clearable debounce="150" placeholder="Search" class="desk-search" data-test="table-search">
         <template #prepend><q-icon name="search" /></template>
       </q-input>
-      <slot name="filters" />
+      <!-- Filters scroll sideways in their own box on a narrow screen -->
+      <div class="desk-filters row no-wrap items-center q-gutter-sm"><slot name="filters" /></div>
       <q-space />
       <slot name="actions" />
       <q-btn flat dense no-caps icon="download" label="Export" :loading="exporting" data-test="table-export">
@@ -216,8 +217,23 @@ defineExpose({ shown, required });
 </script>
 
 <style scoped>
+/* Never wider than the page: a wide table scrolls sideways inside its own box. */
+.desk-table {
+  min-width: 0;
+  max-width: 100%;
+}
+.desk-table > * {
+  min-width: 0;
+  max-width: 100%;
+}
 .desk-search {
-  width: 260px;
+  width: min(260px, 100%);
+}
+.desk-filters {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-left: 0;
+  padding-left: 8px;
 }
 .desk-q-table :deep(tbody tr) {
   cursor: pointer;

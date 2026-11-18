@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased: polish (November 2026)
+
+- Desktop view on a phone: the header keeps room for the page title (Cards and Phone view show as icons), and
+  tables, filters and quick-entry rows fit the screen (a wide table scrolls sideways in its own box).
+- Desktop menu: "1 issue", not "1 issues". Business details keeps a form width on a computer.
+
 ## v0.2.0 (November 18, 2026)
 
 Fuller customer records, invoices and money tools, a desktop view with a card dashboard, and exports.

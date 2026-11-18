@@ -11,7 +11,7 @@
         <q-chip clickable dense :color="chip.color" text-color="white" :icon="chip.icon" class="q-mr-sm" data-test="sync-chip" @click="router.push('/more/sync')">
           {{ chip.label }}
         </q-chip>
-        <q-btn flat no-caps icon="smartphone" label="Phone view" data-test="phone-view" @click="toPhone" />
+        <q-btn flat no-caps icon="smartphone" :label="$q.screen.gt.xs ? 'Phone view' : undefined" aria-label="Phone view" data-test="phone-view" @click="toPhone" />
       </q-toolbar>
     </q-header>
 
@@ -23,7 +23,7 @@
             <q-item-section avatar><q-icon :name="item.icon" /></q-item-section>
             <q-item-section>{{ item.label }}</q-item-section>
             <q-item-section v-if="item.key === 'route' && openCount" side>
-              <q-badge :color="doNowCount ? 'negative' : 'orange-8'" :label="`${openCount} issues`" />
+              <q-badge :color="doNowCount ? 'negative' : 'orange-8'" :label="`${openCount} issue${openCount === 1 ? '' : 's'}`" />
             </q-item-section>
           </q-item>
         </template>
@@ -39,7 +39,8 @@
       </q-list>
     </q-drawer>
 
-    <q-page-container>
+    <!-- Screens borrowed from the phone (Business details) keep a form width. -->
+    <q-page-container :class="{ 'desk-narrow': route.meta.narrow }">
       <q-banner v-if="loadError" class="bg-red-1 text-negative" dense>
         <template #avatar><q-icon name="cloud_off" /></template>
         {{ loadError }}
@@ -114,6 +115,9 @@ watch(
 </script>
 
 <style scoped>
+.desk-narrow :deep(.q-page) {
+  max-width: 820px;
+}
 .header-sub {
   opacity: 0.85;
 }
@@ -133,5 +137,17 @@ watch(
   padding: 6px 8px;
   margin-left: 0;
   margin-top: 0;
+}
+/* On a phone the quick-entry fields stack, one per line. */
+@media (max-width: 599px) {
+  .quick-row > * {
+    flex: 1 1 100% !important;
+    width: auto !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+  }
+  .quick-row > .q-icon {
+    display: none;
+  }
 }
 </style>

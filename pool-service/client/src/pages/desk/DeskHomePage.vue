@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <Teleport defer to="#header-actions">
-      <q-btn flat no-caps icon="dashboard_customize" label="Cards" data-test="dash-cards">
+      <q-btn flat no-caps icon="dashboard_customize" :label="$q.screen.gt.xs ? 'Cards' : undefined" aria-label="Cards" data-test="dash-cards">
         <q-menu>
           <q-list dense style="min-width: 240px">
             <q-item-label header>Show on the dashboard</q-item-label>

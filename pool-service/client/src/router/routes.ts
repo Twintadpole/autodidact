@@ -8,6 +8,8 @@ declare module 'vue-router' {
     title?: string;
     /** Show a back arrow instead of the tab title. */
     back?: boolean;
+    /** Desktop view: keep a form width (screens borrowed from the phone). */
+    narrow?: boolean;
   }
 }
 
@@ -56,7 +58,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'mileage', name: 'desk-mileage', component: () => import('@/pages/desk/DeskLedgerPage.vue'), props: { mileage: true }, meta: { title: 'Mileage' } },
       { path: 'visits', name: 'desk-visits', component: () => import('@/pages/desk/DeskVisitsPage.vue'), meta: { title: 'Visits' } },
       { path: 'chemicals', name: 'desk-chemicals', component: () => import('@/pages/desk/DeskChemicalsPage.vue'), meta: { title: 'Chemicals' } },
-      { path: 'business', name: 'desk-business', component: () => import('@/pages/BusinessPage.vue'), meta: { title: 'Business details' } },
+      { path: 'business', name: 'desk-business', component: () => import('@/pages/BusinessPage.vue'), meta: { title: 'Business details', narrow: true } },
     ],
   },
   { path: '/:catchAll(.*)*', redirect: '/' },
