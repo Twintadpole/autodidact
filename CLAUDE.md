@@ -66,6 +66,20 @@ Then start the VPS session:
 - Owner still to do: business phone/email/address/payment instructions, rate per mile, monthly rates,
   distances, chemical prices. Later: a workstation SSH key (append its public key to root's authorized_keys).
 
+## Remote Control auto-start (Nov 18)
+- `~/.local/bin/start-remote-control.sh` (host only, not in the repo) starts `claude remote-control
+  --permission-mode bypassPermissions` in tmux session `claude` (in `~/autodidact`), trying `--continue` first so
+  the last session reattaches. Run by user `claude`'s crontab `@reboot sleep 45 && …`; log in
+  `~/.local/state/remote-control-boot.log`. Commit identity on the VPS: `-c user.name=Claude -c user.email=noreply@anthropic.com`.
+
+## Open items after v0.2.0 (assessment, Nov 18)
+- Data still blank in the app: monthly rates (0 of 11 customers), distances (0), chemical prices (0 of 11),
+  business phone/email/address/payment instructions/rate per mile, equipment (0 pools). Money screens read $0 until filled.
+- Ask the owner: do they hold a copy of `restic-password` off the server (without it the R2 backups can't be read)?
+- Ideas raised, not approved: "log out everywhere" (lost phone), an alert when the server needs a reboot after
+  updates, purge of the ~54 hidden E2E test customers on live (owner decision; never `cleanup-orphans.sh --apply`
+  without approval), mileage purpose field for the IRS log.
+
 ## Commits made on the VPS
 The VPS pushes to GitHub with a deploy key for this repository only (`~/.ssh/github_autodidact` of user
 `claude`, write access; push URL `git@github.com:Twintadpole/autodidact.git`, fetch stays https).
