@@ -54,6 +54,18 @@ Then start the VPS session:
 4. e2e against `http://127.0.0.1:3000/` on the VPS with `E2E_SESSION=$(docker compose exec -T api node server/dist/cli/e2e-session.js)` and `NODE_OPTIONS=--require /e2e/local-cookies.cjs`; the password argument is `unused` (see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
+## Session handoff (Nov 18)
+- The cloud ↔ VPS bridge described above was not used in the Nov 14–18 sessions: the owner talked to Claude
+  running ON the VPS (Remote Control, user `claude`, `~/autodidact`), which built, tested and deployed directly.
+- How work was tested there: a throwaway copy (`rsync` to `/tmp/pstest`, `node:22` container for typecheck/tests,
+  `docker build -f server/Dockerfile`, throwaway mongo + api on 127.0.0.1:3300), Playwright in
+  `mcr.microsoft.com/playwright:v1.56.1-noble` with `E2E_SESSION` + `e2e/local-cookies.cjs`, then
+  `deploy/update.sh`, live e2e on 127.0.0.1:3000, `cleanup-orphans.sh` (dry run), `record_counts`.
+- Bug class seen twice: live (reactive) objects stored in IndexedDB fail silently. `commit()` and
+  `putInvoices()` now store plain copies (`clone`); keep doing that for any new `db.*.put`.
+- Owner still to do: business phone/email/address/payment instructions, rate per mile, monthly rates,
+  distances, chemical prices. Later: a workstation SSH key (append its public key to root's authorized_keys).
+
 ## Commits made on the VPS
 The VPS pushes to GitHub with a deploy key for this repository only (`~/.ssh/github_autodidact` of user
 `claude`, write access; push URL `git@github.com:Twintadpole/autodidact.git`, fetch stays https).
@@ -95,8 +107,24 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     the whole month's chemicals − mileage − expenses), ÷ the month's hours = average $/h; each visit's $/h =
     (month profit ÷ visits) ÷ that visit's time; current month "In progress", past months final. Shown on the
     Money screen (business side); year views list months.
-  - **7D desktop layout (owner's words, Nov 18):** a dashboard of **cards** the owner can show/hide, grow,
-    shrink and open fullscreen. Sizing is reactive: big cards show tools to view, hide and format data;
-    small cards show a few fields or part of a graph. Plan it for approval before building.
+  - ✅ **7C follow-up deployed Nov 18:** per-hour report is by month with each visit's $/h (`customerHours.ts`).
+  - **7D desktop (plan proposed Nov 18, NOT yet approved; owner's questions below still open):**
+    - Owner's words: a dashboard of **cards** to show/hide, grow, shrink and open fullscreen; reactive sizing
+      (big cards show tools to view, hide and format data; small cards show a few fields or part of a graph).
+      The dashboard is for viewing and planning; the owner ALSO wants plain "accounting-style" screens
+      (tables) for details and entering data. Phone app unchanged.
+    - Proposed: (1) desktop shell: side menu (Dashboard · Route · Customers · Invoices · Payments · Expenses &
+      income · Mileage · Visits · Chemicals · Business details) and sortable/filterable tables with totals,
+      edit-in-side-panel and a quick-entry row; (2) dashboard framework (show/hide, drag, resize S/M/L/full,
+      fullscreen, saved layout, size-aware content via the card's real size) + first ~6 cards;
+      (3) remaining cards + fullscreen tools (date range, filters, series/column toggles, number format,
+      zoom into part of a chart, export). Charts: Apache ECharts (Apache-2.0). Dashboard history comes
+      from the server; shows last loaded figures offline.
+    - Card list proposed: today/week, money (12-month trend), owed + ageing, $/hour by customer,
+      chemical costs, water problems, open issues, customers pipeline, visit times, equipment age,
+      mileage, system (backups/alerts).
+    - **Open questions to ask first:** which ~6 cards first (suggested: today/week, money, owed,
+      $/hour, chemicals, issues); layout follows the owner to any computer or per computer (suggested:
+      follows); dashboard on the phone too; OK with ECharts.
   - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
