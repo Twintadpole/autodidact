@@ -1,49 +1,58 @@
-import { invoiceTotal, timeLogSeconds } from '@pool/shared';
-import { BUSINESS_SETTINGS_ID } from '@pool/shared';
+import { BUSINESS_SETTINGS_ID, invoiceTotal, timeLogSeconds } from '@pool/shared';
 import { Customer, Invoice, Ledger, Pool, Settings, Visit } from '../models/index.js';
 
 /**
- * What the owner earned per hour from each customer over a period (Phase 7C):
+ * What the owner earns per hour from each customer, month by month (Phase 7C, as the owner asked):
  *
- *   (billed − chemical costs − mileage cost estimate − expenses linked to them) ÷ hours on site
+ *   month profit = billed − that month's chemicals (all of them) − mileage − expenses for them
+ *   average $/h  = month profit ÷ the month's hours on site
+ *   a visit's $/h = (month profit ÷ visits that month) ÷ that visit's time
  *
- * - Billed: invoices (not void) for the service months in the period; a month with visits but no
- *   invoice counts the customer's monthly rate instead.
- * - Chemical costs: each dose's cost as saved with the visit (doses without a price count 0 and
- *   are reported).
- * - Mileage estimate: 2 × the customer's distance from HQ × the mileage rate, per visit.
- * - Hours: the visit timer; a visit without one uses that pool's average timed visit, else the
- *   average over all pools (reported as estimated).
+ * - Billed: invoices (not void) for that service month; with visits but no invoice, the monthly rate.
+ * - Mileage: 2 × distance from HQ × rate per mile, per visit (an estimate).
+ * - Time: the visit timer; without one, that pool's average timed visit, else the all-pools average.
+ * - A month is "complete" once it has ended (the current month is in progress).
  * Dates are the owner's local dates; `tzOffsetMin` is the phone's getTimezoneOffset().
  */
-export interface CustomerHoursRow {
-  customerId: string;
-  name: string;
-  visits: number;
-  timedVisits: number;
-  /** Visits whose time is the pool's (or overall) average. */
-  estimatedVisits: number;
-  hours: number;
+export interface VisitRow {
+  visitId: string;
+  date: string;
+  minutes: number | null;
+  /** 'timer', 'pool' (that pool's average) or 'all' (all-pools average); null when no time at all. */
+  timeFrom: 'timer' | 'pool' | 'all' | null;
+  perHour: number | null;
+}
+export interface MonthRow {
+  month: string;
+  complete: boolean;
   billed: number;
+  /** Billed at the monthly rate because there was no invoice. */
+  billedFromRate: boolean;
   chemicalCost: number;
+  unpricedDoses: number;
   mileageCost: number;
+  missingMileage: boolean;
   expenses: number;
   profit: number;
-  /** null when there are no hours to divide by. */
+  hours: number;
   perHour: number | null;
-  /** Doses without a cost (chemical had no price). */
-  unpricedDoses: number;
-  /** Visits but no distance from HQ or no mileage rate, so mileage counted as 0. */
-  missingMileage: boolean;
-  /** Months billed at the monthly rate because there was no invoice. */
-  rateMonths: string[];
+  visits: VisitRow[];
+}
+export interface CustomerRow {
+  customerId: string;
+  name: string;
+  months: MonthRow[];
+  /** Over the whole period: total profit ÷ total hours. */
+  profit: number;
+  hours: number;
+  perHour: number | null;
+  visitCount: number;
+  estimatedVisits: number;
+  inProgress: boolean;
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-function localDate(at: Date, tzOffsetMin: number): string {
-  return new Date(at.getTime() - tzOffsetMin * 60_000).toISOString().slice(0, 10);
-}
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const localDate = (at: Date, tzOffsetMin: number) => new Date(at.getTime() - tzOffsetMin * 60_000).toISOString().slice(0, 10);
 
 function monthsBetween(from: string, to: string): string[] {
   const out: string[] = [];
@@ -60,7 +69,7 @@ function monthsBetween(from: string, to: string): string[] {
   return out;
 }
 
-export async function customerHours(q: { from: string; to: string; tzOffsetMin: number }) {
+export async function customerHours(q: { from: string; to: string; tzOffsetMin: number; now?: Date }) {
   const [customers, pools, visits, invoices, ledger, settings] = await Promise.all([
     Customer.find({ deletedAt: null }).lean<Record<string, any>[]>(),
     Pool.find({ deletedAt: null }).lean<Record<string, any>[]>(),
@@ -71,8 +80,9 @@ export async function customerHours(q: { from: string; to: string; tzOffsetMin: 
   ]);
   const rate: number | null = settings?.deletedAt ? null : (settings?.mileageRate ?? null);
   const poolCustomer = new Map(pools.map((p) => [p._id as string, p.customerId as string]));
+  const thisMonth = localDate(q.now ?? new Date(), q.tzOffsetMin).slice(0, 7);
 
-  // Average timed visit per pool, and overall (all time), for visits without a timer.
+  // Average timed visit per pool, and over all pools (all time), for visits without a timer.
   const timed = new Map<string, number[]>();
   for (const v of visits) {
     const s = timeLogSeconds(v.timeLog);
@@ -83,76 +93,94 @@ export async function customerHours(q: { from: string; to: string; tzOffsetMin: 
   const overallAvg = allTimed.length ? avg(allTimed) : null;
 
   const months = monthsBetween(q.from, q.to);
-  const rows: CustomerHoursRow[] = [];
+  const rows: CustomerRow[] = [];
   for (const c of customers) {
-    const mine = visits.filter((v) => {
-      if (poolCustomer.get(v.poolId) !== c._id) return false;
-      const d = localDate(new Date(v.visitedAt), q.tzOffsetMin);
-      return d >= q.from && d <= q.to;
-    });
-    let seconds = 0;
-    let timedVisits = 0;
-    let estimatedVisits = 0;
-    let chemicalCost = 0;
-    let unpricedDoses = 0;
-    const visitedMonths = new Set<string>();
-    for (const v of mine) {
-      visitedMonths.add(localDate(new Date(v.visitedAt), q.tzOffsetMin).slice(0, 7));
-      const s = timeLogSeconds(v.timeLog);
-      if (s > 0) {
-        seconds += s;
-        timedVisits++;
-      } else {
-        const poolAvg = timed.get(v.poolId);
-        const fallback = poolAvg?.length ? avg(poolAvg) : overallAvg;
-        if (fallback) {
-          seconds += fallback;
-          estimatedVisits++;
+    const distance = typeof c.distanceMiles === 'number' ? c.distanceMiles : null;
+    const perVisitMileage = distance != null && rate != null ? 2 * distance * rate : 0;
+    const mine = visits
+      .filter((v) => poolCustomer.get(v.poolId) === c._id)
+      .map((v) => ({ v, date: localDate(new Date(v.visitedAt), q.tzOffsetMin) }))
+      .filter(({ date }) => date >= q.from && date <= q.to)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const monthRows: MonthRow[] = [];
+    for (const m of months) {
+      const mv = mine.filter((x) => x.date.startsWith(m));
+      const inv = invoices.filter((i) => i.customerId === c._id && i.period === m);
+      let billed = inv.reduce((t, i) => t + invoiceTotal({ lines: i.lines ?? [], payments: [], status: i.status }), 0);
+      const billedFromRate = !inv.length && mv.length > 0 && (c.monthlyRate ?? 0) > 0;
+      if (billedFromRate) billed = c.monthlyRate;
+      const expenses = ledger.filter((e) => e.customerId === c._id && e.date.startsWith(m)).reduce((t, e) => t + (e.amount ?? 0), 0);
+      if (!mv.length && !billed && !expenses) continue;
+
+      let chemicalCost = 0;
+      let unpricedDoses = 0;
+      const timesSec: (number | null)[] = [];
+      const sources: VisitRow['timeFrom'][] = [];
+      for (const { v } of mv) {
+        for (const d of v.doses ?? []) {
+          if (typeof d.cost === 'number') chemicalCost += d.cost;
+          else unpricedDoses++;
+        }
+        const s = timeLogSeconds(v.timeLog);
+        const poolTimes = timed.get(v.poolId);
+        if (s > 0) {
+          timesSec.push(s);
+          sources.push('timer');
+        } else if (poolTimes?.length) {
+          timesSec.push(avg(poolTimes));
+          sources.push('pool');
+        } else if (overallAvg) {
+          timesSec.push(overallAvg);
+          sources.push('all');
+        } else {
+          timesSec.push(null);
+          sources.push(null);
         }
       }
-      for (const d of v.doses ?? []) {
-        if (typeof d.cost === 'number') chemicalCost += d.cost;
-        else unpricedDoses++;
-      }
+      const mileageCost = mv.length * perVisitMileage;
+      const profit = billed - chemicalCost - mileageCost - expenses;
+      const seconds = timesSec.reduce<number>((t, x) => t + (x ?? 0), 0);
+      const share = mv.length ? profit / mv.length : 0;
+      monthRows.push({
+        month: m,
+        complete: m < thisMonth,
+        billed: r2(billed),
+        billedFromRate,
+        chemicalCost: r2(chemicalCost),
+        unpricedDoses,
+        mileageCost: r2(mileageCost),
+        missingMileage: mv.length > 0 && (distance == null || rate == null),
+        expenses: r2(expenses),
+        profit: r2(profit),
+        hours: r2(seconds / 3600),
+        perHour: seconds > 0 ? r2(profit / (seconds / 3600)) : null,
+        visits: mv.map(({ v, date }, i) => ({
+          visitId: v._id,
+          date,
+          minutes: timesSec[i] != null ? Math.round(timesSec[i]! / 60) : null,
+          timeFrom: sources[i] ?? null,
+          perHour: timesSec[i] ? r2(share / (timesSec[i]! / 3600)) : null,
+        })),
+      });
     }
-
-    let billed = 0;
-    const rateMonths: string[] = [];
-    for (const m of months) {
-      const inv = invoices.filter((i) => i.customerId === c._id && i.period === m);
-      if (inv.length) billed += inv.reduce((t, i) => t + invoiceTotal({ lines: i.lines ?? [], payments: [], status: i.status }), 0);
-      else if (visitedMonths.has(m) && (c.monthlyRate ?? 0) > 0) {
-        billed += c.monthlyRate;
-        rateMonths.push(m);
-      }
-    }
-
-    const expenses = ledger.filter((e) => e.customerId === c._id).reduce((t, e) => t + (e.amount ?? 0), 0);
-    const distance = typeof c.distanceMiles === 'number' ? c.distanceMiles : null;
-    const mileageCost = distance != null && rate != null ? mine.length * 2 * distance * rate : 0;
-    if (!mine.length && !billed && !expenses) continue;
-
-    const hours = seconds / 3600;
-    const profit = billed - chemicalCost - mileageCost - expenses;
+    if (!monthRows.length) continue;
+    const profit = monthRows.reduce((t, m) => t + m.profit, 0);
+    const seconds = monthRows.reduce((t, m) => t + m.hours * 3600, 0);
+    const allVisits = monthRows.flatMap((m) => m.visits);
     rows.push({
       customerId: c._id,
       name: c.name,
-      visits: mine.length,
-      timedVisits,
-      estimatedVisits,
-      hours: Math.round(hours * 100) / 100,
-      billed: round2(billed),
-      chemicalCost: round2(chemicalCost),
-      mileageCost: round2(mileageCost),
-      expenses: round2(expenses),
-      profit: round2(profit),
-      perHour: hours > 0 ? round2(profit / hours) : null,
-      unpricedDoses,
-      missingMileage: mine.length > 0 && (distance == null || rate == null),
-      rateMonths,
+      months: monthRows,
+      profit: r2(profit),
+      hours: r2(seconds / 3600),
+      perHour: seconds > 0 ? r2(profit / (seconds / 3600)) : null,
+      visitCount: allVisits.length,
+      estimatedVisits: allVisits.filter((v) => v.timeFrom !== 'timer').length,
+      inProgress: monthRows.some((m) => !m.complete),
     });
   }
   // Lowest hourly first: the customers worth repricing are at the top.
   rows.sort((a, b) => (a.perHour ?? Infinity) - (b.perHour ?? Infinity));
-  return { from: q.from, to: q.to, mileageRate: rate, overallAvgMinutes: overallAvg ? Math.round(overallAvg / 60) : null, rows };
+  return { from: q.from, to: q.to, thisMonth, mileageRate: rate, overallAvgMinutes: overallAvg ? Math.round(overallAvg / 60) : null, rows };
 }

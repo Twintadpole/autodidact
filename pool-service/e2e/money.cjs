@@ -5,8 +5,9 @@
 //     amount; editing the billed amount updates the line.
 //  3. Other income moves income and profit; Tools (capital) shows separately, not in expenses.
 //  4. Miles from odometer readings (63 mi).
-//  5. What the customer earns per hour: billed − chemicals − mileage − their expenses, over hours
-//     where the untimed visit uses the pool's average; the breakdown explains it.
+//  5. What the customer earns per hour this month: billed − the month's chemicals − mileage − their
+//     expenses, over the month's hours (the untimed visit at the pool's average); each visit's $/h;
+//     the month is "In progress".
 //  6. Deleting the Supplies expense removes its invoice line.
 //
 //   node money.cjs <baseUrl> <password> <outDir>
@@ -166,18 +167,23 @@ const { chromium, devices } = require('playwright');
     const row = page.locator(`[data-test=hours-${c._id}]`);
     await row.waitFor({ timeout: 20000 });
     const report = await getJson(`/reports/customer-hours?from=${new Date().toISOString().slice(0, 8)}01&to=${new Date().toISOString().slice(0, 10)}&tzOffsetMin=0`);
-    const r = report.rows.find((x) => x.customerId === c._id);
+    const row0 = report.rows.find((x) => x.customerId === c._id);
+    const r = row0?.months?.[0];
     const rate = report.mileageRate ?? 0;
     const want = { billed: 180, chemicalCost: 9, expenses: 20, hours: 2, mileageCost: Math.round(2 * 2 * 10 * rate * 100) / 100 };
-    if (!r || Object.entries(want).some(([k, v]) => !near(r[k], v)) || r.timedVisits !== 1 || r.estimatedVisits !== 1) throw new Error(`report row: ${JSON.stringify(r)} want ${JSON.stringify(want)}`);
+    if (!r || row0.months.length !== 1 || Object.entries(want).some(([k, v]) => !near(r[k], v))) throw new Error(`report month: ${JSON.stringify(r)} want ${JSON.stringify(want)}`);
     const profit = 180 - 9 - want.mileageCost - 20;
-    if (!near(r.profit, profit) || !near(r.perHour, Math.round((profit / 2) * 100) / 100)) throw new Error(`profit/perHour: ${JSON.stringify(r)}`);
+    const perHour = Math.round((profit / 2) * 100) / 100;
+    if (!near(r.profit, profit) || !near(r.perHour, perHour) || r.complete) throw new Error(`profit/perHour/complete: ${JSON.stringify(r)}`);
+    if (r.visits.map((x) => x.timeFrom).join() !== 'timer,pool' || r.visits.some((x) => !near(x.perHour, perHour))) throw new Error(`visit rows: ${JSON.stringify(r.visits)}`);
     await row.click();
     const detail = (await page.locator('[data-test=hours-detail]').innerText()).replace(/\s+/g, ' ');
-    if (!detail.includes("1 at the pool's average time") || !detail.includes('$180.00')) throw new Error(`breakdown: ${detail}`);
+    for (const want2 of ['Profit for the month', 'Average per hour', '(pool avg)', '$180.00', 'In progress', 'Chemicals (whole month)']) if (!detail.includes(want2)) throw new Error(`breakdown missing "${want2}": ${detail}`);
+    if ((await page.locator('[data-test=month-visits] tbody tr').count()) !== 2) throw new Error('visit table should have 2 rows');
+    await page.waitForTimeout(400);
     await page.screenshot({ path: `${out}/money-detail.png` });
     await page.keyboard.press('Escape');
-    ok(`per hour: billed $180 − chemicals $9 − mileage $${want.mileageCost.toFixed(2)} − expenses $20 = $${profit.toFixed(2)} over 2 h (1 timed, 1 at the pool's average) → $${r.perHour.toFixed(2)}/h`);
+    ok(`month: billed $180 − chemicals $9 − mileage $${want.mileageCost.toFixed(2)} − expenses $20 = $${profit.toFixed(2)} over 2 h → $${r.perHour.toFixed(2)}/h average; visits: timer and pool avg, $${perHour.toFixed(2)}/h each; In progress`);
 
     // ---- 6. Deleting the supplies removes the line
     await page.goto(url(`/more/money/${supplies._id}`), { waitUntil: 'networkidle' });

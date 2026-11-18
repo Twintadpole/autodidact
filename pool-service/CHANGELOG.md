@@ -9,9 +9,11 @@
   customer can be added to their invoice (a line on their draft, at the amount you choose to bill).
 - **+ Income** for money that didn't come through an invoice; **+ Miles** for each day's real driving
   (miles, or odometer start and end).
-- **What you earn per hour, by customer:** billed − chemicals − mileage estimate (2 × distance from HQ ×
-  your rate, per visit) − expenses for them, divided by hours on site. Visits without a timer use that
-  pool's average visit time. Lowest first; tap one for the breakdown. Needs a connection.
+- **What you earn per hour, by customer, month by month:** the month's profit (billed − the whole month's
+  chemicals − mileage estimate (2 × distance from HQ × your rate, per visit) − expenses for them) ÷ the
+  month's hours on site = the average. Each visit's $/h = the month's profit split across its visits ÷ that
+  visit's time. Visits without a timer use that pool's average time. The current month shows "In progress",
+  past months are final; year views list the months. Lowest first. Needs a connection.
 - Business details: rate per mile.
 - Fixed: deleting a Supplies expense could fail to save.
 

@@ -42,17 +42,18 @@
         <div class="text-subtitle1">What you earn per hour, by customer</div>
         <q-btn flat round dense icon="refresh" aria-label="Refresh" :loading="hoursLoading" @click="loadHours" />
       </div>
-      <div class="text-caption text-grey-7 q-mb-xs">After chemicals, mileage (estimate) and expenses for them. Lowest first.</div>
+      <div class="text-caption text-grey-7 q-mb-xs">Each month: billed − the month's chemicals − mileage − expenses for them, ÷ hours on site. Lowest first.</div>
       <div v-if="hoursError" class="text-body2 text-grey-7" data-test="customer-hours-error">{{ hoursError }}</div>
       <div v-else-if="hours && !hours.rows.length" class="text-body2 text-grey-7">No visits or billing in this period.</div>
       <q-list v-else-if="hours" bordered separator class="bg-white rounded-borders">
-        <q-item v-for="r in hours.rows" :key="r.customerId" clickable :data-test="`hours-${r.customerId}`" @click="detail = r">
+        <q-item v-for="r in hours.rows" :key="r.customerId" clickable :data-test="`hours-${r.customerId}`" @click="openCustomer(r)">
           <q-item-section>
             <q-item-label>{{ r.name }}</q-item-label>
-            <q-item-label caption>{{ r.visits }} visit{{ r.visits === 1 ? '' : 's' }} · {{ r.hours }} h{{ r.estimatedVisits ? ' (some estimated)' : '' }} · profit {{ money(r.profit) }}</q-item-label>
+            <q-item-label caption>{{ r.visitCount }} visit{{ r.visitCount === 1 ? '' : 's' }} · {{ r.hours }} h · profit {{ money(r.profit) }}{{ r.months.length > 1 ? ` · ${r.months.length} months` : '' }}</q-item-label>
           </q-item-section>
           <q-item-section side>
             <q-item-label class="text-weight-bold" :class="r.perHour != null && r.perHour < 0 ? 'text-negative' : 'text-grey-10'">{{ r.perHour != null ? `${money(r.perHour)}/h` : '—' }}</q-item-label>
+            <q-badge v-if="r.inProgress" color="orange-7" label="In progress" />
           </q-item-section>
         </q-item>
       </q-list>
@@ -74,27 +75,63 @@
       </q-list>
     </div>
 
-    <!-- Breakdown -->
-    <q-dialog :model-value="!!detail" @update:model-value="(v: boolean) => !v && (detail = null)">
-      <q-card v-if="detail" style="min-width: 300px" data-test="hours-detail">
-        <q-card-section class="text-h6">{{ detail.name }}</q-card-section>
-        <q-list dense>
-          <q-item><q-item-section>Billed</q-item-section><q-item-section side>{{ money(detail.billed) }}</q-item-section></q-item>
-          <q-item><q-item-section>Chemicals</q-item-section><q-item-section side>− {{ money(detail.chemicalCost) }}</q-item-section></q-item>
-          <q-item><q-item-section>Mileage (estimate)</q-item-section><q-item-section side>− {{ money(detail.mileageCost) }}</q-item-section></q-item>
-          <q-item><q-item-section>Expenses for them</q-item-section><q-item-section side>− {{ money(detail.expenses) }}</q-item-section></q-item>
-          <q-separator />
-          <q-item class="text-weight-bold"><q-item-section>Profit</q-item-section><q-item-section side class="text-grey-10">{{ money(detail.profit) }}</q-item-section></q-item>
-          <q-item><q-item-section>Hours on site</q-item-section><q-item-section side>{{ detail.hours }} h</q-item-section></q-item>
-          <q-item class="text-weight-bold"><q-item-section>Per hour</q-item-section><q-item-section side class="text-grey-10">{{ detail.perHour != null ? money(detail.perHour) : '—' }}</q-item-section></q-item>
-        </q-list>
-        <q-card-section class="text-caption text-grey-7 q-gutter-y-xs">
-          <div>{{ detail.visits }} visit{{ detail.visits === 1 ? '' : 's' }}: {{ detail.timedVisits }} timed{{ detail.estimatedVisits ? `, ${detail.estimatedVisits} at the pool's average time` : '' }}.</div>
-          <div v-if="detail.rateMonths.length">No invoice for {{ detail.rateMonths.map(periodLabel).join(', ') }}: counted their monthly rate.</div>
-          <div v-if="detail.unpricedDoses">{{ detail.unpricedDoses }} dose{{ detail.unpricedDoses === 1 ? '' : 's' }} without a chemical price (counted as $0).</div>
-          <div v-if="detail.missingMileage">No distance from HQ or no rate per mile, so mileage counted as $0.</div>
+    <!-- Breakdown: months (year views), then one month with its visits -->
+    <q-dialog :model-value="!!detail" @update:model-value="(v: boolean) => !v && closeDetail()">
+      <q-card v-if="detail" style="min-width: 320px; max-width: 520px" class="full-width" data-test="hours-detail">
+        <q-card-section class="row items-center no-wrap q-pb-none">
+          <q-btn v-if="month && detail.months.length > 1" flat round dense icon="arrow_back" aria-label="All months" @click="month = null" />
+          <div class="col" style="min-width: 0">
+            <div class="text-h6 ellipsis">{{ detail.name }}</div>
+            <div v-if="month" class="text-subtitle2 text-grey-7" data-test="month-title">{{ periodLabel(month.month) }}</div>
+          </div>
+          <q-space />
+          <q-badge v-if="month" :color="month.complete ? 'positive' : 'orange-7'" :label="month.complete ? 'Final' : 'In progress'" data-test="month-state" />
         </q-card-section>
-        <q-card-actions align="right"><q-btn flat label="Close" v-close-popup /></q-card-actions>
+
+        <!-- Months of the period -->
+        <q-list v-if="!month" separator class="q-mt-sm" data-test="hours-months">
+          <q-item v-for="m in detail.months" :key="m.month" clickable :data-test="`month-${m.month}`" @click="month = m">
+            <q-item-section>
+              <q-item-label>{{ periodLabel(m.month) }}</q-item-label>
+              <q-item-label caption>{{ m.visits.length }} visit{{ m.visits.length === 1 ? '' : 's' }} · {{ m.hours }} h · profit {{ money(m.profit) }}{{ m.complete ? '' : ' · in progress' }}</q-item-label>
+            </q-item-section>
+            <q-item-section side class="text-weight-bold text-grey-10">{{ m.perHour != null ? `${money(m.perHour)}/h` : '—' }}</q-item-section>
+          </q-item>
+          <q-item class="text-weight-bold"><q-item-section>Average over the period</q-item-section><q-item-section side class="text-grey-10">{{ detail.perHour != null ? `${money(detail.perHour)}/h` : '—' }}</q-item-section></q-item>
+        </q-list>
+
+        <!-- One month -->
+        <template v-else>
+          <q-list dense class="q-mt-sm" data-test="month-breakdown">
+            <q-item><q-item-section>Billed{{ month.billedFromRate ? ' (monthly rate)' : '' }}</q-item-section><q-item-section side>{{ money(month.billed) }}</q-item-section></q-item>
+            <q-item><q-item-section>Chemicals (whole month)</q-item-section><q-item-section side>− {{ money(month.chemicalCost) }}</q-item-section></q-item>
+            <q-item><q-item-section>Mileage (estimate)</q-item-section><q-item-section side>− {{ money(month.mileageCost) }}</q-item-section></q-item>
+            <q-item><q-item-section>Expenses for them</q-item-section><q-item-section side>− {{ money(month.expenses) }}</q-item-section></q-item>
+            <q-separator />
+            <q-item class="text-weight-bold"><q-item-section>Profit for the month</q-item-section><q-item-section side class="text-grey-10">{{ money(month.profit) }}</q-item-section></q-item>
+            <q-item><q-item-section>Hours on site ({{ month.visits.length }} visit{{ month.visits.length === 1 ? '' : 's' }})</q-item-section><q-item-section side>{{ month.hours }} h</q-item-section></q-item>
+            <q-item class="text-weight-bold"><q-item-section>Average per hour</q-item-section><q-item-section side class="text-grey-10" data-test="month-per-hour">{{ month.perHour != null ? `${money(month.perHour)}/h` : '—' }}</q-item-section></q-item>
+          </q-list>
+          <q-markup-table v-if="month.visits.length" flat dense separator="horizontal" class="q-mx-md" data-test="month-visits">
+            <thead>
+              <tr><th class="text-left">Visit</th><th class="text-right">Time</th><th class="text-right">$/h</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in month.visits" :key="v.visitId">
+                <td class="text-left">{{ shortDay(v.date) }}<span v-if="v.timeFrom && v.timeFrom !== 'timer'" class="text-grey-6"> ({{ v.timeFrom === 'pool' ? 'pool avg' : 'all-pools avg' }})</span></td>
+                <td class="text-right">{{ v.minutes != null ? `${v.minutes} min` : '—' }}</td>
+                <td class="text-right">{{ v.perHour != null ? money(v.perHour) : '—' }}</td>
+              </tr>
+            </tbody>
+          </q-markup-table>
+          <q-card-section class="text-caption text-grey-7 q-gutter-y-xs">
+            <div>Each visit: the month's profit split equally across its visits, ÷ that visit's time.</div>
+            <div v-if="!month.complete">This month isn't over: chemicals and visits are still being added.</div>
+            <div v-if="month.unpricedDoses">{{ month.unpricedDoses }} dose{{ month.unpricedDoses === 1 ? '' : 's' }} without a chemical price (counted as $0).</div>
+            <div v-if="month.missingMileage">No distance from HQ or no rate per mile, so mileage counted as $0.</div>
+          </q-card-section>
+        </template>
+        <q-card-actions align="right"><q-btn flat label="Close" @click="closeDetail" /></q-card-actions>
       </q-card>
     </q-dialog>
   </q-page>
@@ -112,22 +149,38 @@ import type { Ledger } from '@/lib/types';
 
 defineOptions({ name: 'MoneyPage' });
 
+interface VisitRow {
+  visitId: string;
+  date: string;
+  minutes: number | null;
+  timeFrom: 'timer' | 'pool' | 'all' | null;
+  perHour: number | null;
+}
+interface MonthRow {
+  month: string;
+  complete: boolean;
+  billed: number;
+  billedFromRate: boolean;
+  chemicalCost: number;
+  unpricedDoses: number;
+  mileageCost: number;
+  missingMileage: boolean;
+  expenses: number;
+  profit: number;
+  hours: number;
+  perHour: number | null;
+  visits: VisitRow[];
+}
 interface HoursRow {
   customerId: string;
   name: string;
-  visits: number;
-  timedVisits: number;
-  estimatedVisits: number;
-  hours: number;
-  billed: number;
-  chemicalCost: number;
-  mileageCost: number;
-  expenses: number;
+  months: MonthRow[];
   profit: number;
+  hours: number;
   perHour: number | null;
-  unpricedDoses: number;
-  missingMileage: boolean;
-  rateMonths: string[];
+  visitCount: number;
+  estimatedVisits: number;
+  inProgress: boolean;
 }
 
 const data = useDataStore();
@@ -147,6 +200,16 @@ const hours = ref<{ rows: HoursRow[] } | null>(null);
 const hoursError = ref('');
 const hoursLoading = ref(false);
 const detail = ref<HoursRow | null>(null);
+const month = ref<MonthRow | null>(null);
+/** One month opens straight to its breakdown; more months show the list first. */
+function openCustomer(r: HoursRow) {
+  detail.value = r;
+  month.value = r.months.length === 1 ? r.months[0]! : null;
+}
+function closeDetail() {
+  detail.value = null;
+  month.value = null;
+}
 async function loadHours() {
   hoursLoading.value = true;
   hoursError.value = '';
