@@ -129,7 +129,7 @@ const { chromium, devices } = require('playwright');
     // Version on More
     await page.goto(url('/more'), { waitUntil: 'networkidle' });
     const version = await page.locator('[data-test=app-version]').innerText();
-    if (!/v0\.1\.0-alpha/.test(version)) throw new Error(`version not shown: ${version}`);
+    if (!/v\d+\.\d+\.\d+/.test(version)) throw new Error(`version not shown: ${version}`);
     ok(`More: "${version.trim()}"`);
 
     // A deployed update shows a one-tap refresh message (the service worker fires this event)

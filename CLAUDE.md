@@ -3,7 +3,7 @@
 ## Project
 `pool-service/`: single-user, offline-first pool service PWA for the owner's Android phone.
 - **Live:** https://poolapp.evolutiondfw.com
-- **Release:** **v0.1.0-alpha**, commit `9edb091` on branch `claude/new-session-q17smb`
+- **Release:** **v0.2.0** (Nov 18; tag `v0.2.0`), branch `claude/new-session-q17smb`. Previous: v0.1.0-alpha, `9edb091`
 - **What the app does now:** `pool-service/README.md` and `pool-service/CHANGELOG.md`
 - **Original spec:** the owner's "Pool Service App — Build Outline", plus their later edits:
   - visit cards: the current visit card, with the previous visit's card below it

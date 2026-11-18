@@ -1,6 +1,6 @@
 # Pool Service
 
-**v0.1.0-alpha**, live at https://poolapp.evolutiondfw.com. See [CHANGELOG.md](CHANGELOG.md) for what it does today.
+**v0.2.0**, live at https://poolapp.evolutiondfw.com. See [CHANGELOG.md](CHANGELOG.md) for what it does today.
 
 A single-user, self-hosted pool service PWA for an Android phone. It works fully offline at job sites and syncs when signal comes back.
 
@@ -32,8 +32,8 @@ Out of scope for now: multiple users, customer-facing access.
 | D | Visit timer, edit log, issue photos, safe deploys | ✅ |
 | 4 | Offline mode: local DB, outbox, background sync, sync chip | ✅ |
 | Alpha polish | Labels, badge, visit history, update message, version | ✅ v0.1.0-alpha |
-| 6 | Hardening: encrypted offsite backups (Cloudflare R2) ✅, alerts ✅, Cloudflare Access, SSH lockdown, OS upgrade plan | in progress |
-| 7 | Desktop layout, fuller customer records, money tools with simple invoices, exports | planned |
+| 6 | Hardening: encrypted offsite backups (Cloudflare R2), alerts, Cloudflare Access, SSH lockdown; move to the home-lab server before July 2027 | ✅ (move later) |
+| 7 | Fuller customer records, invoices and money tools, desktop view with card dashboard, exports | ✅ v0.2.0 (receipt import later) |
 
 ## Layout
 

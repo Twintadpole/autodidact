@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased: Phase 7E part 1, exports (November 2026)
+## v0.2.0 (November 18, 2026)
+
+Fuller customer records, invoices and money tools, a desktop view with a card dashboard, and exports.
+Phase 6 hardening (offsite backups, alerts, Cloudflare Access, SSH lockdown) went live in the same period.
+
+### Phase 7E part 1, exports (November 2026)
 
 - **Export on every desktop table** (Excel or CSV): what the table shows, with your search, filters, sort and
   columns. Dates come out as real dates and money as numbers, so a spreadsheet can add them up.
@@ -10,7 +15,7 @@
 - Full-screen dashboard cards export their table as Excel too.
 - Excel files are made by the server (needs a connection); CSV is made on the device and works offline.
 
-## Unreleased: Phase 7D part 3, more cards and full-screen tools (November 2026)
+### Phase 7D part 3, more cards and full-screen tools (November 2026)
 
 - **Six more cards:** Water problems (pools whose last visit had a reading way off, and which tests are off
   most), Customers (current, prospects, past, monthly rates, started/ended by month), Visit times (average
@@ -22,7 +27,7 @@
 - Server: the system status also reports the offsite copy, the restore check, disk space and open alerts
   (`deploy/monitor.sh` now leaves `backups/MONITOR_STATUS` for it).
 
-## Unreleased: Phase 7D part 2, card dashboard (November 2026)
+### Phase 7D part 2, card dashboard (November 2026)
 
 - **Dashboard of cards** (desktop view → Dashboard): Today & this week, Money (last 12 months), Owed to you
   (by how late), Per hour by customer (this or last month), Chemical costs (12 months, by chemical), Open issues.
@@ -35,7 +40,7 @@
   time they're from. The other cards work offline.
 - Charts: Apache ECharts.
 
-## Unreleased: Phase 7D part 1, desktop view (November 2026)
+### Phase 7D part 1, desktop view (November 2026)
 
 - **More → Desktop view** switches to a layout for a computer; **Phone view** at the top switches back. Each
   device remembers its choice, so a computer opens straight to the desktop view. The phone app is unchanged.
@@ -50,7 +55,7 @@
 - **Visits table:** every visit in the period from the server (with no connection, the visits on that device):
   time on site, readings (out-of-range ones in colour), chemicals and their cost (yours only).
 
-## Unreleased: Phase 7C, money tools (November 2026)
+### Phase 7C, money tools (November 2026)
 
 - **More → Money:** this month, last month, this year or last year: income (invoice payments when received,
   plus other income), expenses by category, profit, capital purchases (tools) shown separately, miles driven
@@ -67,7 +72,7 @@
 - Business details: rate per mile.
 - Fixed: deleting a Supplies expense could fail to save.
 
-## Unreleased: Phase 7B, invoices, chemical costs, visit recaps (November 2026)
+### Phase 7B, invoices, chemical costs, visit recaps (November 2026)
 
 - **One-time service date:** a pool's Service day can be "One-time date". It shows under that day in its week,
   under **Coming up** before then, and under **Past one-time** after.
@@ -82,7 +87,7 @@
   customer and the photos you pick; sent by email link or the share menu; the visit records when it was sent.
 - Fixed: deleting a draft invoice could silently fail to save.
 
-## Unreleased: Phase 7A, fuller customer records (November 2026)
+### Phase 7A, fuller customer records (November 2026)
 
 - **Only a customer's name is required now.** Address, phones, pool type, gallons and service day can all be left blank.
   A pool without a service day is listed under **Not scheduled** on the Route and isn't counted in the week.
@@ -94,7 +99,7 @@
   Each can have brand and model, serial number, install date, notes and photos.
 - Additive only: existing records are unchanged.
 
-## Unreleased: visit screen extras (November 2026)
+### visit screen extras (November 2026)
 
 - New **Filter PSI** reading. It has no amber or red range, because normal pressure differs per filter.
 - "Baskets emptied" is now two tasks: **Skimmer baskets** and **Pump basket**. Older visits still show "Baskets emptied".
