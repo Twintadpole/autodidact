@@ -74,8 +74,8 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   - optionally set Remote Control back to asking permission
 - **Phase 7** (owner's decisions, Nov 17; plan each segment for approval):
   - **Every field optional** (no forced entry). Billing is a **flat monthly rate per customer, chemicals included, no sales tax**; payments by check, cash and electronic.
-  - **7A customer records:** customer class **current / prospect / past**; billing fields; **distance from HQ** (miles, owner fills it; used by 7C); pool **equipment**: pump, filter, heater, salt cell/chlorinator, cleaner, automation, lights, timers, plus custom items, each with notes and optional photos.
-  - **7B (plan approved Nov 18):**
+  - ✅ **7A customer records** (deployed Nov 17): customer class **current / prospect / past**; billing fields; **distance from HQ** (miles, owner fills it; used by 7C); pool **equipment**: pump, filter, heater, salt cell/chlorinator, cleaner, automation, lights, timers, plus custom items, each with notes and optional photos.
+  - ✅ **7B (deployed Nov 18):** business name and logo pre-filled; owner fills the rest.
     - **One-time service date** for a pool, as an alternative to a weekly service day (owner's addition).
     - Business details (More → Business): name, address, phone, email, **logo** (Evolution Home Solutions;
       original kept on the VPS at `~/branding/evolution-logo-original.png`), payment instructions, default
