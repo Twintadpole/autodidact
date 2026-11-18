@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { onUnauthorized } from '@/stores/api';
 import routes from './routes';
+import { savedView } from '@/lib/view';
 
 export default defineRouter(function ({ store }) {
   const router = createRouter({
@@ -18,6 +19,8 @@ export default defineRouter(function ({ store }) {
   // Every screen except Login needs a session.
   router.beforeEach(async (to) => {
     if (to.meta.public) return true;
+    // A computer set to the desktop view opens there (the phone's home is the Route).
+    if (to.path === '/' && savedView() === 'desk') return { path: '/desk' };
     try {
       if (await auth.ensureChecked()) return true;
     } catch {

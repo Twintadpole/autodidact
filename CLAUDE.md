@@ -108,23 +108,24 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     (month profit ÷ visits) ÷ that visit's time; current month "In progress", past months final. Shown on the
     Money screen (business side); year views list months.
   - ✅ **7C follow-up deployed Nov 18:** per-hour report is by month with each visit's $/h (`customerHours.ts`).
-  - **7D desktop (plan proposed Nov 18, NOT yet approved; owner's questions below still open):**
+  - **7D desktop (approved Nov 18, "continue as suggested"):**
     - Owner's words: a dashboard of **cards** to show/hide, grow, shrink and open fullscreen; reactive sizing
       (big cards show tools to view, hide and format data; small cards show a few fields or part of a graph).
       The dashboard is for viewing and planning; the owner ALSO wants plain "accounting-style" screens
       (tables) for details and entering data. Phone app unchanged.
-    - Proposed: (1) desktop shell: side menu (Dashboard · Route · Customers · Invoices · Payments · Expenses &
-      income · Mileage · Visits · Chemicals · Business details) and sortable/filterable tables with totals,
-      edit-in-side-panel and a quick-entry row; (2) dashboard framework (show/hide, drag, resize S/M/L/full,
-      fullscreen, saved layout, size-aware content via the card's real size) + first ~6 cards;
+    - Owner's answers (Nov 18): first cards = today/week, money, owed, $/hour, chemicals, issues; the card
+      layout **follows the owner** to any computer (store it on the server); the desktop view must be
+      **selectable on the phone too** (done: More → Desktop view; it needn't work like the phone); ECharts OK.
+    - Segments: (1) desktop shell + tables; (2) dashboard framework (show/hide, drag, resize S/M/L/full,
+      fullscreen, saved layout, size-aware content via the card's real size) + the 6 cards above;
       (3) remaining cards + fullscreen tools (date range, filters, series/column toggles, number format,
       zoom into part of a chart, export). Charts: Apache ECharts (Apache-2.0). Dashboard history comes
       from the server; shows last loaded figures offline.
-    - Card list proposed: today/week, money (12-month trend), owed + ageing, $/hour by customer,
-      chemical costs, water problems, open issues, customers pipeline, visit times, equipment age,
-      mileage, system (backups/alerts).
-    - **Open questions to ask first:** which ~6 cards first (suggested: today/week, money, owed,
-      $/hour, chemicals, issues); layout follows the owner to any computer or per computer (suggested:
-      follows); dashboard on the phone too; OK with ECharts.
+    - Remaining cards: customers pipeline, visit times, equipment age, mileage, system (backups/alerts),
+      water problems.
+    - ✅ **Segment 1 built Nov 18** (`/desk/*`, `DeskLayout`, `components/desk/DeskTable` + `SidePanel`,
+      `pages/desk/*`, `GET /api/reports/visits`, `e2e/desktop.cjs`). View choice per device in localStorage
+      (`lib/view.ts`); column choice per table per device. The phone forms' fields were moved into shared
+      components (`CustomerFields`, `LedgerFields`, `InvoiceEditor`) that the desktop panels reuse.
   - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

@@ -42,6 +42,23 @@ const routes: RouteRecordRaw[] = [
       { path: 'more/chemicals', name: 'chemicals', component: () => import('@/pages/ChemicalsPage.vue'), meta: { back: true, title: 'Chemicals' } },
     ],
   },
+  // Desktop view (Phase 7D): side menu and tables. Phone screens stay as they are.
+  {
+    path: '/desk',
+    component: () => import('@/layouts/DeskLayout.vue'),
+    children: [
+      { path: '', name: 'desk', component: () => import('@/pages/desk/DeskHomePage.vue'), meta: { title: 'Dashboard' } },
+      { path: 'route', name: 'desk-route', component: () => import('@/pages/desk/DeskRoutePage.vue'), meta: { title: 'Route' } },
+      { path: 'customers', name: 'desk-customers', component: () => import('@/pages/desk/DeskCustomersPage.vue'), meta: { title: 'Customers' } },
+      { path: 'invoices', name: 'desk-invoices', component: () => import('@/pages/desk/DeskInvoicesPage.vue'), meta: { title: 'Invoices' } },
+      { path: 'payments', name: 'desk-payments', component: () => import('@/pages/desk/DeskPaymentsPage.vue'), meta: { title: 'Payments' } },
+      { path: 'money', name: 'desk-money', component: () => import('@/pages/desk/DeskLedgerPage.vue'), meta: { title: 'Expenses & income' } },
+      { path: 'mileage', name: 'desk-mileage', component: () => import('@/pages/desk/DeskLedgerPage.vue'), props: { mileage: true }, meta: { title: 'Mileage' } },
+      { path: 'visits', name: 'desk-visits', component: () => import('@/pages/desk/DeskVisitsPage.vue'), meta: { title: 'Visits' } },
+      { path: 'chemicals', name: 'desk-chemicals', component: () => import('@/pages/desk/DeskChemicalsPage.vue'), meta: { title: 'Chemicals' } },
+      { path: 'business', name: 'desk-business', component: () => import('@/pages/BusinessPage.vue'), meta: { title: 'Business details' } },
+    ],
+  },
   { path: '/:catchAll(.*)*', redirect: '/' },
 ];
 

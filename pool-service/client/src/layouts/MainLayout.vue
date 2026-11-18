@@ -48,52 +48,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
-import { useSyncStore } from '@/stores/sync';
-import { requestPersistentStorage } from '@/offline/db';
-import { errorMessage } from '@/stores/api';
+import { useAppShell } from '@/composables/useAppShell';
 
 defineOptions({ name: 'MainLayout' });
 
-const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
 const ui = useUiStore();
 const data = useDataStore();
-const loadError = ref('');
-const sync = useSyncStore();
-
-const chip = computed(() => {
-  switch (sync.state) {
-    case 'failed':
-      return { label: `${sync.failed} failed`, color: 'negative', icon: 'sync_problem' };
-    case 'offline':
-      return { label: sync.pending ? `Offline · ${sync.pending}` : 'Offline', color: 'grey-7', icon: 'cloud_off' };
-    case 'syncing':
-    case 'waiting':
-      return { label: `${sync.pending} waiting`, color: 'orange-8', icon: 'cloud_upload' };
-    default:
-      return { label: 'Synced', color: 'positive', icon: 'cloud_done' };
-  }
-});
+const { chip, load, loadError } = useAppShell();
 
 // Badge: every open issue (postponed ones are parked, so not counted); red when any is "Do now".
 const activeIssues = computed(() => data.openIssues.filter((i) => i.status !== 'postponed'));
 const openCount = computed(() => activeIssues.value.length);
 const doNowCount = computed(() => activeIssues.value.filter((i) => i.urgent && i.important).length);
-
-async function load(force = false) {
-  loadError.value = '';
-  try {
-    await data.loadAll(force);
-  } catch (err) {
-    loadError.value = errorMessage(err);
-  }
-}
 
 function goBack() {
   if (window.history.state?.back) router.back();
@@ -104,33 +76,10 @@ watch(
   () => route.fullPath,
   () => ui.setTitle(''),
 );
-
-// A new version was deployed: offer a one-tap refresh (unsaved visit typing is kept as a draft).
-function onUpdateReady() {
-  $q.notify({
-    message: 'New version available',
-    icon: 'system_update',
-    color: 'primary',
-    timeout: 0,
-    position: 'top',
-    actions: [
-      { label: 'Refresh', color: 'white', handler: () => window.location.reload() },
-      { label: 'Later', color: 'white' },
-    ],
-  });
-}
-onMounted(() => window.addEventListener('pool:update-ready', onUpdateReady));
-onBeforeUnmount(() => window.removeEventListener('pool:update-ready', onUpdateReady));
-
-onMounted(() => {
-  sync.start();
-  void requestPersistentStorage();
-  void load();
-});
 </script>
 
 <style scoped>
-/* On a computer, keep screens a readable width (the desktop layout comes in Phase 7). */
+/* On a computer, keep screens a readable width (the desktop view is under More → Desktop view). */
 .page-container :deep(.q-page) {
   max-width: 760px;
   margin-left: auto;

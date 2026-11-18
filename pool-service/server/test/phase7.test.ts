@@ -259,3 +259,29 @@ describe('7C: ledger and what each customer earns per hour', () => {
     expect([...order].sort((x: number, y: number) => x - y)).toEqual(order);
   });
 });
+
+describe('7D: visits by date (desktop Visits table)', () => {
+  it('lists visits in the date range, newest first, leaving out deleted pools', async () => {
+    const at = later();
+    const c = { _id: newId(), name: 'Visits Table', createdAt: at, updatedAt: at };
+    const p1 = { _id: newId(), customerId: c._id, name: 'Front', createdAt: at, updatedAt: at };
+    const p2 = { _id: newId(), customerId: c._id, name: 'Gone', createdAt: at, updatedAt: at };
+    await post(pkg({ customers: [c], pools: [p1, p2] }));
+    const v = (poolId: string, visitedAt: string) => ({ _id: newId(), poolId, visitedAt, createdAt: at, updatedAt: at });
+    const inside1 = v(p1._id, '2027-03-02T06:30:00.000Z'); // Mar 2, 00:30 local (UTC-6)
+    const inside2 = v(p1._id, '2027-03-09T15:00:00.000Z');
+    const before = v(p1._id, '2027-03-02T05:30:00.000Z'); // Mar 1, 23:30 local
+    const gone = v(p2._id, '2027-03-05T15:00:00.000Z');
+    for (const x of [inside1, inside2, before]) await post(pkg({ poolId: p1._id, visit: x }));
+    await post(pkg({ poolId: p2._id, visit: gone }));
+    await post(pkg({ pools: [{ ...p2, deletedAt: later(), updatedAt: later() }] }));
+    const res = await ctx.app.inject({ method: 'GET', url: '/api/reports/visits?from=2027-03-02&to=2027-03-31&tzOffsetMin=360', headers: { cookie } });
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().map((x: any) => x._id)).toEqual([inside2._id, inside1._id]);
+  });
+
+  it('needs a login', async () => {
+    const res = await ctx.app.inject({ method: 'GET', url: '/api/reports/visits?from=2027-03-01&to=2027-03-31' });
+    expect(res.statusCode).toBe(401);
+  });
+});

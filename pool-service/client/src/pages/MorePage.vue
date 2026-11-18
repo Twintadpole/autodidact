@@ -33,6 +33,14 @@
         </q-item-section>
         <q-item-section side><q-icon name="chevron_right" /></q-item-section>
       </q-item>
+      <q-item clickable data-test="more-desktop" @click="toDesk">
+        <q-item-section avatar><q-icon name="computer" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>Desktop view</q-item-label>
+          <q-item-label caption>Tables and dashboard, for a computer. This device remembers it.</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
       <q-item data-test="backup-status">
         <q-item-section avatar><q-icon name="backup" :color="backupColor" /></q-item-section>
         <q-item-section>
@@ -66,12 +74,19 @@ import { money } from '@/lib/customer';
 import { moneySummary, periodRange } from '@/lib/report';
 import { api } from '@/stores/api';
 import { useSyncStore } from '@/stores/sync';
+import { saveView } from '@/lib/view';
 
 defineOptions({ name: 'MorePage' });
 
 const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
+
+/** Desktop view: this device opens there from now on (Phone view in its header switches back). */
+function toDesk() {
+  saveView('desk');
+  void router.push('/desk');
+}
 const monthSum = computed(() => {
   const r = periodRange('thisMonth');
   return moneySummary(data.invoices, data.ledger, r.from, r.to, data.settings?.mileageRate);

@@ -16,6 +16,9 @@ A single-user, self-hosted pool service PWA for an Android phone. It works fully
   - background upload
   - safe retries: the server recognizes a repeated upload and applies it only once
 - **Edit log:** every change on the server is recorded (from → to, when).
+- **Desktop view** (More → Desktop view; each device remembers its choice): side menu and tables for Route,
+  Customers, Visits, Invoices, Payments, Expenses & income, Mileage, Chemicals, with search, sorting,
+  column choice, totals, a quick-entry row and an edit panel.
 
 Out of scope for now: multiple users, customer-facing access.
 
@@ -100,6 +103,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `offline.cjs` | Airplane mode: work offline, outbox survives a restart, upload exactly once, lost-reply retry (6) |
 | `photos-layout.cjs` | Photo layout, Gallery on an existing issue, HEIC message, first-load Issues page (4) |
 | `alpha-polish.cjs` | Pool labels, Issues badge, visit history, update message, version, desktop width (7) |
+| `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
 
 Other checks:
 
@@ -153,6 +157,8 @@ All routes are under `/api` and need the session cookie, except `/auth/login` an
 | GET | `/issues?status=open,in_progress&poolId=` | Issue lists (statuses: `open`, `in_progress`, `postponed`, `resolved`) |
 | GET | `/pools/:id/visits?limit=` | Latest visits, newest first. The default of 2 covers the current and previous visit cards; Pool overview uses 10 |
 | POST | `/route/reset-week` | Clears every pool's weekly checkmark |
+| GET | `/reports/customer-hours?from=&to=&tzOffsetMin=` | What each customer earns per hour, by month (Phase 7C) |
+| GET | `/reports/visits?from=&to=&tzOffsetMin=&limit=` | Every visit in a date range, newest first (desktop Visits table) |
 | GET | `/photos/:id`, `/photos/:id/thumb` | Image (thumbnail falls back to the original until Phase 5) |
 
 ## Changes from the original outline

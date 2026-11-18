@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased: Phase 7D part 1, desktop view (November 2026)
+
+- **More → Desktop view** switches to a layout for a computer; **Phone view** at the top switches back. Each
+  device remembers its choice, so a computer opens straight to the desktop view. The phone app is unchanged.
+- **Side menu:** Dashboard, Route, Customers, Visits, Invoices, Payments, Expenses & income, Mileage,
+  Chemicals, Business details.
+- **Tables** with search, sorting, a date filter (this/last month, this/last year, all), filter buttons with
+  counts, a **Columns** button to show or hide columns (remembered on that computer) and a **totals row**.
+- **Quick-entry row** above the table to add a customer, chemical, expense or income, miles, a draft invoice or a
+  payment (the invoice's balance and the customer's usual method are filled in).
+- **Click a row to edit it in a side panel** (the same fields as on the phone); invoices open the full invoice
+  (lines, PDF, payments, mark sent, void).
+- **Visits table:** every visit in the period from the server (with no connection, the visits on that device):
+  time on site, readings (out-of-range ones in colour), chemicals and their cost (yours only).
+- Dashboard: a few figures for now (this week, owed, profit this month, open issues); the card dashboard is next.
+
 ## Unreleased: Phase 7C, money tools (November 2026)
 
 - **More → Money:** this month, last month, this year or last year: income (invoice payments when received,
