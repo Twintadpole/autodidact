@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model } from 'mongoose';
-import { BILLING_TIMINGS, CUSTOMER_STATUSES, EQUIPMENT_KINDS, INVOICE_STATUSES, INVOICE_TERMS, ISSUE_STATUSES, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
+import { BILLING_TIMINGS, CUSTOMER_STATUSES, EQUIPMENT_KINDS, INVOICE_STATUSES, INVOICE_TERMS, ISSUE_STATUSES, LEDGER_KINDS, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
 
 /**
  * Every document:
@@ -156,6 +156,26 @@ const settingsSchema = makeSchema({
   terms: { type: String, enum: [...INVOICE_TERMS, null] },
   billingTiming: { type: String, enum: [...BILLING_TIMINGS, null] },
   firstInvoiceNumber: Number,
+  mileageRate: Number,
+});
+
+// ---------------------------------------------------------------- ledger: expenses, other income, mileage (Phase 7C)
+const ledgerSchema = makeSchema({
+  kind: { type: String, enum: LEDGER_KINDS, required: true },
+  date: { type: String, required: true, index: true },
+  amount: Number,
+  category: String,
+  vendor: String,
+  note: String,
+  customerId: { type: String, index: true },
+  receiptDataUrl: String,
+  billToCustomer: Boolean,
+  billedAmount: Number,
+  invoiceId: String,
+  invoiceLineId: String,
+  miles: Number,
+  odometerStart: Number,
+  odometerEnd: Number,
 });
 
 // ---------------------------------------------------------------- invoices (Phase 7B)
@@ -283,6 +303,7 @@ export const Note = model('Note', noteSchema, 'notes');
 export const Photo = model('Photo', photoSchema, 'photos');
 export const Settings = model('Settings', settingsSchema, 'settings');
 export const Invoice = model('Invoice', invoiceSchema, 'invoices');
+export const Ledger = model('Ledger', ledgerSchema, 'ledger');
 export const SyncLog = model('SyncLog', syncLogSchema, 'syncLog');
 export const SessionDoc = model('Session', sessionSchema, 'sessions');
 export const AuditLog = model('AuditLog', auditLogSchema, 'auditLog');
@@ -298,6 +319,7 @@ export const SYNC_MODELS = {
   photos: Photo,
   settings: Settings,
   invoices: Invoice,
+  ledger: Ledger,
 } as const;
 
 /** Create collections and indexes up front (transactions can't create collections implicitly on older servers). */

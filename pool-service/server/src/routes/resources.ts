@@ -8,6 +8,7 @@ import {
   idSchema,
   invoice,
   ISSUE_STATUSES,
+  ledger,
   issue,
   NOTE_PARENT_TYPES,
   note,
@@ -15,7 +16,7 @@ import {
   SERVICE_DAYS,
   settings,
 } from '@pool/shared';
-import { AuditLog, Chemical, Customer, Invoice, Issue, Note, Pool, Settings, Visit } from '../models/index.js';
+import { AuditLog, Chemical, Customer, Invoice, Issue, Ledger, Note, Pool, Settings, Visit } from '../models/index.js';
 import { registerCrud } from '../services/crud.js';
 import { cascadeCustomerDelete, cascadePoolDelete } from '../services/cascade.js';
 import { queryBool } from '../util.js';
@@ -54,6 +55,14 @@ export const resourceRoutes: FastifyPluginAsync = async (parent) => {
     toFilter: (q) => (q.customerId ? { customerId: q.customerId } : {}),
   });
   registerCrud(app, { path: '/settings', model: Settings, schemas: settings, sort: { _id: 1 } });
+  registerCrud(app, {
+    path: '/ledger',
+    model: Ledger,
+    schemas: ledger,
+    sort: { date: -1 },
+    listQuery: z.object({ customerId: idSchema.optional() }),
+    toFilter: (q) => (q.customerId ? { customerId: q.customerId } : {}),
+  });
 
   registerCrud(app, {
     path: '/chemicals',

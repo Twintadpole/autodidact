@@ -36,7 +36,7 @@ wait_healthy() {
 }
 
 # Live record counts (not deleted) per collection, as JSON. Used to prove a deploy kept every record.
-COUNTED='["customers","pools","visits","issues","notes","photos","chemicals","invoices"]'
+COUNTED='["customers","pools","visits","issues","notes","photos","chemicals","invoices","ledger"]'
 record_counts() {
   local db="${1:-pool}"
   dc exec -T mongo mongosh --quiet "${db}" --eval \

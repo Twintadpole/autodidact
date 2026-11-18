@@ -288,6 +288,8 @@ export const settings = collectionSchemas({
   terms: z.enum(INVOICE_TERMS).nullable().optional(),
   billingTiming: z.enum(BILLING_TIMINGS).nullable().optional(),
   firstInvoiceNumber: z.number().int().positive().nullable().optional(),
+  /** Dollars per mile, for mileage totals and per-customer cost estimates (Phase 7C). */
+  mileageRate: z.number().nonnegative().nullable().optional(),
 });
 export type Settings = z.infer<typeof settings.doc>;
 
@@ -346,3 +348,55 @@ export function invoiceState(i: InvoiceLike, now: Date = new Date()): 'draft' | 
 }
 
 export const CHEMICAL_PRESERVED_FIELDS = ['price', 'priceUnit'] as const;
+
+// ---------------------------------------------------------------- ledger: expenses, other income, mileage (Phase 7C)
+export const LEDGER_KINDS = ['expense', 'income', 'mileage'] as const;
+export type LedgerKind = (typeof LEDGER_KINDS)[number];
+
+/** Suggested expense categories. Any other text is a category of the owner's own. */
+export const EXPENSE_CATEGORIES = [
+  { key: 'chemicals', label: 'Chemicals' },
+  { key: 'parts', label: 'Parts & equipment' },
+  { key: 'tools', label: 'Tools (capital)', capital: true },
+  { key: 'supplies', label: 'Supplies (billed to customer)', billable: true },
+  { key: 'fuel', label: 'Fuel' },
+  { key: 'vehicle', label: 'Vehicle' },
+  { key: 'insurance', label: 'Insurance' },
+  { key: 'phone', label: 'Phone & software' },
+  { key: 'other', label: 'Other' },
+] as const;
+export const isCapitalCategory = (c: string | null | undefined) => c === 'tools';
+export const isBillableCategory = (c: string | null | undefined) => c === 'supplies';
+export function categoryLabel(c: string | null | undefined): string {
+  if (!c) return 'Uncategorized';
+  return EXPENSE_CATEGORIES.find((x) => x.key === c)?.label ?? c;
+}
+
+/**
+ * One money or mileage entry. Only `kind` and `date` are required; expenses and income need
+ * an amount to count, mileage needs miles (or odometer start and end).
+ */
+export const ledger = collectionSchemas({
+  kind: z.enum(LEDGER_KINDS),
+  /** "2026-11-18" (the owner's local date). */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  amount: z.number().nonnegative().nullable().optional(),
+  category: z.string().trim().max(60).nullable().optional(),
+  vendor: z.string().trim().optional(),
+  note: z.string().optional(),
+  /** Counts against this customer's profit (expenses) or as their income. */
+  customerId: idSchema.nullable().optional(),
+  /** Small receipt photo as a data: URL. */
+  receiptDataUrl: z.string().max(900_000).optional(),
+  /** Supplies: also billed to the customer, as a line on their invoice. */
+  billToCustomer: z.boolean().optional(),
+  billedAmount: z.number().nullable().optional(),
+  invoiceId: idSchema.nullable().optional(),
+  invoiceLineId: idSchema.nullable().optional(),
+  /** Mileage */
+  miles: z.number().nonnegative().nullable().optional(),
+  odometerStart: z.number().nonnegative().nullable().optional(),
+  odometerEnd: z.number().nonnegative().nullable().optional(),
+});
+export type Ledger = z.infer<typeof ledger.doc>;
+

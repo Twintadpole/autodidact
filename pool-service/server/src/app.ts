@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 import type { AppConfig } from './config.js';
 import { registerSessions, requireAuth } from './plugins/auth.js';
 import { authRoutes } from './routes/auth.js';
+import { reportRoutes } from './routes/reports.js';
 import { accessLoginRoutes, clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
@@ -69,6 +70,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
         await secured.register(systemRoutes, config.backupDir ? { backupDir: config.backupDir } : {});
         await secured.register(syncRoutes, { photos });
         await secured.register(photoRoutes, { photos });
+        await secured.register(reportRoutes);
       });
     },
     { prefix: '/api' },

@@ -193,3 +193,53 @@ describe('7B: settings, invoices, prices', () => {
     expect(pull.chemicals.find((x: any) => x._id === chem._id)).toMatchObject({ name: 'Liquid chlorine 12.5%', price: 4.5, priceUnit: 'gal' });
   });
 });
+
+describe('7C: ledger and what each customer earns per hour', () => {
+  it('syncs expenses, income and mileage', async () => {
+    const at = later();
+    const rows = [
+      { _id: newId(), kind: 'expense', date: '2026-11-03', amount: 42.5, category: 'fuel', vendor: 'QT', createdAt: at, updatedAt: at },
+      { _id: newId(), kind: 'income', date: '2026-11-04', amount: 80, note: 'Cash job', createdAt: at, updatedAt: at },
+      { _id: newId(), kind: 'mileage', date: '2026-11-04', miles: 63, odometerStart: 1000, odometerEnd: 1063, createdAt: at, updatedAt: at },
+    ];
+    const res = await post(pkg({ ledger: rows }));
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.json().applied.ledger).toBe(3);
+    const pull = (await ctx.app.inject({ method: 'GET', url: '/api/sync/pull', headers: { cookie } })).json();
+    expect(pull.ledger.filter((l: any) => rows.some((r) => r._id === l._id))).toHaveLength(3);
+  });
+
+  it('works out profit per hour with the approved fallbacks', async () => {
+    const at = later();
+    const settingsDoc = { _id: '00000000-0000-4000-8000-000000000001', mileageRate: 0.7, createdAt: at, updatedAt: later() };
+    const a = { _id: newId(), name: 'Hours Alpha', monthlyRate: 150, distanceMiles: 10, createdAt: at, updatedAt: at };
+    const b = { _id: newId(), name: 'Hours Bravo', monthlyRate: 100, createdAt: at, updatedAt: at };
+    const pa = { _id: newId(), customerId: a._id, name: 'Pool', createdAt: at, updatedAt: at };
+    const pb = { _id: newId(), customerId: b._id, name: 'Pool', createdAt: at, updatedAt: at };
+    const chem = newId();
+    await post(pkg({ settings: [settingsDoc], customers: [a, b], pools: [pa, pb], chemicals: [{ _id: chem, name: 'Chlorine hrs', defaultUnit: 'gal', active: true, createdAt: at, updatedAt: at }] }));
+    // A: one timed visit (60 min, $9 of chemicals) and one without a timer (no priced dose).
+    const v = (poolId: string, day: string, extra: Record<string, unknown> = {}) => ({ _id: newId(), poolId, visitedAt: `${day}T15:00:00.000Z`, createdAt: at, updatedAt: at, ...extra });
+    await post(pkg({ poolId: pa._id, visit: v(pa._id, '2026-11-05', { timeLog: { segments: [{ start: '2026-11-05T15:00:00.000Z', end: '2026-11-05T16:00:00.000Z' }], finished: true }, doses: [{ chemicalId: chem, amount: 2, unit: 'gal', cost: 9 }] }) }));
+    await post(pkg({ poolId: pa._id, visit: v(pa._id, '2026-11-12', { doses: [{ chemicalId: chem, amount: 1, unit: 'gal' }] }) }));
+    // B: one visit without a timer, in a pool that has never been timed.
+    await post(pkg({ poolId: pb._id, visit: v(pb._id, '2026-11-06') }));
+    // A's November invoice: rate + $20 of supplies (also an expense linked to A).
+    await post(pkg({
+      invoices: [{ _id: newId(), customerId: a._id, number: 5001, period: '2026-11', issueDate: '2026-11-01', lines: [{ _id: newId(), description: 'Monthly', amount: 150 }, { _id: newId(), description: 'Supplies', amount: 20 }], status: 'sent', payments: [], createdAt: at, updatedAt: at }],
+      ledger: [{ _id: newId(), kind: 'expense', date: '2026-11-10', amount: 20, category: 'supplies', customerId: a._id, billToCustomer: true, createdAt: at, updatedAt: at }],
+    }));
+
+    const res = await ctx.app.inject({ method: 'GET', url: '/api/reports/customer-hours?from=2026-11-01&to=2026-11-30&tzOffsetMin=360', headers: { cookie } });
+    expect(res.statusCode, res.body).toBe(200);
+    const body = res.json();
+    const ra = body.rows.find((r: any) => r.customerId === a._id);
+    expect(ra).toMatchObject({ visits: 2, timedVisits: 1, estimatedVisits: 1, hours: 2, billed: 170, chemicalCost: 9, mileageCost: 28, expenses: 20, profit: 113, perHour: 56.5, unpricedDoses: 1, missingMileage: false, rateMonths: [] });
+    const rb = body.rows.find((r: any) => r.customerId === b._id);
+    expect(rb).toMatchObject({ visits: 1, timedVisits: 0, estimatedVisits: 1, billed: 100, rateMonths: ['2026-11'], missingMileage: true, mileageCost: 0 });
+    expect(rb.hours).toBeGreaterThan(0); // the all-pools average
+    // Lowest hourly first.
+    const order = body.rows.filter((r: any) => r.perHour !== null).map((r: any) => r.perHour);
+    expect([...order].sort((x: number, y: number) => x - y)).toEqual(order);
+  });
+});
