@@ -157,6 +157,8 @@ export interface Settings extends Base {
   billingTiming?: BillingTiming | null;
   firstInvoiceNumber?: number | null;
   mileageRate?: number | null;
+  /** Only on the dashboard record. */
+  dashboard?: import('@pool/shared').DashboardLayout;
 }
 
 /** An expense, other income, or a day's mileage (Phase 7C). */

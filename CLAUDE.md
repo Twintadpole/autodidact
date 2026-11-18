@@ -127,5 +127,11 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
       `pages/desk/*`, `GET /api/reports/visits`, `e2e/desktop.cjs`). View choice per device in localStorage
       (`lib/view.ts`); column choice per table per device. The phone forms' fields were moved into shared
       components (`CustomerFields`, `LedgerFields`, `InvoiceEditor`) that the desktop panels reuse.
+    - ✅ **Segment 2 built Nov 18** ("deploy ahead"): `pages/desk/DeskHomePage.vue`, `components/desk/DashCard` +
+      `EChart` + `cards/*`, `lib/dashboard.ts`, `lib/chartTheme.ts` (data-viz reference palette, validated),
+      `e2e/dashboard.cjs`. Layout = settings record `DASHBOARD_SETTINGS_ID` (…0002) with `dashboard.cards`
+      [{id,size s/m/l/xl,hidden}], separate from business details. Per-hour and chemicals cards use the server
+      and cache their last figures in localStorage (`useCachedReport`).
+    - **Next: segment 3** (needs a short plan for the owner): remaining cards + fullscreen tools.
   - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

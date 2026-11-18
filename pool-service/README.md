@@ -18,7 +18,8 @@ A single-user, self-hosted pool service PWA for an Android phone. It works fully
 - **Edit log:** every change on the server is recorded (from → to, when).
 - **Desktop view** (More → Desktop view; each device remembers its choice): side menu and tables for Route,
   Customers, Visits, Invoices, Payments, Expenses & income, Mileage, Chemicals, with search, sorting,
-  column choice, totals, a quick-entry row and an edit panel.
+  column choice, totals, a quick-entry row and an edit panel; a dashboard of cards you can resize, move, hide
+  and open full screen (the layout follows you to any device).
 
 Out of scope for now: multiple users, customer-facing access.
 
@@ -104,6 +105,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `photos-layout.cjs` | Photo layout, Gallery on an existing issue, HEIC message, first-load Issues page (4) |
 | `alpha-polish.cjs` | Pool labels, Issues badge, visit history, update message, version, desktop width (7) |
 | `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
+| `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device (6) |
 
 Other checks:
 

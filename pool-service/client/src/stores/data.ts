@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { BUSINESS_SETTINGS_ID, customerStatus, invoiceBalance, invoiceState, TASK_KEYS, type IssueStatus } from '@pool/shared';
+import { BUSINESS_SETTINGS_ID, DASHBOARD_SETTINGS_ID, customerStatus, type DashboardLayout, invoiceBalance, invoiceState, TASK_KEYS, type IssueStatus } from '@pool/shared';
 import { api } from './api';
 import { useSyncStore } from './sync';
 import { clone, newId } from '@/lib/format';
@@ -37,6 +37,8 @@ export const useDataStore = defineStore('data', () => {
   const activeTimers = ref<Visit[]>([]);
   /** Business details (Phase 7B); null until set. */
   const settings = ref<Settings | null>(null);
+  /** The desktop dashboard's card layout (Phase 7D); null = the default layout. Follows the owner to any device. */
+  const dashboard = ref<DashboardLayout | null>(null);
   const invoices = ref<Invoice[]>([]);
   /** Expenses, other income and mileage (Phase 7C). */
   const ledger = ref<Ledger[]>([]);
@@ -74,7 +76,7 @@ export const useDataStore = defineStore('data', () => {
 
   /** Re-reads the local database into memory (after a sync or a local change). */
   async function refreshFromDb() {
-    const [c, p, ch, i, running, st, inv, led] = await Promise.all([
+    const [c, p, ch, i, running, st, inv, led, dash] = await Promise.all([
       db.customers.toArray(),
       db.pools.toArray(),
       db.chemicals.toArray(),
@@ -83,7 +85,9 @@ export const useDataStore = defineStore('data', () => {
       db.settings.get(BUSINESS_SETTINGS_ID),
       db.invoices.toArray(),
       db.ledger.toArray(),
+      db.settings.get(DASHBOARD_SETTINGS_ID),
     ]);
+    dashboard.value = dash && !dash.deletedAt && dash.dashboard ? dash.dashboard : null;
     ledger.value = live(led).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
     settings.value = st && !st.deletedAt ? st : null;
     invoices.value = live(inv).map((x) => ({ ...x, lines: x.lines ?? [], payments: x.payments ?? [] })).sort((a, b) => b.number - a.number);
@@ -436,6 +440,16 @@ export const useDataStore = defineStore('data', () => {
     await commit({ settings: [doc] }, 'Business details');
   }
 
+  /** Saves the dashboard layout in its own settings record (never mixed with business details). */
+  async function saveDashboard(layout: DashboardLayout) {
+    const now = nowIso();
+    const existing = await db.settings.get(DASHBOARD_SETTINGS_ID);
+    const doc = { ...(existing ?? { _id: DASHBOARD_SETTINGS_ID, createdAt: now, deletedAt: null }), dashboard: clone(layout), updatedAt: now, deletedAt: null } as Settings;
+    await db.settings.put(clone(doc));
+    dashboard.value = clone(layout); // the grid follows at once
+    await commit({ settings: [doc] }, 'Dashboard layout');
+  }
+
   // ------------------------------------------------------------ invoices (Phase 7B)
   const invoiceById = computed(() => new Map(invoices.value.map((i) => [i._id, i])));
   /** Next number: one more than the highest so far (void included), or the first number in settings (default 1001). */
@@ -651,6 +665,8 @@ export const useDataStore = defineStore('data', () => {
     invoiceById,
     balanceByCustomer,
     saveSettings,
+    dashboard,
+    saveDashboard,
     nextInvoiceNumber,
     defaultPeriod,
     createInvoice,

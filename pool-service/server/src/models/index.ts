@@ -157,6 +157,8 @@ const settingsSchema = makeSchema({
   billingTiming: { type: String, enum: [...BILLING_TIMINGS, null] },
   firstInvoiceNumber: Number,
   mileageRate: Number,
+  /** Desktop dashboard layout (the dashboard record only); checked by the shared Zod schema. */
+  dashboard: { type: Schema.Types.Mixed, default: undefined },
 });
 
 // ---------------------------------------------------------------- ledger: expenses, other income, mileage (Phase 7C)

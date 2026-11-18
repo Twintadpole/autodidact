@@ -75,7 +75,7 @@ const { chromium } = require('playwright');
     await page.locator('[data-test=tab-more]').click();
     await page.locator('[data-test=more-desktop]').click();
     await page.waitForURL(/\/desk$/);
-    await page.locator('[data-test=desk-tile-owed]').waitFor();
+    await page.locator('[data-test=card-owed]').waitFor();
     await page.goto(url('/'), { waitUntil: 'networkidle' });
     await page.waitForURL(/\/desk$/);
     await page.locator('[data-test=desk-menu]').waitFor();

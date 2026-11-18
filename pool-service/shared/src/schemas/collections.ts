@@ -275,6 +275,18 @@ export type InvoiceTerms = (typeof INVOICE_TERMS)[number];
 export const BILLING_TIMINGS = ['start', 'end'] as const;
 export type BillingTiming = (typeof BILLING_TIMINGS)[number];
 
+/** The desktop dashboard's layout lives in its own settings record (Phase 7D), apart from business details. */
+export const DASHBOARD_SETTINGS_ID = '00000000-0000-4000-8000-000000000002';
+export const CARD_SIZES = ['s', 'm', 'l', 'xl'] as const;
+export type CardSize = (typeof CARD_SIZES)[number];
+/** Cards in the owner's order; unknown card ids are kept (a newer app may know them). */
+export const dashboardLayoutSchema = z.object({
+  cards: z
+    .array(z.object({ id: z.string().trim().min(1).max(40), size: z.enum(CARD_SIZES), hidden: z.boolean().optional() }))
+    .max(60),
+});
+export type DashboardLayout = z.infer<typeof dashboardLayoutSchema>;
+
 /** Everything optional. Missing terms = due on receipt; timing = start of month; first number = 1001. */
 export const settings = collectionSchemas({
   businessName: z.string().trim().optional(),
@@ -290,6 +302,8 @@ export const settings = collectionSchemas({
   firstInvoiceNumber: z.number().int().positive().nullable().optional(),
   /** Dollars per mile, for mileage totals and per-customer cost estimates (Phase 7C). */
   mileageRate: z.number().nonnegative().nullable().optional(),
+  /** Only on the dashboard record (DASHBOARD_SETTINGS_ID). */
+  dashboard: dashboardLayoutSchema.optional(),
 });
 export type Settings = z.infer<typeof settings.doc>;
 

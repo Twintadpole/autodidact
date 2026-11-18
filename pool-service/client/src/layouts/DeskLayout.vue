@@ -70,7 +70,8 @@ const router = useRouter();
 const ui = useUiStore();
 const data = useDataStore();
 const { chip, load, loadError } = useAppShell();
-const menuOpen = ref(true);
+// Closed to start with: on a computer `show-if-above` shows it anyway; on a phone it opens from ☰.
+const menuOpen = ref(false);
 
 const activeIssues = computed(() => data.openIssues.filter((i) => i.status !== 'postponed'));
 const openCount = computed(() => activeIssues.value.length);

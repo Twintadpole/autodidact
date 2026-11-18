@@ -285,3 +285,25 @@ describe('7D: visits by date (desktop Visits table)', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('7D: dashboard layout (its own settings record)', () => {
+  const DASH = '00000000-0000-4000-8000-000000000002';
+  it('saves the layout and sends it back on pull, leaving business details alone', async () => {
+    const biz = { _id: '00000000-0000-4000-8000-000000000001', businessName: 'Layout Test Biz', createdAt: later(), updatedAt: later() };
+    await post(pkg({ settings: [biz] }));
+    const at = later();
+    const layout = { cards: [{ id: 'week', size: 'm' }, { id: 'money', size: 'xl' }, { id: 'issues', size: 's', hidden: true }] };
+    const res = await post(pkg({ settings: [{ _id: DASH, dashboard: layout, createdAt: at, updatedAt: at }] }));
+    expect(res.statusCode, res.body).toBe(200);
+    const pull = (await ctx.app.inject({ method: 'GET', url: '/api/sync/pull', headers: { cookie } })).json();
+    expect(pull.settings.find((s: any) => s._id === DASH).dashboard).toEqual(layout);
+    expect(pull.settings.find((s: any) => s._id === biz._id).businessName).toBe('Layout Test Biz');
+    expect(pull.settings.find((s: any) => s._id === biz._id).dashboard).toBeUndefined();
+  });
+
+  it('refuses a card size it does not know', async () => {
+    const at = later();
+    const res = await post(pkg({ settings: [{ _id: DASH, dashboard: { cards: [{ id: 'week', size: 'huge' }] }, createdAt: at, updatedAt: at }] }));
+    expect(res.statusCode).toBe(400);
+  });
+});

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased: Phase 7D part 2, card dashboard (November 2026)
+
+- **Dashboard of cards** (desktop view → Dashboard): Today & this week, Money (last 12 months), Owed to you
+  (by how late), Per hour by customer (this or last month), Chemical costs (12 months, by chemical), Open issues.
+- **Each card:** Small, Medium, Large or Full width; Move earlier / later or drag it by its title; hide it
+  (and show it again from **Cards** at the top); **full screen**. Small cards show the key figures, bigger
+  ones add a chart, and large ones add the table or list behind it.
+- **The layout follows you** to any computer or phone (saved on the server, apart from business details).
+  Reset to the usual layout from the Cards menu.
+- Per hour and chemical costs need the server; with no connection they show the last figures loaded, with the
+  time they're from. The other cards work offline.
+- Charts: Apache ECharts.
+
 ## Unreleased: Phase 7D part 1, desktop view (November 2026)
 
 - **More → Desktop view** switches to a layout for a computer; **Phone view** at the top switches back. Each
@@ -14,7 +27,6 @@
   (lines, PDF, payments, mark sent, void).
 - **Visits table:** every visit in the period from the server (with no connection, the visits on that device):
   time on site, readings (out-of-range ones in colour), chemicals and their cost (yours only).
-- Dashboard: a few figures for now (this week, owed, profit this month, open issues); the card dashboard is next.
 
 ## Unreleased: Phase 7C, money tools (November 2026)
 
