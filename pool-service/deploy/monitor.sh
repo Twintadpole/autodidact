@@ -127,3 +127,14 @@ case "${1:-}" in
   test) notify "Test alert" "Alerts from the pool server reach this phone." default bell ;;
   *) die "Usage: monitor.sh app|disk|backups|boot|test" ;;
 esac
+
+# For the app's System card: when the checks last ran and which alerts are open (read by /api/system/status).
+if [[ "${1:-}" =~ ^(app|disk|backups)$ ]]; then
+  {
+    echo "checked $(date -u +%FT%TZ)"
+    for f in "${STATE}"/*.down; do
+      if [[ -e "$f" ]]; then echo "down $(basename "$f" .down) $(cat "$f")"; fi
+    done
+    true
+  } > backups/MONITOR_STATUS.tmp && mv backups/MONITOR_STATUS.tmp backups/MONITOR_STATUS
+fi

@@ -105,7 +105,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `photos-layout.cjs` | Photo layout, Gallery on an existing issue, HEIC message, first-load Issues page (4) |
 | `alpha-polish.cjs` | Pool labels, Issues badge, visit history, update message, version, desktop width (7) |
 | `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
-| `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device (6) |
+| `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device, the 12 cards, full-screen tools and CSV export (7) |
 
 Other checks:
 

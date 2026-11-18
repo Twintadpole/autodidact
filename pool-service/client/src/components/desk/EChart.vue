@@ -6,11 +6,11 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import { DataZoomComponent, GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import type { EChartsCoreOption } from 'echarts/core';
 
-echarts.use([BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
+echarts.use([BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent, DataZoomComponent, SVGRenderer]);
 
 /** One ECharts chart that redraws when its options change and fits its box as the card resizes. */
 const props = defineProps<{ option: EChartsCoreOption; label: string }>();

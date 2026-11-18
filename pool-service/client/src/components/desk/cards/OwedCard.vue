@@ -2,11 +2,11 @@
   <div class="column no-wrap full-height" data-test="owed-card">
     <div class="row items-end q-gutter-x-lg">
       <div>
-        <div class="hero" data-test="owed-total">{{ money(total) }}</div>
+        <div class="hero" data-test="owed-total">{{ fmt(total) }}</div>
         <div class="hero-sub">owed on {{ open.length }} invoice{{ open.length === 1 ? '' : 's' }}</div>
       </div>
       <div class="hero-sub" :class="{ 'text-negative text-weight-medium': overdue > 0 }" data-test="owed-overdue">
-        <q-icon v-if="overdue > 0" name="warning" /> {{ overdue > 0 ? `${money(overdue)} overdue` : 'Nothing overdue' }}
+        <q-icon v-if="overdue > 0" name="warning" /> {{ overdue > 0 ? `${fmt(overdue)} overdue` : 'Nothing overdue' }}
       </div>
     </div>
 
@@ -15,15 +15,16 @@
         <EChart :option="option" label="Money owed by how late it is" />
       </div>
       <!-- Who owes, oldest first -->
-      <q-list v-if="mode === 'l'" dense separator :class="side ? 'side-list scroll' : 'q-mt-sm'" data-test="owed-list">
-        <q-item v-for="c in byCustomer" :key="c.customerId" clickable class="q-px-xs" @click="router.push('/desk/invoices')">
-          <q-item-section>
-            <q-item-label>{{ c.name }}</q-item-label>
-            <q-item-label caption>{{ c.count }} invoice{{ c.count === 1 ? '' : 's' }} · {{ c.late > 0 ? `${c.late} days late` : 'not due yet' }}</q-item-label>
-          </q-item-section>
-          <q-item-section side class="text-grey-10 text-weight-medium">{{ money(c.balance) }}</q-item-section>
-        </q-item>
-      </q-list>
+      <CardTable
+        v-if="mode === 'l'"
+        name="owed-by-customer"
+        :columns="columns"
+        :rows="tableRows"
+        clickable
+        :class="side ? 'side-list scroll' : 'q-mt-sm'"
+        test-id="owed-list"
+        @row="router.push('/desk/invoices')"
+      />
     </div>
     <div v-else-if="mode !== 's'" class="text-grey-7 q-mt-md">Nobody owes you anything right now.</div>
   </div>
@@ -35,7 +36,8 @@ import { useRouter } from 'vue-router';
 import { invoiceBalance, invoiceState } from '@pool/shared';
 import EChart from '@/components/desk/EChart.vue';
 import { useDataStore } from '@/stores/data';
-import { money } from '@/lib/customer';
+import CardTable, { type CardColumn } from '@/components/desk/CardTable.vue';
+import { formatMoney, useDashTools } from '@/composables/useDashTools';
 import { localDate } from '@/lib/money';
 import { AGE_RAMP, base, barEnd, categoryAxis, compactMoney, valueAxis } from '@/lib/chartTheme';
 import type { CardMode } from '@/lib/dashboard';
@@ -43,6 +45,8 @@ import type { CardMode } from '@/lib/dashboard';
 const props = defineProps<{ mode: CardMode; width: number }>();
 const data = useDataStore();
 const router = useRouter();
+const tools = useDashTools();
+const fmt = (v: number) => formatMoney(v, tools.format);
 const side = computed(() => props.mode === 'l' && props.width >= 760);
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -50,7 +54,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const open = computed(() => {
   const today = new Date(localDate(new Date()) + 'T12:00');
   return data.invoices
-    .filter((i) => ['sent', 'overdue'].includes(invoiceState(i)) && invoiceBalance(i) > 0)
+    .filter((i) => ['sent', 'overdue'].includes(invoiceState(i)) && invoiceBalance(i) > 0 && (!tools.customerId || i.customerId === tools.customerId))
     .map((i) => {
       const due = new Date((i.dueDate ?? i.issueDate).slice(0, 10) + 'T12:00');
       return { i, balance: invoiceBalance(i), late: Math.max(0, Math.round((today.getTime() - due.getTime()) / 86_400_000)) };
@@ -81,10 +85,18 @@ const byCustomer = computed(() => {
   return [...m.values()].sort((a, b) => b.late - a.late || b.balance - a.balance);
 });
 
+const columns: CardColumn[] = [
+  { key: 'customer', label: 'Customer' },
+  { key: 'invoices', label: 'Invoices', align: 'right' },
+  { key: 'late', label: 'Days late', align: 'right' },
+  { key: 'balance', label: 'Owed', align: 'right', money: true },
+];
+const tableRows = computed(() => byCustomer.value.map((c) => ({ customer: c.name, invoices: c.count, late: c.late > 0 ? c.late : 'not due', balance: c.balance })));
+
 const option = computed(() => ({
   ...base,
   grid: { top: 8, left: 8, right: 8, bottom: 4, containLabel: true },
-  tooltip: { ...base.tooltip, trigger: 'item', valueFormatter: (v: number) => money(v) },
+  tooltip: { ...base.tooltip, trigger: 'item', valueFormatter: fmt },
   xAxis: categoryAxis(BUCKETS.map((b) => b.label)),
   yAxis: valueAxis(compactMoney),
   series: [

@@ -8,6 +8,8 @@
 //  4. Hide a card and show it again from the Cards menu; Move earlier; drag and drop.
 //  5. Full screen shows the chart with its table.
 //  6. The layout follows the owner: a phone (fresh device) gets the same order and sizes, in one column.
+//  7. Segment 3: the new cards (water problems, customers, visit times, mileage, equipment age, system)
+//     show; full-screen tools: customer filter, period, number format, hide a column, export CSV.
 //
 //   node dashboard.cjs <baseUrl> <password> <outDir>
 const { chromium, devices } = require('playwright');
@@ -78,17 +80,20 @@ const DASH = '00000000-0000-4000-8000-000000000002';
 
     // ---- 1. Cards
     await openDash();
-    const usual = ['week', 'money', 'owed', 'hourly', 'chemicals', 'issues'];
+    const usual = ['week', 'money', 'owed', 'hourly', 'chemicals', 'issues', 'water', 'pipeline', 'visitTimes', 'mileage', 'equipment', 'system'];
     if ((await order()).join() !== usual.join()) throw new Error(`card order: ${await order()}`);
     await page.screenshot({ path: `${out}/dash-usual.png` });
-    ok(`six cards in the usual order (${usual.join(', ')})`);
+    ok(`${usual.length} cards in the usual order (${usual.join(', ')})`);
 
     // ---- 2. Figures follow the data
     const f0 = await figures();
     const c = await (await api.post(url('/api/customers'), { data: { name: `E2E dash ${tag}`, monthlyRate: 200 } })).json();
     customers.push(c._id);
     const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
-    const pool = await (await api.post(url('/api/pools'), { data: { customerId: c._id, name: 'Pool', serviceDay: day } })).json();
+    const tenYearsAgo = `${new Date().getFullYear() - 10}-03-01`;
+    const pool = await (
+      await api.post(url('/api/pools'), { data: { customerId: c._id, name: 'Pool', serviceDay: day, equipment: [{ _id: crypto.randomUUID(), kind: 'pump', model: `E2E-${tag}`, installedOn: tenYearsAgo }] } })
+    ).json();
     const chem = await (await api.post(url('/api/chemicals'), { data: { name: `E2E dash acid ${tag}`, defaultUnit: 'gal', price: 4.25, priceUnit: 'gal' } })).json();
     chemicals.push(chem._id);
     const t = (h) => new Date(Date.now() - h * 3600_000).toISOString();
@@ -97,7 +102,7 @@ const DASH = '00000000-0000-4000-8000-000000000002';
     const longAgo = ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 45));
     const pkg = (extra) => ({ packageId: crypto.randomUUID(), createdAt: t(0), ...extra });
     await api.post(url('/api/sync/package'), {
-      data: pkg({ poolId: pool._id, visit: { _id: crypto.randomUUID(), poolId: pool._id, visitedAt: t(2), createdAt: t(2), updatedAt: t(2), doses: [{ chemicalId: chem._id, amount: 2, unit: 'gal', cost: 8.5 }], timeLog: { segments: [{ start: t(2), end: t(1) }], finished: true } } }),
+      data: pkg({ poolId: pool._id, visit: { _id: crypto.randomUUID(), poolId: pool._id, visitedAt: t(2), createdAt: t(2), updatedAt: t(2), readings: { fc: 0.4, ph: 7.5 }, doses: [{ chemicalId: chem._id, amount: 2, unit: 'gal', cost: 8.5 }], timeLog: { segments: [{ start: t(2), end: t(1) }], finished: true } } }),
     });
     await api.post(url('/api/sync/package'), {
       data: pkg({
@@ -131,7 +136,8 @@ const DASH = '00000000-0000-4000-8000-000000000002';
     await setSize('owed', 'l');
     await cardBody('owed').locator('svg').first().waitFor();
     await cardBody('owed').locator('[data-test=owed-list]').getByText(`E2E dash ${tag}`).waitFor();
-    if (!(await cardBody('owed').locator('[data-test=owed-list]').innerText()).includes('45 days late')) throw new Error('owed list should say 45 days late');
+    const owedRow = (await cardBody('owed').locator('[data-test=owed-list] tr', { hasText: `E2E dash ${tag}` }).innerText()).replace(/\s+/g, ' ');
+    if (!/\b45\b/.test(owedRow)) throw new Error(`owed list should say 45 days late: ${owedRow}`);
     await setSize('hourly', 'xl');
     await cardBody('hourly').locator('[data-test=hourly-table]').getByText(`E2E dash ${tag}`).waitFor({ timeout: 20000 });
     const savedSize = await waitFor(async () => {
@@ -193,6 +199,62 @@ const DASH = '00000000-0000-4000-8000-000000000002';
     await phone.screenshot({ path: `${out}/dash-phone.png` });
     await phoneCtx.close();
     ok('a phone (fresh device) gets the same layout, in one column');
+
+    // ---- 7. New cards and full-screen tools
+    for (const id of ['water', 'pipeline', 'visitTimes', 'mileage', 'equipment', 'system']) await page.locator(`[data-test=card-${id}]`).waitFor();
+    await page.locator('[data-test=system-summary]').waitFor();
+    const openFull = async (id) => {
+      await page.locator(`[data-test=card-full-${id}]`).scrollIntoViewIfNeeded();
+      await page.locator(`[data-test=card-full-${id}]`).click();
+      await page.locator('[data-test=dash-tools]').waitFor();
+    };
+    const fs = page.locator('[data-test=dash-fullscreen]');
+    const pickCustomer = async () => {
+      await fs.locator('.q-field', { has: page.locator('[data-test=tool-customer]') }).click();
+      await page.locator('[data-test=tool-customer]').fill(tag);
+      await page.getByRole('option', { name: `E2E dash ${tag}` }).click();
+    };
+    const closeFull = async () => {
+      await page.locator('[data-test=dash-fullscreen-close]').click();
+      await fs.waitFor({ state: 'detached' });
+    };
+    // Chemicals for the test customer only: exactly its $8.50.
+    await openFull('chemicals');
+    await pickCustomer();
+    await fs.locator('[data-test=chem-table]').getByText(`E2E dash acid ${tag}`).waitFor({ timeout: 20000 });
+    if ((await fs.locator('[data-test=chem-month]').innerText()).trim() !== '$8.50') throw new Error(`chemicals for the customer: ${await fs.locator('[data-test=chem-month]').innerText()}`);
+    await fs.locator('.q-field', { has: page.locator('[data-test=tool-range]') }).click();
+    await page.getByRole('option', { name: 'Last 3 months' }).click();
+    await fs.locator('[data-test=chem-table] th', { hasText: '3 months' }).waitFor();
+    await fs.locator('[data-test=tool-format]').getByRole('button', { name: '$1.2k' }).click();
+    if ((await fs.locator('[data-test=chem-month]').innerText()).trim() !== '$9') throw new Error(`short format: ${await fs.locator('[data-test=chem-month]').innerText()}`);
+    await fs.locator('[data-test=tool-columns]').click();
+    await page.locator('.q-menu .q-item', { hasText: 'This month' }).click();
+    await page.keyboard.press('Escape');
+    if (await fs.locator('[data-test=chem-table] th', { hasText: 'This month' }).count()) throw new Error('"This month" column should be hidden');
+    const [download] = await Promise.all([page.waitForEvent('download'), fs.locator('[data-test=tool-export]').click()]);
+    const csv = require('fs').readFileSync(await download.path(), 'utf8');
+    if (!csv.includes(`E2E dash acid ${tag},8.5`) || csv.includes('This month') || !/^chemical-costs-\d{4}-\d{2}-\d{2}\.csv$/.test(download.suggestedFilename())) throw new Error(`csv ${download.suggestedFilename()}: ${csv}`);
+    await page.screenshot({ path: `${out}/dash-tools.png` });
+    await closeFull();
+    // Water problems: the test pool's last visit had FC 0.4.
+    await openFull('water');
+    await pickCustomer();
+    const water = (await fs.locator('[data-test=water-table]').innerText({ timeout: 20000 })).replace(/\s+/g, ' ');
+    if (!water.includes(`E2E dash ${tag}`) || !water.includes('FC 0.4 (low)')) throw new Error(`water table: ${water}`);
+    await closeFull();
+    // Equipment age: the 10-year-old pump.
+    await openFull('equipment');
+    await pickCustomer();
+    const eq = (await fs.locator('[data-test=equipment-table] tbody tr').first().innerText()).replace(/\s+/g, ' ');
+    if (!eq.includes(`E2E-${tag}`) || !/\b(9|10)\.\d\b/.test(eq)) throw new Error(`equipment row: ${eq}`);
+    await closeFull();
+    // Visit times for the test customer: one 60-minute visit.
+    await openFull('visitTimes');
+    await pickCustomer();
+    await fs.locator('[data-test=visit-times-avg]', { hasText: '60 min' }).waitFor({ timeout: 20000 });
+    await closeFull();
+    ok('new cards show; full screen: customer filter (chemicals $8.50), period (3 months), $1.2k format, hidden column, CSV export; water problems FC 0.4 (low); 10-year-old pump; 60-min visit');
 
     if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
   } finally {

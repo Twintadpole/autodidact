@@ -13,30 +13,17 @@
     <template v-else-if="report">
       <div class="row items-end q-gutter-x-lg q-mt-sm">
         <div>
-          <div class="hero" data-test="hourly-average">{{ overall != null ? `${money(overall)}/h` : '—' }}</div>
+          <div class="hero" data-test="hourly-average">{{ overall != null ? `${fmt(overall)}/h` : '—' }}</div>
           <div class="hero-sub">on average, {{ totals.hours }} h on site</div>
         </div>
-        <div v-if="lowest" class="hero-sub">Lowest: {{ lowest.name }} {{ money(lowest.perHour!) }}/h</div>
+        <div v-if="lowest" class="hero-sub">Lowest: {{ lowest.name }} {{ fmt(lowest.perHour!) }}/h</div>
       </div>
 
       <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
         <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
           <EChart :option="option" label="What each customer earns per hour, lowest first" />
         </div>
-        <q-markup-table v-if="mode === 'l'" flat dense :class="side ? 'side-table scroll' : 'q-mt-sm'" class="bg-transparent" data-test="hourly-table">
-          <thead>
-            <tr><th class="text-left">Customer</th><th class="text-right">Visits</th><th class="text-right">Hours</th><th class="text-right">Profit</th><th class="text-right">$/h</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in rows" :key="r.customerId">
-              <td class="ellipsis" style="max-width: 140px">{{ r.name }}</td>
-              <td class="text-right">{{ r.visitCount }}</td>
-              <td class="text-right">{{ r.hours }}</td>
-              <td class="text-right">{{ money(r.profit) }}</td>
-              <td class="text-right text-weight-medium" :class="{ 'text-negative': (r.perHour ?? 0) < 0 }">{{ r.perHour != null ? money(r.perHour) : '—' }}</td>
-            </tr>
-          </tbody>
-        </q-markup-table>
+        <CardTable v-if="mode === 'l'" name="per-hour-by-customer" :columns="columns" :rows="tableRows" :class="side ? 'side-table scroll' : 'q-mt-sm'" test-id="hourly-table" />
       </div>
     </template>
   </div>
@@ -47,12 +34,15 @@ import { computed, ref } from 'vue';
 import EChart from '@/components/desk/EChart.vue';
 import { api } from '@/stores/api';
 import { useCachedReport } from '@/composables/useCachedReport';
-import { money } from '@/lib/customer';
+import CardTable, { type CardColumn } from '@/components/desk/CardTable.vue';
+import { formatMoney, useDashTools } from '@/composables/useDashTools';
 import { periodRange } from '@/lib/report';
-import { base, barEnd, compactMoney, INK, SERIES, valueAxis } from '@/lib/chartTheme';
+import { base, barEnd, compactMoney, INK, SERIES, valueAxis, zoomFor } from '@/lib/chartTheme';
 import type { CardMode } from '@/lib/dashboard';
 
 const props = defineProps<{ mode: CardMode; width: number }>();
+const tools = useDashTools();
+const fmt = (v: number) => formatMoney(v, tools.format);
 const side = computed(() => props.mode === 'l' && props.width >= 760);
 
 interface Row {
@@ -85,13 +75,23 @@ const totals = computed(() => {
 const overall = computed(() => (totals.value.hours ? Math.round((totals.value.profit / totals.value.hours) * 100) / 100 : null));
 const lowest = computed(() => rows.value[0]);
 
+const columns: CardColumn[] = [
+  { key: 'customer', label: 'Customer', class: 'ellipsis' },
+  { key: 'visits', label: 'Visits', align: 'right' },
+  { key: 'hours', label: 'Hours', align: 'right' },
+  { key: 'profit', label: 'Profit', align: 'right', money: true },
+  { key: 'perHour', label: '$/h', align: 'right', money: true, class: 'text-weight-medium' },
+];
+const tableRows = computed(() => rows.value.map((r) => ({ customer: r.name, visits: r.visitCount, hours: r.hours, profit: r.profit, perHour: r.perHour })));
+
 const option = computed(() => {
   // Highest at the top of a horizontal bar chart: the axis runs bottom-up, so lowest first fills from the bottom.
   const list = [...rows.value].reverse();
   return {
     ...base,
-    grid: { top: 4, left: 8, right: 40, bottom: 4, containLabel: true },
-    tooltip: { ...base.tooltip, trigger: 'item', valueFormatter: (v: number) => `${money(v)}/h` },
+    grid: { top: 4, left: 8, right: tools.zoom ? 56 : 40, bottom: 4, containLabel: true },
+    ...zoomFor(tools.zoom, true),
+    tooltip: { ...base.tooltip, trigger: 'item', valueFormatter: (v: number) => `${fmt(v)}/h` },
     xAxis: valueAxis(compactMoney),
     yAxis: { type: 'category', data: list.map((r) => r.name), axisLabel: { color: INK.secondary, width: 110, overflow: 'truncate' }, axisLine: { lineStyle: { color: INK.axis } }, axisTick: { show: false } },
     series: [

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased: Phase 7D part 3, more cards and full-screen tools (November 2026)
+
+- **Six more cards:** Water problems (pools whose last visit had a reading way off, and which tests are off
+  most), Customers (current, prospects, past, monthly rates, started/ended by month), Visit times (average
+  visit by month and by customer), Mileage (miles and their worth by month), Equipment age (oldest first,
+  flags anything over 8 years), System (backups, offsite copy, restore check, disk, open alerts, this device's sync).
+- **Full-screen tools:** period (3, 6, 12 or 24 months), customer filter, number format ($1,234.56 / $1,235 /
+  $1.2k), zoom into part of a chart (scroll or the slider), Columns to hide, and **Export CSV** of the card's table.
+  Click a legend entry to hide or show that series.
+- Server: the system status also reports the offsite copy, the restore check, disk space and open alerts
+  (`deploy/monitor.sh` now leaves `backups/MONITOR_STATUS` for it).
+
 ## Unreleased: Phase 7D part 2, card dashboard (November 2026)
 
 - **Dashboard of cards** (desktop view → Dashboard): Today & this week, Money (last 12 months), Owed to you

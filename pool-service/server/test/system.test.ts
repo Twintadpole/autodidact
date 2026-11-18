@@ -31,6 +31,22 @@ describe('GET /api/system/status', () => {
     const after = await ctx.app.inject({ method: 'GET', url: '/api/system/status', headers: { cookie } });
     expect(after.json().lastBackupAt).toBe('2026-11-05T03:17:02.000Z');
   });
+
+  it('reports the offsite copy, the restore check, open alerts and disk space (dashboard System card)', async () => {
+    const cookie = await login(ctx.app);
+    await fs.writeFile(path.join(backupDir, 'LAST_OFFSITE'), '2026-11-05T03:20:00Z\n');
+    await fs.writeFile(path.join(backupDir, 'LAST_RESTORE_CHECK'), '2026-11-02T04:50:00Z\n');
+    await fs.writeFile(path.join(backupDir, 'MONITOR_STATUS'), 'checked 2026-11-05T10:05:00Z\ndown disk 2026-11-05T09:07:00Z\n');
+    const body = (await ctx.app.inject({ method: 'GET', url: '/api/system/status', headers: { cookie } })).json();
+    expect(body).toMatchObject({
+      lastOffsiteAt: '2026-11-05T03:20:00.000Z',
+      lastRestoreCheckAt: '2026-11-02T04:50:00.000Z',
+      monitorCheckedAt: '2026-11-05T10:05:00.000Z',
+      openAlerts: [{ name: 'disk', since: '2026-11-05T09:07:00.000Z' }],
+    });
+    expect(body.disk.usedPct).toBeGreaterThanOrEqual(0);
+    expect(body.disk.usedPct).toBeLessThanOrEqual(100);
+  });
 });
 
 describe('GET /api/access-login', () => {

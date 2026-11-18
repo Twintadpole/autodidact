@@ -121,8 +121,6 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
       (3) remaining cards + fullscreen tools (date range, filters, series/column toggles, number format,
       zoom into part of a chart, export). Charts: Apache ECharts (Apache-2.0). Dashboard history comes
       from the server; shows last loaded figures offline.
-    - Remaining cards: customers pipeline, visit times, equipment age, mileage, system (backups/alerts),
-      water problems.
     - ✅ **Segment 1 built Nov 18** (`/desk/*`, `DeskLayout`, `components/desk/DeskTable` + `SidePanel`,
       `pages/desk/*`, `GET /api/reports/visits`, `e2e/desktop.cjs`). View choice per device in localStorage
       (`lib/view.ts`); column choice per table per device. The phone forms' fields were moved into shared
@@ -132,6 +130,10 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
       `e2e/dashboard.cjs`. Layout = settings record `DASHBOARD_SETTINGS_ID` (…0002) with `dashboard.cards`
       [{id,size s/m/l/xl,hidden}], separate from business details. Per-hour and chemicals cards use the server
       and cache their last figures in localStorage (`useCachedReport`).
-    - **Next: segment 3** (needs a short plan for the owner): remaining cards + fullscreen tools.
+    - ✅ **Segment 3 built Nov 18** (owner: "go ahead"): cards water, pipeline, visitTimes, mileage, equipment,
+      system; full-screen tools via `composables/useDashTools.ts` (provided only inside the full-screen dialog by
+      `DashToolsScope`), card tables via `components/desk/CardTable.vue` (Columns + Export CSV). Visit-based
+      cards share one download (`lib/visitsReport.ts`). `/api/system/status` reads `backups/MONITOR_STATUS`,
+      written by `deploy/monitor.sh`. **7D is complete; next is 7E** (CSV/Excel import and export; plan first).
   - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

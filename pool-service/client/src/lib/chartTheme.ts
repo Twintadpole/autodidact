@@ -36,3 +36,16 @@ export const categoryAxis = (data: string[]) => ({
 export const barEnd = (horizontal = false) => ({ borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] });
 /** Axis labels: $850, $1.2k. */
 export const compactMoney = (v: number) => (Math.abs(v) >= 1000 ? `$${Math.round(v / 100) / 10}k` : `$${Math.round(v)}`);
+
+/** Full screen: scroll-wheel/pinch zoom plus a slider under the chart to look at part of it. */
+export const zoomFor = (on: boolean, horizontal = false) =>
+  on
+    ? {
+        dataZoom: [
+          { type: 'inside', ...(horizontal ? { yAxisIndex: 0 } : { xAxisIndex: 0 }) },
+          horizontal
+            ? { type: 'slider', yAxisIndex: 0, width: 16, right: 4, borderColor: INK.axis, fillerColor: 'rgba(42,120,214,0.12)' }
+            : { type: 'slider', xAxisIndex: 0, height: 18, bottom: 4, borderColor: INK.axis, fillerColor: 'rgba(42,120,214,0.12)' },
+        ],
+      }
+    : {};

@@ -18,18 +18,17 @@
       </div>
     </div>
 
-    <q-list v-if="mode === 'l'" dense separator class="q-mt-sm col scroll" data-test="issues-list">
-      <div v-if="!active.length" class="text-grey-7 q-py-sm">No open issues.</div>
-      <q-item v-for="i in sorted" :key="i._id" clickable class="q-px-xs" @click="router.push(`/pools/${i.poolId}/issues`)">
-        <q-item-section>
-          <q-item-label>{{ i.title }}</q-item-label>
-          <q-item-label caption>{{ data.poolLabel(i.poolId) }} · {{ age(i.createdAt) }}</q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          <q-badge :color="deriveQuadrant(i) === 'do_now' ? 'negative' : 'grey-6'" :label="QUADRANTS.find((q) => q.key === deriveQuadrant(i))!.label" />
-        </q-item-section>
-      </q-item>
-    </q-list>
+    <CardTable
+      v-if="mode === 'l'"
+      name="open-issues"
+      :columns="columns"
+      :rows="tableRows"
+      clickable
+      empty="No open issues."
+      class="q-mt-sm col scroll"
+      test-id="issues-list"
+      @row="(r) => router.push(`/pools/${r.poolId}/issues`)"
+    />
   </div>
 </template>
 
@@ -39,15 +38,19 @@ import { useRouter } from 'vue-router';
 import { formatDistanceToNowStrict, parseISO } from 'date-fns';
 import { deriveQuadrant, QUADRANTS, type QuadrantKey } from '@pool/shared';
 import { useDataStore } from '@/stores/data';
+import CardTable, { type CardColumn } from '@/components/desk/CardTable.vue';
+import { useDashTools } from '@/composables/useDashTools';
 import type { CardMode } from '@/lib/dashboard';
 
 defineProps<{ mode: CardMode; width?: number }>();
 const data = useDataStore();
 const router = useRouter();
+const tools = useDashTools();
 
 /** Open issues of current customers; postponed ones are parked. */
-const active = computed(() => data.openIssues.filter((i) => i.status !== 'postponed'));
-const postponed = computed(() => data.openIssues.length - active.value.length);
+const forCustomer = computed(() => data.openIssues.filter((i) => !tools.customerId || data.poolById.get(i.poolId)?.customerId === tools.customerId));
+const active = computed(() => forCustomer.value.filter((i) => i.status !== 'postponed'));
+const postponed = computed(() => forCustomer.value.length - active.value.length);
 const counts = computed(() => {
   const c = Object.fromEntries(QUADRANTS.map((q) => [q.key, 0])) as Record<QuadrantKey, number>;
   for (const i of active.value) c[deriveQuadrant(i)]++;
@@ -56,6 +59,15 @@ const counts = computed(() => {
 const rank = (k: QuadrantKey) => QUADRANTS.findIndex((q) => q.key === k);
 const sorted = computed(() => [...active.value].sort((a, b) => rank(deriveQuadrant(a)) - rank(deriveQuadrant(b)) || a.createdAt.localeCompare(b.createdAt)));
 const age = (iso: string) => `${formatDistanceToNowStrict(parseISO(iso))} old`;
+const columns: CardColumn[] = [
+  { key: 'title', label: 'Issue' },
+  { key: 'pool', label: 'Customer · pool' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'age', label: 'Age' },
+];
+const tableRows = computed(() =>
+  sorted.value.map((i) => ({ poolId: i.poolId, title: i.title, pool: data.poolLabel(i.poolId), priority: QUADRANTS.find((q) => q.key === deriveQuadrant(i))!.label, age: age(i.createdAt) })),
+);
 </script>
 
 <style scoped>

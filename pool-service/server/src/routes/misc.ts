@@ -26,19 +26,46 @@ export const accessLoginRoutes: FastifyPluginAsync = async (app) => {
   app.get('/access-login', async (_request, reply) => reply.redirect('/'));
 };
 
-/** App/server info for the More screen. */
+/**
+ * App/server info for the More screen and the dashboard's System card (Phase 7D). Read only.
+ * The backup scripts and deploy/monitor.sh leave marker files in the backups folder (mounted read-only).
+ */
 export const systemRoutes: FastifyPluginAsync<{ backupDir?: string }> = async (app, { backupDir }) => {
+  const read = async (name: string): Promise<string | null> => {
+    if (!backupDir) return null;
+    try {
+      return (await fs.promises.readFile(path.join(backupDir, name), 'utf8')).trim();
+    } catch {
+      return null;
+    }
+  };
+  const time = (raw: string | null | undefined) => (raw && !Number.isNaN(Date.parse(raw)) ? new Date(raw).toISOString() : null);
+
   app.get('/system/status', async () => {
-    let lastBackupAt: string | null = null;
+    const [backup, offsite, restoreCheck, monitor] = await Promise.all([read('LAST_BACKUP'), read('LAST_OFFSITE'), read('LAST_RESTORE_CHECK'), read('MONITOR_STATUS')]);
+    // MONITOR_STATUS: "checked <time>" then one "down <check> <since>" line per open alert.
+    const lines = (monitor ?? '').split('\n').map((l) => l.trim().split(/\s+/));
+    const openAlerts = lines.filter((l) => l[0] === 'down' && l[1]).map((l) => ({ name: l[1]!, since: time(l[2]) }));
+    let disk: { usedPct: number; freeGb: number } | null = null;
     if (backupDir) {
       try {
-        const raw = (await fs.promises.readFile(path.join(backupDir, 'LAST_BACKUP'), 'utf8')).trim();
-        if (raw && !Number.isNaN(Date.parse(raw))) lastBackupAt = new Date(raw).toISOString();
+        const st = await fs.promises.statfs(backupDir);
+        const total = st.blocks * st.bsize;
+        const free = st.bavail * st.bsize;
+        disk = { usedPct: Math.round(((total - free) / total) * 100), freeGb: Math.round((free / 1e9) * 10) / 10 };
       } catch {
-        // no backup yet
+        // not available
       }
     }
-    return { lastBackupAt, serverTime: new Date().toISOString() };
+    return {
+      lastBackupAt: time(backup),
+      lastOffsiteAt: time(offsite),
+      lastRestoreCheckAt: time(restoreCheck),
+      monitorCheckedAt: time(lines.find((l) => l[0] === 'checked')?.[1]),
+      openAlerts,
+      disk,
+      serverTime: new Date().toISOString(),
+    };
   });
 };
 
