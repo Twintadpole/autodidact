@@ -91,6 +91,12 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     customer's draft invoice, other income, mileage as real miles per day), reports on the phone, and
     "what you earn per hour by customer" on the server (`/api/reports/customer-hours`): (billed − chemicals −
     2 × distance × rate per visit − linked expenses) ÷ hours; untimed visits use the pool's average.
-  - **7D desktop layout:** "some modular features, nothing too fancy" (ask what modular means before planning).
+  - **7C follow-up (approved Nov 18):** "per hour" is **per customer per month**: profit for the month (billed −
+    the whole month's chemicals − mileage − expenses), ÷ the month's hours = average $/h; each visit's $/h =
+    (month profit ÷ visits) ÷ that visit's time; current month "In progress", past months final. Shown on the
+    Money screen (business side); year views list months.
+  - **7D desktop layout (owner's words, Nov 18):** a dashboard of **cards** the owner can show/hide, grow,
+    shrink and open fullscreen. Sizing is reactive: big cards show tools to view, hide and format data;
+    small cards show a few fields or part of a graph. Plan it for approval before building.
   - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
