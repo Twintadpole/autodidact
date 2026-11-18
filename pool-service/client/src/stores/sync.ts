@@ -133,8 +133,8 @@ export const useSyncStore = defineStore('sync', () => {
    */
   async function reloadFromServer() {
     if ((await db.outbox.count()) > 0) throw new Error('Send or discard the waiting changes first.');
-    await db.transaction('rw', [db.customers, db.pools, db.visits, db.chemicals, db.issues, db.notes, db.photos, db.meta], async () => {
-      await Promise.all([db.customers.clear(), db.pools.clear(), db.visits.clear(), db.chemicals.clear(), db.issues.clear(), db.notes.clear(), db.photos.clear()]);
+    await db.transaction('rw', [db.customers, db.pools, db.visits, db.chemicals, db.issues, db.notes, db.photos, db.settings, db.invoices, db.meta], async () => {
+      await Promise.all([db.customers.clear(), db.pools.clear(), db.visits.clear(), db.chemicals.clear(), db.issues.clear(), db.notes.clear(), db.photos.clear(), db.settings.clear(), db.invoices.clear()]);
       await db.meta.delete('lastPull');
     });
     await kick({ force: true });

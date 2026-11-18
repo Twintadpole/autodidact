@@ -76,8 +76,9 @@
         </div>
       </q-page-sticky>
       <q-page-sticky v-else-if="editingExisting" position="bottom" expand class="save-bar">
-        <div class="full-width q-py-xs text-center text-caption text-positive bg-white save-bar-inner" data-test="save-visit">
-          <q-icon name="check_circle" /> Saved
+        <div class="full-width q-py-xs text-center text-caption text-positive bg-white save-bar-inner row items-center justify-center q-gutter-x-md" data-test="save-visit">
+          <span><q-icon name="check_circle" /> Saved</span>
+          <q-btn v-if="draft" flat dense no-caps color="primary" icon="forward_to_inbox" label="Send recap" :to="`/pools/${pool!._id}/visits/${draft._id}/recap`" data-test="visit-send-recap" />
         </div>
       </q-page-sticky>
 

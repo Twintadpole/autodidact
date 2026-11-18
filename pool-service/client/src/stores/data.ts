@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { customerStatus, TASK_KEYS, type IssueStatus } from '@pool/shared';
+import { BUSINESS_SETTINGS_ID, customerStatus, invoiceBalance, invoiceState, TASK_KEYS, type IssueStatus } from '@pool/shared';
 import { api } from './api';
 import { useSyncStore } from './sync';
 import { clone, newId } from '@/lib/format';
 import { db } from '@/offline/db';
 import { enqueue } from '@/offline/engine';
-import type { AuditEntry, Chemical, Customer, Equipment, Issue, Note, Photo, Pool, Visit } from '@/lib/types';
+import type { AuditEntry, Chemical, Customer, Equipment, Invoice, InvoiceLine, Issue, Note, Payment, Photo, Pool, Settings, Visit } from '@/lib/types';
+import { addDays, localDate, periodLabel, periodOf, TERMS_DAYS, withDoseCosts } from '@/lib/money';
 
 /** The database drops empty objects/arrays, so fill in what a visit always has. */
 export function normalizeVisit(v: Visit): Visit {
@@ -34,6 +35,9 @@ export const useDataStore = defineStore('data', () => {
   const chemicals = ref<Chemical[]>([]);
   const issues = ref<Issue[]>([]);
   const activeTimers = ref<Visit[]>([]);
+  /** Business details (Phase 7B); null until set. */
+  const settings = ref<Settings | null>(null);
+  const invoices = ref<Invoice[]>([]);
   const loaded = ref(false);
   const loading = ref(false);
   /** Bumped whenever the phone's copy changes (sync or local edit); screens that read it once watch this. */
@@ -68,13 +72,17 @@ export const useDataStore = defineStore('data', () => {
 
   /** Re-reads the local database into memory (after a sync or a local change). */
   async function refreshFromDb() {
-    const [c, p, ch, i, running] = await Promise.all([
+    const [c, p, ch, i, running, st, inv] = await Promise.all([
       db.customers.toArray(),
       db.pools.toArray(),
       db.chemicals.toArray(),
       db.issues.toArray(),
       db.visits.filter((v) => !v.deletedAt && isRunning(v)).toArray(),
+      db.settings.get(BUSINESS_SETTINGS_ID),
+      db.invoices.toArray(),
     ]);
+    settings.value = st && !st.deletedAt ? st : null;
+    invoices.value = live(inv).map((x) => ({ ...x, lines: x.lines ?? [], payments: x.payments ?? [] })).sort((a, b) => b.number - a.number);
     const livePools = new Set(live(p).map((x) => x._id));
     customers.value = live(c).sort((a, b) => a.name.localeCompare(b.name));
     pools.value = live(p);
@@ -99,7 +107,8 @@ export const useDataStore = defineStore('data', () => {
 
   /** Save locally, queue for the server, update the screens, nudge the sync. */
   async function commit(pkg: Record<string, unknown>, summary: string, photoIds: string[] = []) {
-    await enqueue({ packageId: newId(), createdAt: nowIso(), ...pkg }, summary, photoIds);
+    // Plain copy: live screen objects can't be stored in the outbox (IndexedDB).
+    await enqueue({ packageId: newId(), createdAt: nowIso(), ...clone(pkg) }, summary, photoIds);
     const sync = useSyncStore();
     await sync.refreshCounts(); // the header chip shows "1 waiting" right away
     await refreshFromDb();
@@ -310,6 +319,12 @@ export const useDataStore = defineStore('data', () => {
   /** Saves the visit on the phone and queues it (the same package the server already understands). */
   async function saveVisit(visit: Visit) {
     const doc = clone(visit);
+    // Owner-only: each dose keeps its cost from when it was first saved.
+    const before = await db.visits.get(doc._id);
+    doc.doses = withDoseCosts(doc.doses, before?.doses, chemicalById.value);
+    // Recap fields are set on the recap screen; keep them when the visit screen saves.
+    if (before?.customerNote !== undefined && doc.customerNote === undefined) doc.customerNote = before.customerNote;
+    if (before?.recapSentAt !== undefined && doc.recapSentAt === undefined) doc.recapSentAt = before.recapSentAt;
     await db.visits.put(doc);
     await db.drafts.delete(doc.poolId);
     await commit({ poolId: doc.poolId, visit: doc }, `Visit · ${customerName(doc.poolId)}`);
@@ -405,6 +420,120 @@ export const useDataStore = defineStore('data', () => {
     await commit({ poolId: doc.poolId, photos: [doc] }, `Delete photo · ${customerName(doc.poolId)}`);
   }
 
+  // ------------------------------------------------------------ business settings (Phase 7B)
+  /** Fields passed as undefined or '' are removed. */
+  async function saveSettings(body: { [K in keyof Settings]?: Settings[K] | undefined }) {
+    const now = nowIso();
+    const existing = await db.settings.get(BUSINESS_SETTINGS_ID);
+    const doc = { ...(existing ?? { _id: BUSINESS_SETTINGS_ID, createdAt: now, deletedAt: null }), ...body, updatedAt: now } as Settings;
+    // Blank text fields are removed rather than stored empty.
+    for (const [k, v] of Object.entries(doc)) if (v === '' || v === undefined) delete (doc as unknown as Record<string, unknown>)[k];
+    await db.settings.put(clone(doc));
+    await commit({ settings: [doc] }, 'Business details');
+  }
+
+  // ------------------------------------------------------------ invoices (Phase 7B)
+  const invoiceById = computed(() => new Map(invoices.value.map((i) => [i._id, i])));
+  /** Next number: one more than the highest so far (void included), or the first number in settings (default 1001). */
+  function nextInvoiceNumber(): number {
+    const max = Math.max(0, ...invoices.value.map((i) => i.number));
+    return max ? max + 1 : (settings.value?.firstInvoiceNumber ?? 1001);
+  }
+  /** Billing timing: "start" bills the current month, "end" the month just finished. */
+  function defaultPeriod(today = new Date()): string {
+    if (settings.value?.billingTiming === 'end') return periodOf(new Date(today.getFullYear(), today.getMonth() - 1, 1));
+    return periodOf(today);
+  }
+  const serviceLine = (rate: number, period: string): InvoiceLine => ({ _id: newId(), description: `Monthly pool service · ${periodLabel(period)}`, amount: rate });
+
+  function draftFor(customer: Customer, period: string, number: number, issueDate: string): Invoice {
+    const now = nowIso();
+    const terms = settings.value?.terms ?? 'receipt';
+    return {
+      _id: newId(),
+      customerId: customer._id,
+      number,
+      period,
+      issueDate,
+      dueDate: addDays(issueDate, TERMS_DAYS[terms]),
+      lines: customer.monthlyRate ? [serviceLine(customer.monthlyRate, period)] : [],
+      status: 'draft',
+      sentAt: null,
+      payments: [],
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+  }
+
+  /** Copies first: screen objects can't be stored in the phone's database or the outbox. */
+  async function putInvoices(docs: Invoice[], summary: string) {
+    const plain = docs.map((d) => clone(d));
+    for (const d of plain) await db.invoices.put(d);
+    await commit({ invoices: plain }, summary);
+  }
+
+  /** One draft invoice for a customer (their monthly rate, if any). */
+  async function createInvoice(customerId: string, period = defaultPeriod()): Promise<Invoice> {
+    const c = customerById.value.get(customerId);
+    if (!c) throw new Error('Customer not found');
+    const doc = draftFor(c, period, nextInvoiceNumber(), localDate(new Date()));
+    await putInvoices([doc], `New invoice #${doc.number} · ${c.name}`);
+    return doc;
+  }
+
+  /** Drafts for every current customer with a monthly rate who has no (non-void) invoice for the month. */
+  async function createMonthlyInvoices(period = defaultPeriod()): Promise<Invoice[]> {
+    const billed = new Set(invoices.value.filter((i) => i.period === period && i.status !== 'void').map((i) => i.customerId));
+    const due = customers.value.filter((c) => customerStatus(c) === 'current' && (c.monthlyRate ?? 0) > 0 && !billed.has(c._id));
+    if (!due.length) return [];
+    let number = nextInvoiceNumber();
+    const today = localDate(new Date());
+    const docs = due.map((c) => draftFor(c, period, number++, today));
+    await putInvoices(docs, `${docs.length} invoice${docs.length === 1 ? '' : 's'} · ${periodLabel(period)}`);
+    return docs;
+  }
+
+  async function saveInvoice(doc: Invoice, summary: string) {
+    await putInvoices([{ ...clone(doc), updatedAt: nowIso() }], summary);
+  }
+  async function markInvoiceSent(id: string) {
+    const i = invoiceById.value.get(id);
+    if (!i || i.status === 'void') return;
+    await saveInvoice({ ...i, status: 'sent', sentAt: i.sentAt ?? nowIso() }, `Invoice #${i.number} sent`);
+  }
+  async function recordPayment(id: string, p: Omit<Payment, '_id'>) {
+    const i = invoiceById.value.get(id);
+    if (!i) return;
+    await saveInvoice({ ...i, payments: [...i.payments, { ...p, _id: newId() }] }, `Payment · invoice #${i.number}`);
+  }
+  async function removePayment(id: string, paymentId: string) {
+    const i = invoiceById.value.get(id);
+    if (!i) return;
+    await saveInvoice({ ...i, payments: i.payments.filter((p) => p._id !== paymentId) }, `Payment removed · invoice #${i.number}`);
+  }
+  async function voidInvoice(id: string) {
+    const i = invoiceById.value.get(id);
+    if (!i) return;
+    await saveInvoice({ ...i, status: 'void' }, `Invoice #${i.number} void`);
+  }
+  /** Only drafts can be deleted; sent invoices are voided instead (the record stays). */
+  async function deleteDraftInvoice(id: string) {
+    const i = invoiceById.value.get(id);
+    if (!i || i.status !== 'draft') return;
+    const now = nowIso();
+    await putInvoices([{ ...i, deletedAt: now, updatedAt: now }], `Draft invoice #${i.number} deleted`);
+  }
+  /** Unpaid balance per customer (sent and overdue invoices). */
+  const balanceByCustomer = computed(() => {
+    const m = new Map<string, number>();
+    for (const i of invoices.value) {
+      const st = invoiceState(i);
+      if (st === 'sent' || st === 'overdue') m.set(i.customerId, Math.round(((m.get(i.customerId) ?? 0) + invoiceBalance(i)) * 100) / 100);
+    }
+    return m;
+  });
+
   // ------------------------------------------------------------ edit history (server only)
   const history = (collection: string, docId: string) => api<AuditEntry[]>(`/audit?collection=${collection}&docId=${docId}`);
 
@@ -447,6 +576,21 @@ export const useDataStore = defineStore('data', () => {
     poolById,
     chemicalById,
     activeChemicals,
+    settings,
+    invoices,
+    invoiceById,
+    balanceByCustomer,
+    saveSettings,
+    nextInvoiceNumber,
+    defaultPeriod,
+    createInvoice,
+    createMonthlyInvoices,
+    saveInvoice,
+    markInvoiceSent,
+    recordPayment,
+    removePayment,
+    voidInvoice,
+    deleteDraftInvoice,
     openIssues,
     openIssuesAll,
     openIssueCount,

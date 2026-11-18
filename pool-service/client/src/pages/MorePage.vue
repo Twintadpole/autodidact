@@ -1,6 +1,22 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <q-list bordered separator class="bg-white rounded-borders">
+      <q-item clickable to="/more/invoices" data-test="more-invoices">
+        <q-item-section avatar><q-icon name="request_quote" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>Invoices</q-item-label>
+          <q-item-label caption>{{ owed ? `${money(owed)} owed` : 'Nothing owed' }}</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
+      <q-item clickable to="/more/business" data-test="more-business">
+        <q-item-section avatar><q-icon name="storefront" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>Business details</q-item-label>
+          <q-item-label caption>{{ data.settings?.businessName || 'Name, logo, payment instructions' }}</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
       <q-item clickable to="/more/chemicals" data-test="more-chemicals">
         <q-item-section avatar><q-icon name="science" color="primary" /></q-item-section>
         <q-item-section>
@@ -38,6 +54,7 @@ import { useRouter } from 'vue-router';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuthStore } from '@/stores/auth';
 import { useDataStore } from '@/stores/data';
+import { money } from '@/lib/customer';
 import { api } from '@/stores/api';
 import { useSyncStore } from '@/stores/sync';
 
@@ -46,6 +63,7 @@ defineOptions({ name: 'MorePage' });
 const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
+const owed = computed(() => Math.round([...data.balanceByCustomer.values()].reduce((a, b) => a + b, 0) * 100) / 100);
 const lastBackupAt = ref<string | null | undefined>(undefined);
 const sync = useSyncStore();
 const version = __APP_VERSION__;

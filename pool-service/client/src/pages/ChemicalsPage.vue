@@ -4,7 +4,7 @@
       <q-item v-for="c in sorted" :key="c._id" :class="{ 'text-grey-6': !c.active }">
         <q-item-section>
           <q-item-label>{{ c.name }}</q-item-label>
-          <q-item-label caption>Default unit: {{ c.defaultUnit }}{{ c.active ? '' : ' · inactive' }}</q-item-label>
+          <q-item-label caption>Default unit: {{ c.defaultUnit }}{{ c.price != null && c.priceUnit ? ` · ${money(c.price)} per ${c.priceUnit}` : '' }}{{ c.active ? '' : ' · inactive' }}</q-item-label>
         </q-item-section>
         <q-item-section side class="row no-wrap">
           <q-btn flat round dense icon="edit" aria-label="Edit" @click="edit(c)" />
@@ -21,6 +21,11 @@
           <q-card-section class="q-gutter-md">
             <q-input v-model="form.name" outlined label="Name" autofocus :rules="[(v) => !!v?.trim() || 'Required']" data-test="chemical-name" />
             <q-select v-model="form.defaultUnit" outlined label="Default unit" :options="units" data-test="chemical-unit" />
+            <div class="row q-col-gutter-sm">
+              <q-input v-model="form.price" outlined label="Your cost" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" class="col-7" data-test="chemical-price" />
+              <q-select v-model="form.priceUnit" outlined label="per" :options="units" class="col-5" data-test="chemical-price-unit" />
+            </div>
+            <div class="text-caption text-grey-7">Only you see costs. They're never on invoices or recaps.</div>
           </q-card-section>
           <q-card-actions align="right">
             <q-btn flat label="Cancel" v-close-popup />
@@ -39,6 +44,7 @@ import { UNITS, type Unit } from '@pool/shared';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
 import type { Chemical } from '@/lib/types';
+import { money, numberOrNull } from '@/lib/customer';
 
 defineOptions({ name: 'ChemicalsPage' });
 
@@ -46,7 +52,7 @@ const $q = useQuasar();
 const data = useDataStore();
 const dialog = ref(false);
 const editing = ref<Chemical | null>(null);
-const form = reactive({ name: '', defaultUnit: 'lb' as Unit });
+const form = reactive({ name: '', defaultUnit: 'lb' as Unit, price: '' as string | number, priceUnit: 'lb' as Unit });
 const units = [...UNITS];
 
 const sorted = computed(() => [...data.chemicals].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name)));
@@ -55,12 +61,15 @@ function edit(c: Chemical | null) {
   editing.value = c;
   form.name = c?.name ?? '';
   form.defaultUnit = c?.defaultUnit ?? 'lb';
+  form.price = c?.price ?? '';
+  form.priceUnit = c?.priceUnit ?? c?.defaultUnit ?? 'lb';
   dialog.value = true;
 }
 
 async function save() {
   try {
-    await data.saveChemical(editing.value?._id ?? null, { name: form.name.trim(), defaultUnit: form.defaultUnit });
+    const price = numberOrNull(form.price);
+    await data.saveChemical(editing.value?._id ?? null, { name: form.name.trim(), defaultUnit: form.defaultUnit, price, priceUnit: price == null ? null : form.priceUnit });
     dialog.value = false;
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

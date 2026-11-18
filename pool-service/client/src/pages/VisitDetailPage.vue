@@ -9,6 +9,13 @@
     <template v-else>
       <VisitCard :visit="visit" readonly :title="title" data-test="visit-detail" />
 
+      <!-- Owner only: never on invoices or recaps -->
+      <div v-if="chemCost != null" class="row items-center text-body2 text-grey-8 q-px-sm" data-test="visit-chem-cost">
+        <q-icon name="lock" size="16px" class="q-mr-xs" /> Chemical cost (only you see this): <b class="q-ml-xs">{{ money(chemCost) }}</b>
+      </div>
+      <q-btn color="primary" outline icon="forward_to_inbox" :label="visit.recapSentAt ? 'Send recap again' : 'Send recap'" no-caps :to="`/pools/${poolId}/visits/${visit._id}/recap`" data-test="send-recap" />
+      <div v-if="visit.recapSentAt" class="text-caption text-positive text-center">Recap sent {{ new Date(visit.recapSentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</div>
+
       <!-- Step through this pool's visits -->
       <div class="row q-col-gutter-sm">
         <div class="col-6">
@@ -34,6 +41,8 @@ import HistoryDialog from '@/components/HistoryDialog.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import type { Visit } from '@/lib/types';
+import { visitChemicalCost } from '@/lib/money';
+import { money } from '@/lib/customer';
 
 defineOptions({ name: 'VisitDetailPage' });
 
@@ -52,6 +61,7 @@ const newer = computed(() => (index.value > 0 ? all.value[index.value - 1] : und
 const older = computed(() => (index.value >= 0 ? all.value[index.value + 1] : undefined));
 const title = computed(() => (visit.value && isToday(parseISO(visit.value.visitedAt)) ? 'Today’s visit' : 'Visit'));
 const poolTitle = computed(() => data.poolLabel(poolId.value));
+const chemCost = computed(() => (visit.value ? visitChemicalCost(visit.value) : null));
 
 async function load() {
   loading.value = !visit.value;

@@ -38,6 +38,8 @@ export class PoolDB extends Dexie {
   photos!: Table<Photo, string>;
   photoBlobs!: Table<{ id: string; blob: Blob }, string>;
   outbox!: Table<OutboxRow, string>;
+  settings!: Table<import('@/lib/types').Settings, string>;
+  invoices!: Table<import('@/lib/types').Invoice, string>;
   drafts!: Table<Draft, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
 
@@ -56,6 +58,14 @@ export class PoolDB extends Dexie {
       drafts: 'poolId',
       meta: 'key',
     });
+    // Phase 7B: business settings (one record) and invoices. An older app skipped these in its
+    // downloads but still moved lastPull past them, so the first download after upgrading is a full one.
+    this.version(2)
+      .stores({
+        settings: '_id',
+        invoices: '_id, customerId, number',
+      })
+      .upgrade((tx) => tx.table('meta').delete('lastPull'));
   }
 }
 

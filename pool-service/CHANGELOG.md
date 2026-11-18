@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased: Phase 7B, invoices, chemical costs, visit recaps (November 2026)
+
+- **One-time service date:** a pool's Service day can be "One-time date". It shows under that day in its week,
+  under **Coming up** before then, and under **Past one-time** after.
+- **Business details** (More → Business details): name, logo, phone, email, address, payment instructions,
+  payment terms (due on receipt / net 15 / net 30), billing at the start or end of the month, first invoice number.
+- **Chemical costs, for you only:** a price per unit on each chemical; each dose keeps its cost from when the
+  visit was saved; visit details show the chemical cost. Never on invoices or recaps.
+- **Invoices** (More → Invoices, and on each customer): monthly drafts for current customers with a rate,
+  or one at a time; extra lines and a note; a PDF made on the phone and shared through Android's share menu;
+  Mark sent; payments by check, cash, electronic or other (part payments too); Paid, Overdue and Void.
+- **Visit recap** (only when you choose): tasks, water test and chemicals added (never cost), a note for the
+  customer and the photos you pick; sent by email link or the share menu; the visit records when it was sent.
+- Fixed: deleting a draft invoice could silently fail to save.
+
 ## Unreleased: Phase 7A, fuller customer records (November 2026)
 
 - **Only a customer's name is required now.** Address, phones, pool type, gallons and service day can all be left blank.

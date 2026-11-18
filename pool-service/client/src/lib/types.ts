@@ -2,7 +2,7 @@
  * Documents as they arrive over JSON (dates are ISO strings).
  * The Zod schemas in @pool/shared are the source of truth for what the server accepts.
  */
-import type { CustomerStatus, EquipmentKind, IssueStatus, PaymentMethod, ServiceDay, Unit } from '@pool/shared';
+import type { BillingTiming, CustomerStatus, EquipmentKind, InvoiceStatus, InvoiceTerms, IssueStatus, PaymentMethod, ServiceDay, Unit } from '@pool/shared';
 
 /** Every part optional. */
 export interface Address {
@@ -73,6 +73,8 @@ export interface Dose {
   chemicalId: string;
   amount: number;
   unit: Unit;
+  /** Owner-only cost when the visit was saved. Never on invoices or recaps. */
+  cost?: number | null;
 }
 
 export interface Tasks {
@@ -106,6 +108,9 @@ export interface Visit extends Base {
   tasks: Tasks;
   notes?: string;
   timeLog?: TimeLog;
+  /** Written for the customer's recap (notes stay private). */
+  customerNote?: string;
+  recapSentAt?: string | null;
 }
 
 export interface Photo extends Base {
@@ -136,6 +141,46 @@ export interface Chemical extends Base {
   name: string;
   defaultUnit: Unit;
   active: boolean;
+  /** Owner-only price per priceUnit. */
+  price?: number | null;
+  priceUnit?: Unit | null;
+}
+
+export interface Settings extends Base {
+  businessName?: string;
+  address?: Address;
+  phone?: string;
+  email?: string;
+  logoDataUrl?: string;
+  paymentInstructions?: string;
+  terms?: InvoiceTerms | null;
+  billingTiming?: BillingTiming | null;
+  firstInvoiceNumber?: number | null;
+}
+
+export interface InvoiceLine {
+  _id: string;
+  description: string;
+  amount: number;
+}
+export interface Payment {
+  _id: string;
+  date: string;
+  amount: number;
+  method?: PaymentMethod | null;
+  reference?: string;
+}
+export interface Invoice extends Base {
+  customerId: string;
+  number: number;
+  period?: string | null;
+  issueDate: string;
+  dueDate?: string | null;
+  lines: InvoiceLine[];
+  notes?: string;
+  status: InvoiceStatus;
+  sentAt?: string | null;
+  payments: Payment[];
 }
 
 export interface Issue extends Base {

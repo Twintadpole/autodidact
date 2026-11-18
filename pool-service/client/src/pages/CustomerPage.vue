@@ -42,6 +42,25 @@
         <div v-else class="text-grey-6 text-body2">No pools yet.</div>
       </div>
 
+      <div data-test="customer-invoices">
+        <div class="row items-center justify-between q-mb-xs">
+          <div class="text-subtitle1">Invoices<span v-if="owed" class="text-negative text-body2"> · {{ money(owed) }} owed</span></div>
+          <q-btn flat dense no-caps color="primary" icon="add" label="New invoice" data-test="new-invoice" @click="newInvoice" />
+        </div>
+        <q-list v-if="custInvoices.length" bordered separator class="bg-white rounded-borders">
+          <q-item v-for="i in custInvoices.slice(0, 6)" :key="i._id" clickable :to="`/invoices/${i._id}`" :data-test="`cust-invoice-${i.number}`">
+            <q-item-section>
+              <q-item-label>#{{ i.number }} · {{ periodLabel(i.period) || i.issueDate.slice(0, 10) }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-item-label class="text-grey-10">{{ money(invoiceTotal(i)) }}</q-item-label>
+              <q-badge :color="STATE_COLOR[invoiceState(i)]" :label="STATE_LABEL[invoiceState(i)]" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+        <div v-else class="text-grey-6 text-body2">No invoices yet.</div>
+      </div>
+
       <div>
         <div class="text-subtitle1 q-mb-xs">Notes</div>
         <NotesList parent-type="customer" :parent-id="customer._id" />
@@ -59,7 +78,12 @@ import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS } from '@/lib/format';
 import { money, PAYMENT_LABEL, scheduleText, STATUS_COLOR, STATUS_LABEL } from '@/lib/customer';
-import { customerStatus } from '@pool/shared';
+import { customerStatus, invoiceState, invoiceTotal } from '@pool/shared';
+import { periodLabel } from '@/lib/money';
+import { STATE_COLOR, STATE_LABEL } from '@/lib/invoice';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
+import { errorMessage } from '@/stores/api';
 import { format, parseISO } from 'date-fns';
 import type { Pool } from '@/lib/types';
 
@@ -71,6 +95,19 @@ const ui = useUiStore();
 const customer = computed(() => data.customerById.get(String(route.params.id)));
 const pools = computed(() => data.pools.filter((p) => p.customerId === customer.value?._id));
 const status = computed(() => (customer.value ? customerStatus(customer.value) : 'current'));
+const custInvoices = computed(() => data.invoices.filter((i) => i.customerId === customer.value?._id));
+const owed = computed(() => (customer.value ? (data.balanceByCustomer.get(customer.value._id) ?? 0) : 0));
+const router = useRouter();
+const $q = useQuasar();
+async function newInvoice() {
+  if (!customer.value) return;
+  try {
+    const inv = await data.createInvoice(customer.value._id);
+    void router.push(`/invoices/${inv._id}`);
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  }
+}
 
 const day = (iso: string) => format(parseISO(iso.slice(0, 10)), 'MMM d, yyyy');
 /** Only the billing details that are filled in. */
