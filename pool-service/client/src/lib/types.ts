@@ -2,7 +2,7 @@
  * Documents as they arrive over JSON (dates are ISO strings).
  * The Zod schemas in @pool/shared are the source of truth for what the server accepts.
  */
-import type { BillingTiming, CustomerStatus, EquipmentKind, InvoiceStatus, InvoiceTerms, IssueStatus, PaymentMethod, ServiceDay, Unit } from '@pool/shared';
+import type { BillingTiming, CustomerStatus, EquipmentKind, InvoiceStatus, InvoiceTerms, IssueStatus, LedgerKind, PaymentMethod, ServiceDay, Unit } from '@pool/shared';
 
 /** Every part optional. */
 export interface Address {
@@ -156,6 +156,26 @@ export interface Settings extends Base {
   terms?: InvoiceTerms | null;
   billingTiming?: BillingTiming | null;
   firstInvoiceNumber?: number | null;
+  mileageRate?: number | null;
+}
+
+/** An expense, other income, or a day's mileage (Phase 7C). */
+export interface Ledger extends Base {
+  kind: LedgerKind;
+  date: string;
+  amount?: number | null;
+  category?: string | null;
+  vendor?: string;
+  note?: string;
+  customerId?: string | null;
+  receiptDataUrl?: string;
+  billToCustomer?: boolean;
+  billedAmount?: number | null;
+  invoiceId?: string | null;
+  invoiceLineId?: string | null;
+  miles?: number | null;
+  odometerStart?: number | null;
+  odometerEnd?: number | null;
 }
 
 export interface InvoiceLine {

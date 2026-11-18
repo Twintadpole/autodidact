@@ -31,6 +31,7 @@
         <q-select v-model="form.terms" outlined dense label="Payment terms" emit-value map-options :options="termOptions" class="col-6" data-test="business-terms" />
         <q-input v-model="form.firstInvoiceNumber" outlined dense label="First invoice number" type="number" inputmode="numeric" min="1" class="col-6" data-test="business-first-number" />
       </div>
+      <q-input v-model="form.mileageRate" outlined dense label="Rate per mile" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" hint="For mileage totals and each customer's mileage cost (e.g. the IRS standard rate)" data-test="business-mileage-rate" />
       <q-btn-toggle v-model="form.billingTiming" spread no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="timingOptions" data-test="business-timing" />
       <div class="text-caption text-grey-7">{{ form.billingTiming === 'end' ? 'Invoices made in December bill November.' : 'Invoices made in November bill November.' }}</div>
 
@@ -74,6 +75,7 @@ const form = reactive({
   terms: 'receipt' as InvoiceTerms,
   billingTiming: 'start' as BillingTiming,
   firstInvoiceNumber: '' as string | number,
+  mileageRate: '' as string | number,
 });
 
 watch(
@@ -89,6 +91,7 @@ watch(
     form.terms = s.terms ?? 'receipt';
     form.billingTiming = s.billingTiming ?? 'start';
     form.firstInvoiceNumber = s.firstInvoiceNumber ?? '';
+    form.mileageRate = s.mileageRate ?? '';
   },
   { immediate: true },
 );
@@ -126,6 +129,7 @@ async function save() {
       terms: form.terms,
       billingTiming: form.billingTiming,
       firstInvoiceNumber: first && first >= 1 ? Math.round(first) : null,
+      mileageRate: numberOrNull(form.mileageRate),
     });
     $q.notify({ message: 'Saved', color: 'grey-8' });
     router.back();

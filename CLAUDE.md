@@ -87,7 +87,10 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
       share; payments (check/cash/electronic/other, partial OK); Draft/Sent/Paid/Overdue/Void.
     - Visit recap (only when the owner chooses): date, tasks, readings, chemicals added (names and amounts,
       never cost), a separate note for the customer, ticked photos; sent via email link or share sheet.
-  - **7C money tools:** income, payments, expenses, mileage (from distance-from-HQ), chemical cost per dose, P&L, profit per customer.
+  - ✅ **7C money tools** (deployed Nov 18): ledger (expenses incl. Tools = capital and Supplies = billed to the
+    customer's draft invoice, other income, mileage as real miles per day), reports on the phone, and
+    "what you earn per hour by customer" on the server (`/api/reports/customer-hours`): (billed − chemicals −
+    2 × distance × rate per visit − linked expenses) ÷ hours; untimed visits use the pool's average.
   - **7D desktop layout:** "some modular features, nothing too fancy" (ask what modular means before planning).
   - **7E** CSV/Excel import and export.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

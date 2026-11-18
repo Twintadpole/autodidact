@@ -6,7 +6,7 @@ import { useSyncStore } from './sync';
 import { clone, newId } from '@/lib/format';
 import { db } from '@/offline/db';
 import { enqueue } from '@/offline/engine';
-import type { AuditEntry, Chemical, Customer, Equipment, Invoice, InvoiceLine, Issue, Note, Payment, Photo, Pool, Settings, Visit } from '@/lib/types';
+import type { AuditEntry, Chemical, Customer, Equipment, Invoice, InvoiceLine, Issue, Ledger, Note, Payment, Photo, Pool, Settings, Visit } from '@/lib/types';
 import { addDays, localDate, periodLabel, periodOf, TERMS_DAYS, withDoseCosts } from '@/lib/money';
 
 /** The database drops empty objects/arrays, so fill in what a visit always has. */
@@ -38,6 +38,8 @@ export const useDataStore = defineStore('data', () => {
   /** Business details (Phase 7B); null until set. */
   const settings = ref<Settings | null>(null);
   const invoices = ref<Invoice[]>([]);
+  /** Expenses, other income and mileage (Phase 7C). */
+  const ledger = ref<Ledger[]>([]);
   const loaded = ref(false);
   const loading = ref(false);
   /** Bumped whenever the phone's copy changes (sync or local edit); screens that read it once watch this. */
@@ -72,7 +74,7 @@ export const useDataStore = defineStore('data', () => {
 
   /** Re-reads the local database into memory (after a sync or a local change). */
   async function refreshFromDb() {
-    const [c, p, ch, i, running, st, inv] = await Promise.all([
+    const [c, p, ch, i, running, st, inv, led] = await Promise.all([
       db.customers.toArray(),
       db.pools.toArray(),
       db.chemicals.toArray(),
@@ -80,7 +82,9 @@ export const useDataStore = defineStore('data', () => {
       db.visits.filter((v) => !v.deletedAt && isRunning(v)).toArray(),
       db.settings.get(BUSINESS_SETTINGS_ID),
       db.invoices.toArray(),
+      db.ledger.toArray(),
     ]);
+    ledger.value = live(led).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
     settings.value = st && !st.deletedAt ? st : null;
     invoices.value = live(inv).map((x) => ({ ...x, lines: x.lines ?? [], payments: x.payments ?? [] })).sort((a, b) => b.number - a.number);
     const livePools = new Set(live(p).map((x) => x._id));
@@ -524,6 +528,69 @@ export const useDataStore = defineStore('data', () => {
     const now = nowIso();
     await putInvoices([{ ...i, deletedAt: now, updatedAt: now }], `Draft invoice #${i.number} deleted`);
   }
+  // ------------------------------------------------------------ ledger (Phase 7C)
+  const suppliesLine = (e: Ledger, amount: number): InvoiceLine => ({
+    _id: e.invoiceLineId ?? newId(),
+    description: `Supplies · ${e.note?.trim() || e.vendor?.trim() || 'materials'}`,
+    amount,
+  });
+
+  /**
+   * Saves an expense, income or mileage entry. A Supplies expense marked "Add to their invoice"
+   * puts a line on the customer's draft invoice (a new draft if they have none); changing or
+   * unticking it updates or removes that line while the invoice is still a draft. Lines on
+   * invoices already sent are left alone.
+   */
+  async function saveLedger(input: Ledger): Promise<Ledger> {
+    const now = nowIso();
+    const before = await db.ledger.get(input._id);
+    const doc: Ledger = { ...clone(input), createdAt: before?.createdAt ?? now, updatedAt: now, deletedAt: null };
+    const changed: Invoice[] = [];
+    const linked = doc.invoiceId ? invoiceById.value.get(doc.invoiceId) : undefined;
+    const removeLine = (inv: Invoice) => changed.push({ ...clone(inv), lines: inv.lines.filter((l) => l._id !== doc.invoiceLineId), updatedAt: now });
+    const amount = doc.billedAmount ?? doc.amount ?? null;
+    const wantsBill = doc.kind === 'expense' && !!doc.billToCustomer && !!doc.customerId && amount != null && amount > 0;
+
+    if (wantsBill && linked?.status === 'draft' && linked.customerId === doc.customerId) {
+      const line = suppliesLine(doc, amount!);
+      const has = linked.lines.some((l) => l._id === line._id);
+      changed.push({ ...clone(linked), lines: has ? linked.lines.map((l) => (l._id === line._id ? line : l)) : [...linked.lines, line], updatedAt: now });
+      doc.invoiceLineId = line._id;
+    } else if (wantsBill && (!linked || linked.status === 'void' || linked.customerId !== doc.customerId)) {
+      if (linked?.status === 'draft') removeLine(linked);
+      const customer = customerById.value.get(doc.customerId!)!;
+      const draft = invoices.value.find((i) => i.customerId === doc.customerId && i.status === 'draft');
+      const target = draft ? clone(draft) : draftFor(customer, defaultPeriod(), nextInvoiceNumber(), localDate(new Date()));
+      const line = suppliesLine({ ...doc, invoiceLineId: null }, amount!);
+      changed.push({ ...target, lines: [...target.lines, line], updatedAt: now });
+      doc.invoiceId = target._id;
+      doc.invoiceLineId = line._id;
+    } else if (!wantsBill && linked?.status === 'draft') {
+      removeLine(linked);
+      doc.invoiceId = null;
+      doc.invoiceLineId = null;
+    }
+
+    await db.ledger.put(clone(doc));
+    for (const inv of changed) await db.invoices.put(clone(inv));
+    const what = doc.kind === 'mileage' ? `Miles · ${doc.miles ?? 0}` : `${doc.kind === 'income' ? 'Income' : 'Expense'} · $${(doc.amount ?? 0).toFixed(2)}`;
+    await commit({ ledger: [doc], ...(changed.length && { invoices: changed }) }, `${before ? 'Edit' : 'New'} ${what.toLowerCase()}`);
+    return doc;
+  }
+
+  async function deleteLedger(id: string) {
+    const e = await db.ledger.get(id);
+    if (!e) return;
+    const now = nowIso();
+    const linked = e.invoiceId ? invoiceById.value.get(e.invoiceId) : undefined;
+    // Plain copies: live screen objects can't be stored in the phone's database.
+    const changed = linked?.status === 'draft' ? [clone({ ...linked, lines: linked.lines.filter((l) => l._id !== e.invoiceLineId), updatedAt: now })] : [];
+    const doc = { ...e, deletedAt: now, updatedAt: now };
+    await db.ledger.put(doc);
+    for (const inv of changed) await db.invoices.put(inv);
+    await commit({ ledger: [doc], ...(changed.length && { invoices: changed }) }, `Delete ${e.kind}`);
+  }
+
   /** Unpaid balance per customer (sent and overdue invoices). */
   const balanceByCustomer = computed(() => {
     const m = new Map<string, number>();
@@ -578,6 +645,9 @@ export const useDataStore = defineStore('data', () => {
     activeChemicals,
     settings,
     invoices,
+    ledger,
+    saveLedger,
+    deleteLedger,
     invoiceById,
     balanceByCustomer,
     saveSettings,

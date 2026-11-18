@@ -40,6 +40,7 @@ export class PoolDB extends Dexie {
   outbox!: Table<OutboxRow, string>;
   settings!: Table<import('@/lib/types').Settings, string>;
   invoices!: Table<import('@/lib/types').Invoice, string>;
+  ledger!: Table<import('@/lib/types').Ledger, string>;
   drafts!: Table<Draft, string>;
   meta!: Table<{ key: string; value: unknown }, string>;
 
@@ -65,6 +66,10 @@ export class PoolDB extends Dexie {
         settings: '_id',
         invoices: '_id, customerId, number',
       })
+      .upgrade((tx) => tx.table('meta').delete('lastPull'));
+    // Phase 7C: expenses, other income and mileage. Full download once, for the same reason.
+    this.version(3)
+      .stores({ ledger: '_id, kind, date, customerId' })
       .upgrade((tx) => tx.table('meta').delete('lastPull'));
   }
 }

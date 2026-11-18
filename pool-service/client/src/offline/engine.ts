@@ -162,7 +162,7 @@ async function backoff(row: OutboxRow, error: string) {
 export const pendingCount = () => db.outbox.where('status').equals('pending').count();
 export const failedCount = () => db.outbox.where('status').equals('failed').count();
 
-const PULL_TABLES = ['customers', 'pools', 'visits', 'chemicals', 'issues', 'notes', 'photos', 'settings', 'invoices'] as const;
+const PULL_TABLES = ['customers', 'pools', 'visits', 'chemicals', 'issues', 'notes', 'photos', 'settings', 'invoices', 'ledger'] as const;
 
 /** Brings down everything changed on the server since the last pull. */
 async function pullUnlocked(): Promise<boolean> {

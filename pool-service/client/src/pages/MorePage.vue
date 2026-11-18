@@ -1,6 +1,14 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <q-list bordered separator class="bg-white rounded-borders">
+      <q-item clickable to="/more/money" data-test="more-money">
+        <q-item-section avatar><q-icon name="account_balance_wallet" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>Money</q-item-label>
+          <q-item-label caption>This month: profit {{ money(monthSum.profit) }}</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
       <q-item clickable to="/more/invoices" data-test="more-invoices">
         <q-item-section avatar><q-icon name="request_quote" color="primary" /></q-item-section>
         <q-item-section>
@@ -55,6 +63,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuthStore } from '@/stores/auth';
 import { useDataStore } from '@/stores/data';
 import { money } from '@/lib/customer';
+import { moneySummary, periodRange } from '@/lib/report';
 import { api } from '@/stores/api';
 import { useSyncStore } from '@/stores/sync';
 
@@ -63,6 +72,10 @@ defineOptions({ name: 'MorePage' });
 const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
+const monthSum = computed(() => {
+  const r = periodRange('thisMonth');
+  return moneySummary(data.invoices, data.ledger, r.from, r.to, data.settings?.mileageRate);
+});
 const owed = computed(() => Math.round([...data.balanceByCustomer.values()].reduce((a, b) => a + b, 0) * 100) / 100);
 const lastBackupAt = ref<string | null | undefined>(undefined);
 const sync = useSyncStore();
