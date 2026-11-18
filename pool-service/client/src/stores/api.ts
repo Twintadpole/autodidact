@@ -71,6 +71,53 @@ export async function apiForm<T = unknown>(path: string, form: FormData): Promis
   return data as T;
 }
 
+/**
+ * Downloads a file the server makes (Excel exports): GET, or POST with a JSON body.
+ * The browser saves it under the name the server gives.
+ */
+export async function apiDownload(path: string, body?: unknown): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      credentials: 'same-origin',
+      redirect: API_REDIRECT,
+      ...(body !== undefined && { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+    });
+  } catch {
+    throw new ApiError(0, 'Excel files are made on the server: this needs a connection (CSV works offline).');
+  }
+  if (isAccessBlocked(res)) {
+    reportAccess(true);
+    throw new ApiError(0, ACCESS_MESSAGE);
+  }
+  reportAccess(false);
+  if (!res.ok) {
+    if (res.status === 401) unauthorizedHandler?.();
+    const text = await res.text();
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      message = (JSON.parse(text) as { message?: string }).message ?? message;
+    } catch {
+      // not JSON
+    }
+    throw new ApiError(res.status, message);
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'export.xlsx';
+  saveBlob(await res.blob(), name);
+}
+
+/** Hands a file to the browser's download. */
+export function saveBlob(blob: Blob, name: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 /** A readable message for notifications. */
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

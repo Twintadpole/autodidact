@@ -45,7 +45,7 @@ const show = (c: CardColumn, v: unknown) => (v == null || v === '' ? '' : c.mone
 
 // Full screen offers Columns and Export for this table.
 watchEffect(() => {
-  tools.table = { name: props.name, columns: props.columns.map((c) => ({ key: c.key, label: c.label })), rows: props.rows };
+  tools.table = { name: props.name, columns: props.columns.map((c) => ({ key: c.key, label: c.label, ...(c.money && { money: true }) })), rows: props.rows };
 });
 </script>
 

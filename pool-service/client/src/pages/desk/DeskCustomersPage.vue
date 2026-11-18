@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <DeskTable :rows="rows" :columns="columns" storage-key="customers" sort-by="name" test-id="desk-customers" @row="openRow">
+    <DeskTable :rows="rows" :columns="columns" storage-key="customers" export-name="customers" sort-by="name" test-id="desk-customers" @row="openRow">
       <template #filters>
         <q-btn-toggle v-model="ui.customerFilter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="classOptions" data-test="desk-customer-class" />
       </template>
@@ -118,18 +118,18 @@ const classOptions = computed(() => {
 const dollars = (v: number | null) => (v == null ? '' : money(v));
 const columns: DeskColumn<Row>[] = [
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true, required: true },
-  { name: 'status', label: 'Class', field: 'status', align: 'left', sortable: true },
+  { name: 'status', label: 'Class', field: 'status', align: 'left', sortable: true, exportValue: (r) => STATUS_LABEL[r.status] },
   { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
   { name: 'email', label: 'Email', field: 'email', align: 'left', sortable: true },
   { name: 'city', label: 'City', field: 'city', align: 'left', sortable: true },
   { name: 'pools', label: 'Pools', field: 'pools', align: 'right', sortable: true, hidden: true },
   { name: 'schedule', label: 'Service day', field: 'schedule', align: 'left', sortable: true },
-  { name: 'rate', label: 'Monthly rate', field: 'rate', align: 'right', sortable: true, sum: true, format: dollars },
+  { name: 'rate', label: 'Monthly rate', field: 'rate', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
   { name: 'distance', label: 'Miles from HQ', field: 'distance', align: 'right', sortable: true, format: (v: number | null) => (v == null ? '' : String(v)) },
-  { name: 'owed', label: 'Owed', field: 'owed', align: 'right', sortable: true, sum: true, format: (v: number) => (v ? money(v) : '') },
+  { name: 'owed', label: 'Owed', field: 'owed', align: 'right', sortable: true, sum: true, format: (v: number) => (v ? money(v) : ''), exportType: 'money' },
   { name: 'pays', label: 'Pays by', field: 'pays', align: 'left', sortable: true, hidden: true },
-  { name: 'started', label: 'Started', field: 'started', align: 'left', sortable: true, hidden: true },
-  { name: 'ended', label: 'Ended', field: 'ended', align: 'left', sortable: true, hidden: true },
+  { name: 'started', label: 'Started', field: 'started', align: 'left', sortable: true, hidden: true, exportType: 'date' },
+  { name: 'ended', label: 'Ended', field: 'ended', align: 'left', sortable: true, hidden: true, exportType: 'date' },
 ];
 
 // ---- side panel

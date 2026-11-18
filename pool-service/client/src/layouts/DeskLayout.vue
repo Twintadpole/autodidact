@@ -27,6 +27,15 @@
             </q-item-section>
           </q-item>
         </template>
+        <q-separator spaced />
+        <q-item clickable :disable="exportingAll" data-test="desk-export-all" @click="exportAll">
+          <q-item-section avatar><q-icon name="download" /></q-item-section>
+          <q-item-section>
+            <q-item-label>Export everything</q-item-label>
+            <q-item-label caption>One Excel file</q-item-label>
+          </q-item-section>
+          <q-item-section v-if="exportingAll" side><q-spinner size="18px" /></q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -49,6 +58,9 @@ import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { useAppShell } from '@/composables/useAppShell';
 import { saveView } from '@/lib/view';
+import { exportEverything } from '@/lib/exportTable';
+import { errorMessage } from '@/stores/api';
+import { useQuasar } from 'quasar';
 
 defineOptions({ name: 'DeskLayout' });
 
@@ -76,6 +88,19 @@ const menuOpen = ref(false);
 const activeIssues = computed(() => data.openIssues.filter((i) => i.status !== 'postponed'));
 const openCount = computed(() => activeIssues.value.length);
 const doNowCount = computed(() => activeIssues.value.filter((i) => i.urgent && i.important).length);
+
+const $q = useQuasar();
+const exportingAll = ref(false);
+async function exportAll() {
+  exportingAll.value = true;
+  try {
+    await exportEverything();
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  } finally {
+    exportingAll.value = false;
+  }
+}
 
 function toPhone() {
   saveView('phone');

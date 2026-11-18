@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <DeskTable :rows="rows" :columns="columns" storage-key="payments" sort-by="date" descending test-id="desk-payments" @row="(r) => openInvoice(r.invoiceId)">
+    <DeskTable :rows="rows" :columns="columns" storage-key="payments" export-name="payments" sort-by="date" descending test-id="desk-payments" @row="(r) => openInvoice(r.invoiceId)">
       <template #filters>
         <q-select v-model="period" dense outlined emit-value map-options :options="PERIOD_OPTIONS" style="width: 150px" data-test="desk-period" />
         <q-select v-model="method" dense outlined emit-value map-options clearable :options="PAYMENT_OPTIONS" label="Method" style="width: 140px" />
@@ -75,12 +75,12 @@ const rows = computed<Row[]>(() =>
 );
 const day = (d: string) => new Date(d + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const columns: DeskColumn<Row>[] = [
-  { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true, required: true, format: day },
+  { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true, required: true, format: day, exportType: 'date' },
   { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
   { name: 'number', label: 'Invoice #', field: 'number', align: 'left', sortable: true },
   { name: 'method', label: 'Method', field: 'method', align: 'left', sortable: true },
   { name: 'reference', label: 'Reference', field: 'reference', align: 'left' },
-  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true, sum: true, format: money },
+  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
 ];
 
 // ---- panel: the payment's invoice

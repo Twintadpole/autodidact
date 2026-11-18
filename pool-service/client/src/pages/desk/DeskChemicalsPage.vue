@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <DeskTable :rows="rows" :columns="columns" storage-key="chemicals" sort-by="name" test-id="desk-chemicals" @row="openRow">
+    <DeskTable :rows="rows" :columns="columns" storage-key="chemicals" export-name="chemicals" sort-by="name" test-id="desk-chemicals" @row="openRow">
       <template #filters>
         <q-toggle v-model="showInactive" dense label="Show inactive" />
       </template>
@@ -75,7 +75,7 @@ const rows = computed<Row[]>(() =>
 const columns: DeskColumn<Row>[] = [
   { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true, required: true },
   { name: 'unit', label: 'Default unit', field: 'unit', align: 'left', sortable: true },
-  { name: 'price', label: 'Your cost', field: 'price', align: 'right', sortable: true, format: (v: number | null) => (v == null ? '' : money(v)) },
+  { name: 'price', label: 'Your cost', field: 'price', align: 'right', sortable: true, format: (v: number | null) => (v == null ? '' : money(v)), exportType: 'money' },
   { name: 'per', label: 'per', field: 'per', align: 'left' },
   { name: 'active', label: 'Active', field: 'active', align: 'center', sortable: true },
 ];

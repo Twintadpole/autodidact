@@ -41,6 +41,14 @@
         </q-item-section>
         <q-item-section side><q-icon name="chevron_right" /></q-item-section>
       </q-item>
+      <q-item clickable :disable="exportingAll" data-test="more-export-all" @click="exportAll">
+        <q-item-section avatar><q-icon name="download" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>Export everything</q-item-label>
+          <q-item-label caption>One Excel file: customers, visits, invoices, money and more</q-item-label>
+        </q-item-section>
+        <q-item-section v-if="exportingAll" side><q-spinner size="18px" /></q-item-section>
+      </q-item>
       <q-item data-test="backup-status">
         <q-item-section avatar><q-icon name="backup" :color="backupColor" /></q-item-section>
         <q-item-section>
@@ -75,12 +83,28 @@ import { moneySummary, periodRange } from '@/lib/report';
 import { api } from '@/stores/api';
 import { useSyncStore } from '@/stores/sync';
 import { saveView } from '@/lib/view';
+import { exportEverything } from '@/lib/exportTable';
+import { errorMessage } from '@/stores/api';
+import { useQuasar } from 'quasar';
 
 defineOptions({ name: 'MorePage' });
 
 const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
+
+const $q = useQuasar();
+const exportingAll = ref(false);
+async function exportAll() {
+  exportingAll.value = true;
+  try {
+    await exportEverything();
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  } finally {
+    exportingAll.value = false;
+  }
+}
 
 /** Desktop view: this device opens there from now on (Phone view in its header switches back). */
 function toDesk() {

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased: Phase 7E part 1, exports (November 2026)
+
+- **Export on every desktop table** (Excel or CSV): what the table shows, with your search, filters, sort and
+  columns. Dates come out as real dates and money as numbers, so a spreadsheet can add them up.
+- **Export everything** (desktop menu, and More on the phone): one Excel file with a sheet each for customers,
+  pools, equipment, visits, chemicals added, invoices, invoice lines, payments, expenses & income, mileage,
+  chemicals, issues and notes. Your chemical costs are included (it's your file). Photos and receipts aren't.
+- Full-screen dashboard cards export their table as Excel too.
+- Excel files are made by the server (needs a connection); CSV is made on the device and works offline.
+
 ## Unreleased: Phase 7D part 3, more cards and full-screen tools (November 2026)
 
 - **Six more cards:** Water problems (pools whose last visit had a reading way off, and which tests are off

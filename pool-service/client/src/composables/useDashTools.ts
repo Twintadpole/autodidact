@@ -6,7 +6,7 @@ export type NumberFormat = 'exact' | 'whole' | 'short';
 export interface TableExport {
   /** File name without extension. */
   name: string;
-  columns: { key: string; label: string }[];
+  columns: { key: string; label: string; money?: boolean }[];
   rows: Record<string, unknown>[];
 }
 
@@ -51,22 +51,4 @@ export function formatMoney(v: number, f: NumberFormat): string {
     return `${sign}$${Math.round(a)}`;
   }
   return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', ...(f === 'whole' && { minimumFractionDigits: 0, maximumFractionDigits: 0 }) });
-}
-
-/** A CSV file of a table (raw numbers, so a spreadsheet can add them up), downloaded by the browser. */
-export function downloadCsv(t: TableExport, hidden: string[] = []) {
-  const cols = t.columns.filter((c) => !hidden.includes(c.key));
-  const cell = (v: unknown) => {
-    const s = v == null ? '' : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const csv = [cols.map((c) => cell(c.label)).join(','), ...t.rows.map((r) => cols.map((c) => cell(r[c.key])).join(','))].join('\r\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${t.name}-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }

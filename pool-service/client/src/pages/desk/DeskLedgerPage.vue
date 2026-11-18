@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <DeskTable :rows="rows" :columns="columns" :storage-key="mileage ? 'mileage' : 'ledger'" sort-by="date" descending :test-id="mileage ? 'desk-mileage' : 'desk-ledger'" @row="openRow">
+    <DeskTable :rows="rows" :columns="columns" :storage-key="mileage ? 'mileage' : 'ledger'" :export-name="mileage ? 'mileage' : 'expenses-income'" sort-by="date" descending :test-id="mileage ? 'desk-mileage' : 'desk-ledger'" @row="openRow">
       <template #filters>
         <q-select v-model="period" dense outlined emit-value map-options :options="PERIOD_OPTIONS" style="width: 150px" data-test="desk-period" />
         <q-btn-toggle v-if="!mileage" v-model="kindFilter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="kindOptions" data-test="desk-kind" />
@@ -136,7 +136,7 @@ const kindOptions = computed(() => {
 
 const dollars = (v: number | null) => (v == null ? '' : money(v));
 const num = (v: number | null) => (v == null ? '' : String(v));
-const dateCol: DeskColumn<Row> = { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true, required: true, format: (v: string) => shortDay(v) };
+const dateCol: DeskColumn<Row> = { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true, required: true, format: (v: string) => shortDay(v), exportType: 'date' };
 const columns = computed<DeskColumn<Row>[]>(() =>
   props.mileage
     ? [
@@ -144,7 +144,7 @@ const columns = computed<DeskColumn<Row>[]>(() =>
         { name: 'miles', label: 'Miles', field: 'miles', align: 'right', sortable: true, sum: true, format: num },
         { name: 'odoStart', label: 'Odometer start', field: 'odoStart', align: 'right', format: num },
         { name: 'odoEnd', label: 'Odometer end', field: 'odoEnd', align: 'right', format: num },
-        { name: 'value', label: 'Worth', field: 'value', align: 'right', sortable: true, sum: true, format: dollars },
+        { name: 'value', label: 'Worth', field: 'value', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
         { name: 'note', label: 'Note', field: 'note', align: 'left' },
       ]
     : [
@@ -154,9 +154,9 @@ const columns = computed<DeskColumn<Row>[]>(() =>
         { name: 'vendor', label: 'Vendor', field: 'vendor', align: 'left', sortable: true },
         { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
         { name: 'note', label: 'Note', field: 'note', align: 'left', classes: 'ellipsis note-cell' },
-        { name: 'expense', label: 'Expense', field: 'expense', align: 'right', sortable: true, sum: true, format: dollars },
-        { name: 'income', label: 'Income', field: 'income', align: 'right', sortable: true, sum: true, format: dollars },
-        { name: 'billed', label: 'Billed to customer', field: 'billed', align: 'right', sortable: true, sum: true, format: dollars, hidden: true },
+        { name: 'expense', label: 'Expense', field: 'expense', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
+        { name: 'income', label: 'Income', field: 'income', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
+        { name: 'billed', label: 'Billed to customer', field: 'billed', align: 'right', sortable: true, sum: true, format: dollars, hidden: true, exportType: 'money' },
         { name: 'receipt', label: 'Receipt', field: 'receipt', align: 'center', hidden: true },
       ],
 );

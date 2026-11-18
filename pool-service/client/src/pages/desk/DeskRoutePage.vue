@@ -5,7 +5,7 @@
       <div class="text-caption text-grey-7">Week of {{ weekLabel }}</div>
       <q-linear-progress :value="scheduled.length ? doneCount / scheduled.length : 0" rounded size="8px" color="positive" class="col" />
     </div>
-    <DeskTable :rows="rows" :columns="columns" storage-key="route" sort-by="day" test-id="desk-route" @row="(r) => router.push(`/pools/${r._id}`)">
+    <DeskTable :rows="rows" :columns="columns" storage-key="route" export-name="route" sort-by="day" test-id="desk-route" @row="(r) => router.push(`/pools/${r._id}`)">
       <template #filters>
         <q-select v-model="dayFilter" dense outlined emit-value map-options :options="dayOptions" style="width: 170px" data-test="desk-route-day" />
         <q-btn-toggle v-model="doneFilter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="doneOptions" data-test="desk-route-done" />
@@ -123,7 +123,7 @@ const weekLabel = format(startOfISOWeek(new Date()), 'MMM d');
 const columns: DeskColumn<Row>[] = [
   { name: 'done', label: 'Done', field: 'done', align: 'center', sortable: true },
   // Day (today first), then one-time date, then stop number.
-  { name: 'day', label: 'Day', field: 'day', align: 'left', sortable: true, required: true, sort: (_a, _b, x: Row, y: Row) => x.day - y.day || x.date.localeCompare(y.date) || x.stop - y.stop || x.customer.localeCompare(y.customer) },
+  { name: 'day', label: 'Day', field: 'day', align: 'left', sortable: true, required: true, sort: (_a, _b, x: Row, y: Row) => x.day - y.day || x.date.localeCompare(y.date) || x.stop - y.stop || x.customer.localeCompare(y.customer), exportValue: (r) => r.dayLabel },
   { name: 'stop', label: 'Stop #', field: 'stop', align: 'right', sortable: true, hidden: true },
   { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
   { name: 'pool', label: 'Pool', field: 'pool', align: 'left', sortable: true },

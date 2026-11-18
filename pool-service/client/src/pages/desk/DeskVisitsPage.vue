@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <DeskTable :rows="rows" :columns="columns" storage-key="visits" sort-by="at" descending :loading="loading" test-id="desk-visits" @row="(r) => router.push(`/pools/${r.poolId}/visits/${r._id}`)">
+    <DeskTable :rows="rows" :columns="columns" storage-key="visits" export-name="visits" sort-by="at" descending :loading="loading" test-id="desk-visits" @row="(r) => router.push(`/pools/${r.poolId}/visits/${r._id}`)">
       <template #filters>
         <q-select v-model="period" dense outlined emit-value map-options :options="PERIOD_OPTIONS" style="width: 150px" data-test="desk-period" />
         <q-select v-model="customerId" dense outlined emit-value map-options clearable :options="customerOptions" label="Customer" style="width: 200px" data-test="desk-visit-customer" />
@@ -27,6 +27,7 @@ import { api } from '@/stores/api';
 import { db } from '@/offline/db';
 import { money } from '@/lib/customer';
 import { localDate, visitChemicalCost } from '@/lib/money';
+import { localDateTime } from '@/lib/exportTable';
 import { deskRange, inPeriod, PERIOD_OPTIONS, type DeskPeriod } from '@/lib/deskPeriod';
 import type { Visit } from '@/lib/types';
 
@@ -107,7 +108,7 @@ const customerOptions = computed(() => data.customers.map((c) => ({ label: c.nam
 const when = (iso: string) => new Date(iso).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const MAIN_READINGS = new Set(['fc', 'ph', 'ta', 'cya', 'salt']);
 const columns: DeskColumn<Row>[] = [
-  { name: 'at', label: 'Date', field: 'at', align: 'left', sortable: true, required: true, format: when },
+  { name: 'at', label: 'Date', field: 'at', align: 'left', sortable: true, required: true, format: when, exportType: 'datetime', exportValue: (r) => localDateTime(r.at) },
   { name: 'customer', label: 'Customer · pool', field: 'customer', align: 'left', sortable: true },
   { name: 'minutes', label: 'Minutes', field: 'minutes', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : String(v)) },
   ...READINGS.map(
@@ -115,7 +116,7 @@ const columns: DeskColumn<Row>[] = [
   ),
   { name: 'tasks', label: 'Tasks', field: 'tasks', align: 'left', hidden: true },
   { name: 'chemicals', label: 'Chemicals added', field: 'chemicals', align: 'left', classes: 'ellipsis wide-cell' },
-  { name: 'cost', label: 'Chemical cost', field: 'cost', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : money(v)) },
+  { name: 'cost', label: 'Chemical cost', field: 'cost', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : money(v)), exportType: 'money' },
   { name: 'notes', label: 'Notes', field: 'notes', align: 'left', classes: 'ellipsis wide-cell', hidden: true },
   { name: 'recap', label: 'Recap sent', field: 'recap', align: 'left', sortable: true, hidden: true },
 ];

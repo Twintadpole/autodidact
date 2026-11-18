@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <DeskTable :rows="rows" :columns="columns" storage-key="invoices" sort-by="number" descending test-id="desk-invoices" @row="(r) => openInvoice(r._id)">
+    <DeskTable :rows="rows" :columns="columns" storage-key="invoices" export-name="invoices" sort-by="number" descending test-id="desk-invoices" @row="(r) => openInvoice(r._id)">
       <template #filters>
         <q-select v-model="period" dense outlined emit-value map-options :options="PERIOD_OPTIONS" style="width: 150px" data-test="desk-period" />
         <q-btn-toggle v-model="filter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="filterOptions" data-test="desk-invoice-filter" />
@@ -115,13 +115,13 @@ const columns: DeskColumn<Row>[] = [
   { name: 'number', label: '#', field: 'number', align: 'left', sortable: true, required: true },
   { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
   { name: 'month', label: 'Month', field: 'month', align: 'left', sortable: true, sort: (_a, _b, x: Row, y: Row) => x.issued.localeCompare(y.issued) },
-  { name: 'issued', label: 'Date', field: 'issued', align: 'left', sortable: true, format: day },
-  { name: 'due', label: 'Due', field: 'due', align: 'left', sortable: true, format: day },
-  { name: 'total', label: 'Total', field: 'total', align: 'right', sortable: true, sum: true, format: money },
-  { name: 'paid', label: 'Paid', field: 'paid', align: 'right', sortable: true, sum: true, format: money },
-  { name: 'balance', label: 'Balance', field: 'balance', align: 'right', sortable: true, sum: true, format: money },
-  { name: 'state', label: 'Status', field: 'state', align: 'left', sortable: true },
-  { name: 'sent', label: 'Sent', field: 'sent', align: 'left', sortable: true, format: day, hidden: true },
+  { name: 'issued', label: 'Date', field: 'issued', align: 'left', sortable: true, format: day, exportType: 'date' },
+  { name: 'due', label: 'Due', field: 'due', align: 'left', sortable: true, format: day, exportType: 'date' },
+  { name: 'total', label: 'Total', field: 'total', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'paid', label: 'Paid', field: 'paid', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'balance', label: 'Balance', field: 'balance', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'state', label: 'Status', field: 'state', align: 'left', sortable: true, exportValue: (r) => STATE_LABEL[r.state] },
+  { name: 'sent', label: 'Sent', field: 'sent', align: 'left', sortable: true, format: day, hidden: true, exportType: 'date' },
 ];
 
 // ---- panel

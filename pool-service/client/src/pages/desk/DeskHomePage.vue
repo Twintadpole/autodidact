@@ -89,7 +89,14 @@
                 </q-list>
               </q-menu>
             </q-btn>
-            <q-btn flat dense no-caps icon="download" label="Export CSV" data-test="tool-export" @click="downloadCsv(tools.table, tools.hiddenCols)" />
+            <q-btn flat dense no-caps icon="download" label="Export" :loading="exporting" data-test="tool-export">
+              <q-menu auto-close>
+                <q-list dense style="min-width: 180px">
+                  <q-item clickable data-test="tool-export-xlsx" @click="exportCard('xlsx')"><q-item-section>Excel (.xlsx)</q-item-section></q-item>
+                  <q-item clickable data-test="tool-export-csv" @click="exportCard('csv')"><q-item-section>CSV (works offline)</q-item-section></q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
           </template>
         </div>
         <div class="col q-pa-md">
@@ -127,7 +134,8 @@ import MileageCard from '@/components/desk/cards/MileageCard.vue';
 import EquipmentCard from '@/components/desk/cards/EquipmentCard.vue';
 import SystemCard from '@/components/desk/cards/SystemCard.vue';
 import DashToolsScope from '@/components/desk/DashToolsScope.vue';
-import { downloadCsv, newDashTools } from '@/composables/useDashTools';
+import { newDashTools } from '@/composables/useDashTools';
+import { exportCsv, exportXlsx, type ExportValue } from '@/lib/exportTable';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
 import { CARD_BY_ID, CARDS, defaultLayout, span, withAllCards, type CardId } from '@/lib/dashboard';
@@ -253,6 +261,27 @@ const FORMAT_OPTIONS = [
   { label: '$1,235', value: 'whole' },
   { label: '$1.2k', value: 'short' },
 ];
+/** The full-screen card's table, in the columns shown, as CSV or Excel. */
+const exporting = ref(false);
+async function exportCard(kind: 'csv' | 'xlsx') {
+  const t = tools.value.table;
+  if (!t) return;
+  const cols = t.columns.filter((c) => !tools.value.hiddenCols.includes(c.key));
+  const table = {
+    name: t.name,
+    columns: cols.map((c) => ({ label: c.label, ...(c.money && { type: 'money' as const }) })),
+    rows: t.rows.map((r) => cols.map((c) => (r[c.key] ?? null) as ExportValue)),
+  };
+  if (kind === 'csv') return exportCsv(table);
+  exporting.value = true;
+  try {
+    await exportXlsx(table);
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  } finally {
+    exporting.value = false;
+  }
+}
 function toggleCol(key: string) {
   const h = tools.value.hiddenCols;
   tools.value.hiddenCols = h.includes(key) ? h.filter((k) => k !== key) : [...h, key];

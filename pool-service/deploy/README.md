@@ -34,6 +34,9 @@ sudo docker run --rm --network host -e E2E_SESSION="$S" -v "$PWD/e2e:/e2e:ro" -v
   node /e2e/visit-extras.cjs http://127.0.0.1:3000/ unused /out'
 ```
 
+`e2e/export.cjs` also opens the Excel files it downloads: install `exceljs@4` next to Playwright
+(`npm i -s playwright@1.56.1 exceljs@4`).
+
 **Restore a backup:**
 
 ```bash
