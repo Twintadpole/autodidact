@@ -135,5 +135,13 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
       `DashToolsScope`), card tables via `components/desk/CardTable.vue` (Columns + Export CSV). Visit-based
       cards share one download (`lib/visitsReport.ts`). `/api/system/status` reads `backups/MONITOR_STATUS`,
       written by `deploy/monitor.sh`. **7D is complete; next is 7E** (CSV/Excel import and export; plan first).
-  - **7E** CSV/Excel import and export.
+  - **7E CSV/Excel import and export (plan proposed Nov 18, NOT yet approved; questions open):**
+    - 7E-1 export: Export (CSV or Excel) on every desktop table, of what's shown; "Export everything" = one
+      Excel workbook made on the server (a sheet per kind, full visit history). Library: exceljs (MIT).
+    - 7E-2 import: customers (+ their pool), chemicals, expenses/income/mileage from CSV or Excel. File parsed on
+      the server → match columns (automatic, adjustable) → preview with problems per row → adds new records
+      only (never changes or deletes), likely duplicates skipped → every import is tagged so it can be undone
+      in one step. Blank templates to download.
+    - Questions: what will be imported first, and from where (another app or a spreadsheet)? visit history
+      too? chemical costs in exports (suggested yes, it's the owner's file)?
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
