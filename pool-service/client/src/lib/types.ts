@@ -58,8 +58,10 @@ export interface Pool extends Base {
   type?: 'chlorine' | 'salt' | null;
   surface?: string;
   volumeGal?: number | null;
-  /** No day: "Not scheduled" on the Route. */
+  /** Weekly day. No day and no one-time date: "Not scheduled" on the Route. */
   serviceDay?: ServiceDay | null;
+  /** A one-time job instead of a weekly day. */
+  oneTimeDate?: string | null;
   routeOrder: number;
   accessNotes: string;
   active: boolean;

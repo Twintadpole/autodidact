@@ -136,3 +136,21 @@ describe('7A: new fields survive an older app, and clear when the app says so', 
     expect((await Photo.findById(photoId).lean<Record<string, any>>())?.equipmentId).toBe(pumpId);
   });
 });
+
+describe('7B: one-time service date', () => {
+  it('is saved, kept when an older app leaves it out, and cleared with null', async () => {
+    let at = later();
+    const c = { _id: newId(), name: 'Once Only', createdAt: at, updatedAt: at };
+    const base = { _id: newId(), customerId: c._id, name: 'Pool', createdAt: at };
+    expect((await post(pkg({ customers: [c], pools: [{ ...base, updatedAt: at, oneTimeDate: '2026-11-20' }] }))).statusCode).toBe(200);
+    expect((await Pool.findById(base._id).lean<Record<string, any>>())?.oneTimeDate).toEqual(new Date('2026-11-20T00:00:00.000Z'));
+
+    at = later();
+    expect((await post(pkg({ pools: [{ ...base, name: 'Spa', updatedAt: at }] }))).statusCode).toBe(200);
+    expect((await Pool.findById(base._id).lean<Record<string, any>>())?.oneTimeDate).toEqual(new Date('2026-11-20T00:00:00.000Z'));
+
+    at = later();
+    expect((await post(pkg({ pools: [{ ...base, name: 'Spa', updatedAt: at, oneTimeDate: null, serviceDay: 'wed' }] }))).statusCode).toBe(200);
+    expect(await Pool.findById(base._id).lean<Record<string, any>>()).toMatchObject({ oneTimeDate: null, serviceDay: 'wed' });
+  });
+});

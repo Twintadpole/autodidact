@@ -78,8 +78,10 @@ export const pool = collectionSchemas({
   type: z.enum(POOL_TYPES).nullable().optional(),
   surface: z.string().optional(),
   volumeGal: z.number().positive().nullable().optional(),
-  /** No day: the pool shows under "Not scheduled" on the Route. */
+  /** Weekly service day. No day and no one-time date: "Not scheduled" on the Route. */
   serviceDay: z.enum(SERVICE_DAYS).nullable().optional(),
+  /** A one-time job instead of a weekly day (see routeSlot). */
+  oneTimeDate: dateSchema.nullable().optional(),
   routeOrder: z.number().default(0),
   accessNotes: z.string().default(''),
   active: z.boolean().default(true),
@@ -88,7 +90,7 @@ export const pool = collectionSchemas({
   equipment: z.array(equipmentSchema).optional(),
 });
 export type Pool = z.infer<typeof pool.doc>;
-export const POOL_PRESERVED_FIELDS = ['equipment'] as const;
+export const POOL_PRESERVED_FIELDS = ['equipment', 'oneTimeDate'] as const;
 
 // ---------------------------------------------------------------- visits
 const readingShape = Object.fromEntries(READING_KEYS.map((k) => [k, z.number().nullable().optional()])) as Record<

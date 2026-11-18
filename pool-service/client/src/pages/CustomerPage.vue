@@ -58,7 +58,7 @@ import NotesList from '@/components/NotesList.vue';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS } from '@/lib/format';
-import { money, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL } from '@/lib/customer';
+import { money, PAYMENT_LABEL, scheduleText, STATUS_COLOR, STATUS_LABEL } from '@/lib/customer';
 import { customerStatus } from '@pool/shared';
 import { format, parseISO } from 'date-fns';
 import type { Pool } from '@/lib/types';
@@ -88,7 +88,7 @@ const billing = computed(() => {
 });
 
 const poolCaption = (p: Pool) =>
-  [p.serviceDay ? DAY_LABELS[p.serviceDay] : 'Not scheduled', p.type === 'salt' ? 'Salt' : p.type === 'chlorine' ? 'Chlorine' : '', p.volumeGal ? `${p.volumeGal.toLocaleString()} gal` : '']
+  [scheduleText(p, DAY_LABELS), p.type === 'salt' ? 'Salt' : p.type === 'chlorine' ? 'Chlorine' : '', p.volumeGal ? `${p.volumeGal.toLocaleString()} gal` : '']
     .filter(Boolean)
     .join(' · ');
 

@@ -11,6 +11,7 @@ import {
   visit,
   customer,
   applyIssueStatus,
+  routeSlot,
 } from './index.js';
 
 const POOL_ID = '019a3c4e-0000-7000-8000-000000000001';
@@ -148,3 +149,22 @@ describe('visit time log', () => {
     expect(timeLogSchema.safeParse({ segments: [{ start: t(0), end: null }], finished: true }).success).toBe(false);
   });
 });
+
+describe('routeSlot (one-time dates, Phase 7B)', () => {
+  // Wednesday Nov 18, 2026; that ISO week runs Mon Nov 16 – Sun Nov 22.
+  const wed = new Date(2026, 10, 18, 9, 0);
+  it('weekly day wins; no day and no date is "none"', () => {
+    expect(routeSlot({ serviceDay: 'fri', oneTimeDate: '2026-12-01' }, wed)).toEqual({ kind: 'weekly', day: 'fri' });
+    expect(routeSlot({}, wed)).toEqual({ kind: 'none' });
+  });
+  it('a date this week goes under its day, including Monday and Sunday', () => {
+    expect(routeSlot({ oneTimeDate: '2026-11-20T00:00:00.000Z' }, wed)).toEqual({ kind: 'once', day: 'fri', date: '2026-11-20' });
+    expect(routeSlot({ oneTimeDate: '2026-11-16' }, wed)).toEqual({ kind: 'once', day: 'mon', date: '2026-11-16' });
+    expect(routeSlot({ oneTimeDate: '2026-11-22' }, wed)).toEqual({ kind: 'once', day: 'sun', date: '2026-11-22' });
+  });
+  it('later dates are upcoming, earlier ones past', () => {
+    expect(routeSlot({ oneTimeDate: '2026-11-23' }, wed)).toEqual({ kind: 'upcoming', date: '2026-11-23' });
+    expect(routeSlot({ oneTimeDate: '2026-11-15' }, wed)).toEqual({ kind: 'pastOnce', date: '2026-11-15' });
+  });
+});
+

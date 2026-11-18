@@ -56,3 +56,13 @@ export function numberOrNull(v: string | number | null | undefined): number | nu
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const looksLikeEmail = (v: string) => EMAIL.test(v.trim());
+
+/** "Tuesday", "One-time · Thu Nov 20" or "Not scheduled". */
+export function scheduleText(p: { serviceDay?: import('@pool/shared').ServiceDay | null; oneTimeDate?: string | null }, dayLabels: Record<string, string>): string {
+  if (p.serviceDay) return dayLabels[p.serviceDay]!;
+  if (p.oneTimeDate) {
+    const [y, m, d] = p.oneTimeDate.slice(0, 10).split('-').map(Number);
+    return `One-time · ${new Date(y!, m! - 1, d!).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
+  }
+  return 'Not scheduled';
+}

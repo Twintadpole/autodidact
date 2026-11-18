@@ -58,6 +58,8 @@ const poolSchema = makeSchema({
   surface: String,
   volumeGal: Number,
   serviceDay: { type: String, enum: [...SERVICE_DAYS, null] },
+  /** A one-time job instead of a weekly day (Phase 7B). */
+  oneTimeDate: Date,
   routeOrder: { type: Number, default: 0 },
   accessNotes: { type: String, default: '' },
   active: { type: Boolean, default: true },

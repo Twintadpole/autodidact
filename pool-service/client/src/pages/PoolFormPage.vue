@@ -9,6 +9,7 @@
       </div>
       <div class="row q-col-gutter-sm">
         <q-select v-model="form.serviceDay" outlined label="Service day" class="col-8" emit-value map-options clearable :options="dayOptions" hint="Blank: “Not scheduled” on the Route" data-test="pool-day" />
+        <q-input v-if="form.serviceDay === 'once'" v-model="form.oneTimeDate" outlined stack-label label="One-time date" type="date" class="col-12" data-test="pool-once-date" />
         <q-input v-model.number="form.routeOrder" outlined label="Stop #" type="number" inputmode="numeric" class="col-4" data-test="pool-order" />
       </div>
       <q-input v-model="form.surface" outlined label="Surface" hint="plaster, pebble, vinyl, fiberglass…" />
@@ -52,13 +53,14 @@ const existing = computed(() => (poolId.value ? data.poolById.get(poolId.value) 
 const customerId = computed(() => (route.params.customerId ? String(route.params.customerId) : existing.value?.customerId));
 const customer = computed(() => (customerId.value ? data.customerById.get(customerId.value) : undefined));
 
-const dayOptions = SERVICE_DAYS.map((d) => ({ label: DAY_LABELS[d], value: d }));
+const dayOptions = [...SERVICE_DAYS.map((d) => ({ label: `Every ${DAY_LABELS[d]}`, value: d as ServiceDay | 'once' })), { label: 'One-time date', value: 'once' as const }];
 
 const form = reactive({
   name: 'Pool',
   type: null as Pool['type'],
   volumeGal: '' as string | number,
-  serviceDay: null as ServiceDay | null,
+  serviceDay: null as ServiceDay | 'once' | null,
+  oneTimeDate: '',
   routeOrder: 1,
   surface: '',
   accessNotes: '',
@@ -71,7 +73,7 @@ watch(
   () => [form.serviceDay, data.pools.length],
   () => {
     if (!isNew.value) return;
-    const same = data.pools.filter((p) => (p.serviceDay ?? null) === form.serviceDay);
+    const same = data.pools.filter((p) => (p.serviceDay ?? null) === (form.serviceDay === 'once' ? null : form.serviceDay));
     form.routeOrder = same.length ? Math.max(...same.map((p) => p.routeOrder)) + 1 : 1;
   },
   { immediate: true },
@@ -84,7 +86,8 @@ watch(
     form.name = p.name;
     form.type = p.type ?? null;
     form.volumeGal = p.volumeGal ?? '';
-    form.serviceDay = p.serviceDay ?? null;
+    form.serviceDay = p.serviceDay ?? (p.oneTimeDate ? 'once' : null);
+    form.oneTimeDate = p.oneTimeDate ? p.oneTimeDate.slice(0, 10) : '';
     form.routeOrder = p.routeOrder;
     form.surface = p.surface ?? '';
     form.accessNotes = p.accessNotes;
@@ -104,7 +107,8 @@ async function save() {
     name: form.name.trim() || 'Pool',
     type: form.type ?? null,
     volumeGal: gallons && gallons > 0 ? gallons : null,
-    serviceDay: form.serviceDay ?? null,
+    serviceDay: form.serviceDay && form.serviceDay !== 'once' ? form.serviceDay : null,
+    oneTimeDate: form.serviceDay === 'once' && form.oneTimeDate ? form.oneTimeDate : null,
     routeOrder: Number(form.routeOrder) || 0,
     accessNotes: form.accessNotes.trim(),
     active: form.active,

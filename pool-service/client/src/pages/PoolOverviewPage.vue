@@ -11,7 +11,7 @@
         <q-card-section class="row q-col-gutter-sm text-body2">
           <div class="col-6"><span class="text-grey-7">Type</span><br />{{ pool.type === 'salt' ? 'Salt' : pool.type === 'chlorine' ? 'Chlorine' : '–' }}</div>
           <div class="col-6"><span class="text-grey-7">Volume</span><br />{{ pool.volumeGal ? `${pool.volumeGal.toLocaleString()} gal` : '–' }}</div>
-          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ pool.serviceDay ? `${DAY_LABELS[pool.serviceDay]} · stop ${pool.routeOrder}` : 'Not scheduled' }}</div>
+          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ pool.serviceDay ? `${DAY_LABELS[pool.serviceDay]} · stop ${pool.routeOrder}` : scheduleText(pool, DAY_LABELS) }}</div>
           <div class="col-6"><span class="text-grey-7">Surface</span><br />{{ pool.surface || '–' }}</div>
           <div v-if="pool.accessNotes" class="col-12"><span class="text-grey-7">Access</span><br />{{ pool.accessNotes }}</div>
         </q-card-section>
@@ -114,6 +114,7 @@ import IssueSheet from '@/components/IssueSheet.vue';
 import PoolGallery from '@/components/PoolGallery.vue';
 import PhotoGrid from '@/components/PhotoGrid.vue';
 import EquipmentSection from '@/components/EquipmentSection.vue';
+import { scheduleText } from '@/lib/customer';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { DAY_LABELS, fmtNumber, poolAddress, shortDate } from '@/lib/format';

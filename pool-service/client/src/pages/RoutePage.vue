@@ -55,7 +55,7 @@
         <span :class="group.isToday ? 'text-primary text-weight-bold' : ''">
           {{ group.label }}<span v-if="group.isToday"> · Today</span>
         </span>
-        <span v-if="group.day !== 'none'" class="text-caption">{{ group.done }}/{{ group.total }}</span>
+        <span v-if="!(group.day in EXTRA_GROUPS)" class="text-caption">{{ group.done }}/{{ group.total }}</span>
       </q-item-label>
       <q-list bordered separator class="bg-white">
         <q-item v-for="p in group.pools" :key="p._id" class="route-row" :data-test="`route-row-${p._id}`">
@@ -72,6 +72,7 @@
           <q-item-section class="cursor-pointer" :data-test="`open-${p._id}`" @click="open(p._id)">
             <q-item-label class="text-weight-medium" :class="{ 'text-grey-6': p.week.done }">{{ customerName(p) }}</q-item-label>
             <q-item-label caption>{{ data.poolName(p) ? `${data.poolName(p)} · ` : '' }}{{ shortAddress(p) }}</q-item-label>
+            <q-item-label v-if="p.oneTimeDate && !p.serviceDay" caption class="text-deep-orange-8" :data-test="`once-${p._id}`">{{ scheduleText(p, DAY_LABELS) }}</q-item-label>
             <q-item-label v-if="runningAt.get(p._id)" class="q-mt-xs">
               <q-chip dense color="positive" text-color="white" icon="timer" class="q-ma-none" :data-test="`running-${p._id}`">{{ runningAt.get(p._id) }}</q-chip>
             </q-item-label>
@@ -91,7 +92,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { format, startOfISOWeek } from 'date-fns';
-import { serviceDaysFrom, timeLogSeconds, type ServiceDay } from '@pool/shared';
+import { routeSlot, serviceDaysFrom, timeLogSeconds, type RouteSlot, type ServiceDay } from '@pool/shared';
+import { scheduleText } from '@/lib/customer';
 import { hms } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
 import { errorMessage } from '@/stores/api';
@@ -105,13 +107,21 @@ const router = useRouter();
 const data = useDataStore();
 const filter = ref<'all' | 'remaining' | 'done'>('all');
 
+const now = ref(new Date());
 /** Active pools of current customers (prospects and past customers aren't on the Route). */
 const activePools = computed(() => data.routePools);
-/** Pools with a service day: the weekly count. Pools without one are listed under "Not scheduled". */
-const scheduledPools = computed(() => activePools.value.filter((p) => p.serviceDay));
+/** Where each pool goes this week (weekly day, one-time date, coming up, past one-time, not scheduled). */
+// Regroups when the day changes, not on every tick of the timer clock.
+const todayKey = computed(() => now.value.toDateString());
+const slots = computed(() => {
+  const today = new Date(todayKey.value);
+  return new Map(activePools.value.map((p) => [p._id, routeSlot(p, today)]));
+});
+const slotOf = (p: Pool) => slots.value.get(p._id) ?? ({ kind: 'none' } as RouteSlot);
+/** Pools due this week (weekly days and one-time dates in this week): the weekly count. */
+const scheduledPools = computed(() => activePools.value.filter((p) => ['weekly', 'once'].includes(slotOf(p).kind)));
 
-// Live "on site" time for pools whose timer is running.
-const now = ref(new Date());
+// Live "on site" time for pools whose timer is running (now is declared near the top).
 let tick: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
   tick = setInterval(() => (now.value = new Date()), 1000);
@@ -122,17 +132,30 @@ const runningAt = computed(() => new Map(data.activeTimers.map((v) => [v.poolId,
 const doneCount = computed(() => scheduledPools.value.filter((p) => p.week.done).length);
 const weekLabel = format(startOfISOWeek(new Date()), 'MMM d');
 
+const EXTRA_GROUPS = { upcoming: 'Coming up (one-time)', pastOnce: 'Past one-time', none: 'Not scheduled' } as const;
+type GroupKey = ServiceDay | keyof typeof EXTRA_GROUPS;
+function inGroup(p: Pool, key: GroupKey): boolean {
+  const s = slotOf(p);
+  if (key in EXTRA_GROUPS) return s.kind === key;
+  return (s.kind === 'weekly' || s.kind === 'once') && s.day === key;
+}
+/** One-time stops sort by date; weekly ones by stop number. */
+const sortKey = (p: Pool) => {
+  const s = slotOf(p);
+  return 'date' in s ? s.date : '';
+};
+
 const groups = computed(() => {
-  const days: (ServiceDay | 'none')[] = [...serviceDaysFrom(new Date()), 'none'];
+  const days: GroupKey[] = [...serviceDaysFrom(new Date()), 'upcoming', 'pastOnce', 'none'];
   return days
     .map((day, i) => {
       const all = activePools.value
-        .filter((p) => (day === 'none' ? !p.serviceDay : p.serviceDay === day))
-        .sort((a, b) => a.routeOrder - b.routeOrder || customerName(a).localeCompare(customerName(b)));
+        .filter((p) => inGroup(p, day))
+        .sort((a, b) => sortKey(a).localeCompare(sortKey(b)) || a.routeOrder - b.routeOrder || customerName(a).localeCompare(customerName(b)));
       const shown = all.filter((p) => (filter.value === 'all' ? true : filter.value === 'done' ? p.week.done : !p.week.done));
       return {
         day,
-        label: day === 'none' ? 'Not scheduled' : DAY_LABELS[day],
+        label: day in EXTRA_GROUPS ? EXTRA_GROUPS[day as keyof typeof EXTRA_GROUPS] : DAY_LABELS[day as ServiceDay],
         isToday: i === 0,
         pools: shown,
         total: all.length,
