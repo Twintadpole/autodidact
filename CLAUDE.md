@@ -25,6 +25,9 @@ Stack:
 - **Keep messages to the owner short and plain.** They work from a phone (Termux, the Claude app).
 
 ## How server work is done (VPS, Ubuntu 26.10, user `claude`)
+- **First check where you are.** If `hostname` is `VuDSONtemp` and the folder is `~/autodidact`, you ARE on the VPS
+  (Remote Control). Work directly as in "Session handoff" below. Do NOT use `create_session`/`list_events`, which
+  would only try to reach this same machine. The bridge steps below are only for a Claude running in the cloud.
 - This cloud session can't SSH. It starts sessions on the VPS with `create_session` (claude-code-remote) on the bridge environment **`env_01AxCrX2TXpwcs8bfzcrJL4L`** ("VuDSONtemp:autodidact"). Then it reads results with `list_events` (kinds `["result"]`).
   - The VPS runs `claude remote-control --permission-mode bypassPermissions` in tmux, in `~/autodidact`.
 - Give the VPS session exact, numbered steps and the safety rules every time:
@@ -68,8 +71,9 @@ Then start the VPS session:
 
 ## Remote Control auto-start (Nov 18)
 - `~/.local/bin/start-remote-control.sh` (host only, not in the repo) starts `claude remote-control
-  --permission-mode bypassPermissions` in tmux session `claude` (in `~/autodidact`), trying `--continue` first so
-  the last session reattaches. Run by user `claude`'s crontab `@reboot sleep 45 && …`; log in
+  --permission-mode bypassPermissions` in tmux session `claude` (in `~/autodidact`). It always starts fresh: the
+  old `--continue` was removed Nov 19 after it reopened an 11–13 MB chat and Remote Control hung (no session
+  opened, the CLI just showed dots). Debug logs: `~/.local/state/remote-control-logs/` (last 10 kept). Run by user `claude`'s crontab `@reboot sleep 45 && …`; log in
   `~/.local/state/remote-control-boot.log`. Commit identity on the VPS: `-c user.name=Claude -c user.email=noreply@anthropic.com`.
 
 ## Open items after v0.2.0 (assessment, Nov 18)
