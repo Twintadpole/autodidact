@@ -167,4 +167,9 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   Cloudflare Tunnel; `tenant.sh`; owner/tech roles later; Claude on a separate dev box, not production.
   Pricing: $75 covers 1–3 techs, then graduated per extra tech: 4–5 $20, 6–15 $18, 16–30 $15, 31–50 $12,
   51–75 $10, 76+ $8 (owner gave the tiers; amounts proposed Nov 19). Domain not chosen yet. Each phase: plan, then approval.
+  Network design (owner's, decided Nov 19; matches their home lab): edge (cloudflared, Traefik, monitoring; all
+  ingress/egress, no business logic) → admin trunk (admin tools; build/test/deploy, the only Docker control) and
+  tenant networks: ONE `internal: true` network per tenant with its app + its Mongo; Traefik joins each tenant
+  network (no shared tenant network); per-tenant Mongo user/password, no host ports; admin access = short-lived
+  jobs joining one tenant; set Docker `default-address-pools` (small subnets) before the first tenant.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
