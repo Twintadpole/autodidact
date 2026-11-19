@@ -4,3 +4,4 @@ export * from './week.js';
 export * from './schemas/common.js';
 export * from './schemas/collections.js';
 export * from './schemas/sync.js';
+export * from './schemas/import.js';

@@ -11,6 +11,7 @@ import { registerSessions, requireAuth } from './plugins/auth.js';
 import { authRoutes } from './routes/auth.js';
 import { reportRoutes } from './routes/reports.js';
 import { exportRoutes } from './routes/export.js';
+import { importRoutes } from './routes/import.js';
 import { accessLoginRoutes, clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
@@ -73,6 +74,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
         await secured.register(photoRoutes, { photos });
         await secured.register(reportRoutes);
         await secured.register(exportRoutes);
+        await secured.register(importRoutes);
       });
     },
     { prefix: '/api' },

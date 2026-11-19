@@ -280,6 +280,26 @@ const auditLogSchema = new Schema(
 auditLogSchema.index({ collectionName: 1, docId: 1, at: -1 });
 auditLogSchema.index({ at: -1 });
 
+// ---------------------------------------------------------------- imports
+/**
+ * One customer & pool import: what it added and what it changed (old and new values), so it can
+ * be undone. Not synced to phones.
+ */
+const importLogSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+    at: { type: Date, required: true },
+    fileName: { type: String, default: '' },
+    summary: Schema.Types.Mixed,
+    created: [new Schema({ kind: String, docId: String }, { _id: false })],
+    updated: [new Schema({ kind: String, docId: String, before: Schema.Types.Mixed, after: Schema.Types.Mixed }, { _id: false, minimize: false })],
+    undoneAt: { type: Date, default: null },
+    undo: Schema.Types.Mixed,
+  },
+  { versionKey: false },
+);
+importLogSchema.index({ at: -1 });
+
 // ---------------------------------------------------------------- sessions
 const sessionSchema = new Schema(
   {
@@ -309,6 +329,7 @@ export const Ledger = model('Ledger', ledgerSchema, 'ledger');
 export const SyncLog = model('SyncLog', syncLogSchema, 'syncLog');
 export const SessionDoc = model('Session', sessionSchema, 'sessions');
 export const AuditLog = model('AuditLog', auditLogSchema, 'auditLog');
+export const ImportLog = model('ImportLog', importLogSchema, 'imports');
 
 /** Models exposed through `/sync/pull`, keyed by collection name. */
 export const SYNC_MODELS = {
@@ -326,7 +347,7 @@ export const SYNC_MODELS = {
 
 /** Create collections and indexes up front (transactions can't create collections implicitly on older servers). */
 export async function ensureCollections(): Promise<void> {
-  const models = [...Object.values(SYNC_MODELS), SyncLog, SessionDoc, AuditLog];
+  const models = [...Object.values(SYNC_MODELS), SyncLog, SessionDoc, AuditLog, ImportLog];
   for (const m of models) {
     await m.createCollection().catch((err: { codeName?: string }) => {
       if (err?.codeName !== 'NamespaceExists') throw err;

@@ -179,6 +179,17 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   choices: test backups both local and R2; suspend = offline with a notice; delete keeps a final backup
   **90 days**, then `purge`. Not in it yet: cloudflared/wildcard DNS, a monitor entry per tenant, a cron line
   for backups, a real restore command. Never run it against the live stack.
+  **GPF item 2, customer & pool import** (plan approved Nov 19). Owner's rules: a row with no name is named by
+  its phone, else its address; an existing customer is **merged** (blanks filled, new phones/notes/pools/
+  equipment added; where both have a value and differ, the preview lists it and the owner picks per field,
+  default keep stored); no sample files from other apps yet (column matching only). Undo hides what it
+  added and restores what it changed, but keeps anything used or edited since.
+  - ✅ Segment 1 (server) built Nov 19, not deployed: `routes/import.ts` (`/import/read|preview|apply`,
+    `/imports`, `/imports/:id/undo`; the file is re-sent each step), `services/importRead|importClean|importPlan.ts`,
+    `ImportLog` model (collection `imports`), shared `schemas/import.ts` (fields, `guessMapping`), `test/import.test.ts`.
+    Reads the app's own Export everything back (round trip tested).
+  - Next: segment 2, desktop screen (Customers → Import: file, columns, preview with conflicts, import, undo) + e2e;
+    segment 3, round trip through the tenant kit, then deploy.
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
