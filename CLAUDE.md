@@ -172,10 +172,13 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   tenant networks: ONE `internal: true` network per tenant with its app + its Mongo; Traefik joins each tenant
   network (no shared tenant network); per-tenant Mongo user/password, no host ports; admin access = short-lived
   jobs joining one tenant; set Docker `default-address-pools` (small subnets) before the first tenant.
-  **Next (owner chose Nov 19): GPF item 1, the tenant kit**: `tenant.sh` (create/update/backup/restore-check/
-  export/suspend/delete), per-tenant compose template, internal tenant network, Mongo user+password per tenant,
-  Traefik edge with routes per subdomain, backup jobs per tenant. Build and test ONLY in throwaway containers
-  on the VPS (never touch the live `pool-service` stack); it moves to the home lab later. Plan it first, get approval.
+  ✅ **GPF item 1, tenant kit built Nov 19** (`gpf/`, see `gpf/README.md`). It has `tenant.sh`
+  (build/edge-up/create/list/update/backup/restore-check/export/suspend/resume/delete/purge), the tenant
+  compose template, the edge (Traefik v3.6 + read-only socket proxy + 503 notice), and `gpf/test/run.sh`
+  (72 checks, throwaway `gpft-*` under /tmp; `--r2` uses pool-backup/gpf-test/ and removes it). Owner's
+  choices: test backups both local and R2; suspend = offline with a notice; delete keeps a final backup
+  **90 days**, then `purge`. Not in it yet: cloudflared/wildcard DNS, a monitor entry per tenant, a cron line
+  for backups, a real restore command. Never run it against the live stack.
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
-  Mongo health check 5s → 30s.
+  Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
