@@ -161,4 +161,10 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     - **7E-2 import, later, needs a plan:** the owner will scan supplier receipts/invoices for supplies and tools
       (all past ones), extract them to a sheet, and import them as expenses (Supplies, Tools = capital). Ask:
       one row per receipt or per item, which columns, receipt number field?
+- **Multi-business product, Great Pool Friend (GPF)** (owner, Nov 19): host the app for other solo/small-crew pool
+  techs. Plan doc: https://claude.ai/artifact/8d2UdqerJckMkGFgNLUNaK (owner approved its suggestions). Key points:
+  one stack per business (own containers, Mongo, subdomain, secrets, backup key) on the home lab behind Traefik +
+  Cloudflare Tunnel; `tenant.sh`; owner/tech roles later; Claude on a separate dev box, not production.
+  Pricing: $75 covers 1–3 techs, then graduated per extra tech: 4–5 $20, 6–15 $18, 16–30 $15, 31–50 $12,
+  51–75 $10, 76+ $8 (owner gave the tiers; amounts proposed Nov 19). Domain not chosen yet. Each phase: plan, then approval.
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).
