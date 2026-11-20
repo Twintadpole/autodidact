@@ -52,6 +52,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', name: 'desk', component: () => import('@/pages/desk/DeskHomePage.vue'), meta: { title: 'Dashboard' } },
       { path: 'route', name: 'desk-route', component: () => import('@/pages/desk/DeskRoutePage.vue'), meta: { title: 'Route' } },
       { path: 'customers', name: 'desk-customers', component: () => import('@/pages/desk/DeskCustomersPage.vue'), meta: { title: 'Customers' } },
+      { path: 'import', name: 'desk-import', component: () => import('@/pages/desk/DeskImportPage.vue'), meta: { title: 'Import customers & pools' } },
       { path: 'invoices', name: 'desk-invoices', component: () => import('@/pages/desk/DeskInvoicesPage.vue'), meta: { title: 'Invoices' } },
       { path: 'payments', name: 'desk-payments', component: () => import('@/pages/desk/DeskPaymentsPage.vue'), meta: { title: 'Payments' } },
       { path: 'money', name: 'desk-money', component: () => import('@/pages/desk/DeskLedgerPage.vue'), meta: { title: 'Expenses & income' } },

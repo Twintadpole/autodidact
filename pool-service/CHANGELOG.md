@@ -1,6 +1,25 @@
 # Changelog
 
-## Unreleased: polish (November 2026)
+## Unreleased (November 2026)
+
+### Customer & pool import
+
+- **Import customers and pools** from Excel or CSV (desktop view → Customers → Import). One row per pool;
+  rows for the same customer become one customer with several pools. Columns are matched from their
+  headings (change any); columns you don't match go into the customer's notes, or choose Ignore.
+  A blank template is offered.
+- Cleans up as it goes: phone numbers, service days ("Monday", "Mon", "M"), "$150", "12,000 gal", dates,
+  one-line addresses, salt/chlorine, equipment columns (pump, filter, heater…). Anything it can't read
+  is kept in the customer's notes and listed.
+- A row with no name is named by its phone number, or else its address.
+- **Customers already in the app are updated, not doubled:** empty fields are filled in, new phones,
+  notes, pools and equipment are added. Where the app and the file disagree, the preview shows both
+  and you pick, field by field (keeping yours is the default).
+- **Preview first**, then everything goes in at once. **Undo** hides what an import added and puts
+  back what it changed; anything used or edited since stays as it is. Every change is in the edit log.
+- Reads the app's own "Export everything" file back, so a business can move between copies of the app.
+
+### Polish
 
 - Desktop view on a phone: the header keeps room for the page title (Cards and Phone view show as icons), and
   tables, filters and quick-entry rows fit the screen (a wide table scrolls sideways in its own box).

@@ -188,8 +188,9 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     `/imports`, `/imports/:id/undo`; the file is re-sent each step), `services/importRead|importClean|importPlan.ts`,
     `ImportLog` model (collection `imports`), shared `schemas/import.ts` (fields, `guessMapping`), `test/import.test.ts`.
     Reads the app's own Export everything back (round trip tested).
-  - Next: segment 2, desktop screen (Customers → Import: file, columns, preview with conflicts, import, undo) + e2e;
-    segment 3, round trip through the tenant kit, then deploy.
+  - ✅ Segment 2 (desktop screen) built Nov 20, not deployed: `pages/desk/DeskImportPage.vue` (route `/desk/import`,
+    button on Customers), `e2e/import.cjs` (6 checks; undoes its import, hides its customers).
+  - Next: segment 3, round trip through the tenant kit (export one tenant → import into a blank one), then deploy.
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

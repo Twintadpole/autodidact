@@ -106,6 +106,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `alpha-polish.cjs` | Pool labels, Issues badge, visit history, update message, version, desktop width (7) |
 | `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
 | `export.cjs` | Table exports (Excel and CSV), Export everything, a card's export, the phone's More → Export (5); needs `exceljs` next to Playwright |
+| `import.cjs` | Customer & pool import: template, column matching, preview with a difference to choose, import, Undo (6) |
 | `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device, the 12 cards, full-screen tools and CSV export (7) |
 
 Other checks:
@@ -162,6 +163,9 @@ All routes are under `/api` and need the session cookie, except `/auth/login` an
 | POST | `/route/reset-week` | Clears every pool's weekly checkmark |
 | GET | `/reports/customer-hours?from=&to=&tzOffsetMin=` | What each customer earns per hour, by month (Phase 7C) |
 | GET | `/reports/visits?from=&to=&tzOffsetMin=&limit=` | Every visit in a date range, newest first (desktop Visits table) |
+| POST | `/import/read`, `/import/preview`, `/import/apply` | Customer & pool import (multipart: `file` + `options` JSON `{sheet, mapping, take}`); preview writes nothing, apply is one transaction |
+| GET | `/imports` | Past imports |
+| POST | `/imports/:id/undo` | Hides what that import added, restores what it changed (keeps anything used or edited since) |
 | GET | `/export/everything.xlsx?tzOffsetMin=` | One Excel workbook, a sheet per kind of record (Phase 7E) |
 | POST | `/export/table.xlsx` | `{name, sheet?, columns: [{header, type?}], rows}` → that table as an Excel file |
 | GET | `/photos/:id`, `/photos/:id/thumb` | Image (thumbnail falls back to the original until Phase 5) |

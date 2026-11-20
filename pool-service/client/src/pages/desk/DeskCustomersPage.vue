@@ -5,6 +5,7 @@
         <q-btn-toggle v-model="ui.customerFilter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="classOptions" data-test="desk-customer-class" />
       </template>
       <template #actions>
+        <q-btn flat no-caps icon="upload_file" label="Import" to="/desk/import" data-test="desk-customer-import" />
         <q-btn color="primary" unelevated no-caps icon="person_add" label="New customer" data-test="desk-customer-new" @click="openNew" />
       </template>
       <template #quick>
