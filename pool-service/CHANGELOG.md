@@ -2,6 +2,15 @@
 
 ## Unreleased (November 2026)
 
+### Great Pool Friend branding
+
+- The app is now **Great Pool Friend** wherever a business hasn't set its own name: login screen, header,
+  home-screen name and the More footer, with a placeholder icon (a wave in a blue circle).
+- **Each business's own name and logo** from Business details: on the login screen (with "Powered by
+  Great Pool Friend" under it) and as the home-screen name and icon when the app is installed. The icons
+  are made from the uploaded logo by the server.
+- `PRODUCT_NAME` (server setting) renames the product for one install.
+
 ### Logins, owner and tech roles, assigned routes
 
 - **Each person has their own login** (email + password). Today's password becomes the first owner's

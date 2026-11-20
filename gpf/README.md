@@ -22,7 +22,7 @@ tenant network (internal)      one per tenant: its app + its Mongo. No internet,
 | `templates/tenant.compose.yml` | One tenant: `mongo` (password login, replica set with key file, 0.25 GB cache, 640 MB cap) and `api` (384 MB cap) |
 | `mongo/10-app-user.js` | First start: the app's own database user (read/write on `pool` only) |
 | `edge/compose.yml`, `edge/notice.cjs` | Traefik v3.6, Docker socket proxy (no write access), the notice page |
-| `test/run.sh` | The throwaway test (86 checks) |
+| `test/run.sh` | The throwaway test (91 checks) |
 | `test/import-roundtrip.sh` | Customer import between two tenants (12 checks) |
 
 ## Commands
@@ -90,6 +90,7 @@ It creates tenants `alpha` and `bravo` and checks:
 - routes, and logins that only work on their own tenant
 - the owner's email login and temporary password, a tech who can't see invoices, `users`, `list`,
   `billing` (also while a tenant is suspended), `owner-password` signing the owner's devices out
+- a new business is blank ("Great Pool Friend" on its home screen); once named, only its own changes
 - data kept apart, no host ports, and no reaching the other tenant's database or the internet
 - database logins, private secret files
 - backups and restore checks (local and R2), and that one tenant's key can't read another's backups
@@ -104,4 +105,3 @@ Finally it confirms the live app's containers weren't restarted and its record c
 - a cron line for `backup all`
 - restoring a tenant from a backup (only restore-check so far)
 - read-only suspend
-- product branding (new tenants already start with blank business details; the app's name and icons are still the pool app's)

@@ -110,6 +110,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
 | `export.cjs` | Table exports (Excel and CSV), Export everything, a card's export, the phone's More → Export (5); needs `exceljs` next to Playwright |
 | `accounts.cjs` | Owner and tech logins on one phone: Team, temporary password, routes, no money for the tech, moving a pool off a route, phone copy cleared between people (8). Test environment only (real logins) |
+| `branding.cjs` | Product name on a blank business; the business's name and logo on login and the home screen; manifest not precached (5). Test environment only (changes Business details) |
 | `import.cjs` | Customer & pool import: template, column matching, preview with a difference to choose, import, Undo (6) |
 | `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device, the 12 cards, full-screen tools and CSV export (7) |
 
@@ -176,6 +177,7 @@ All routes are under `/api` and need the session cookie, except `/auth/login` an
 | POST | `/imports/:id/undo` | Hides what that import added, restores what it changed (keeps anything used or edited since) |
 | GET | `/export/everything.xlsx?tzOffsetMin=` | One Excel workbook, a sheet per kind of record (Phase 7E) |
 | POST | `/export/table.xlsx` | `{name, sheet?, columns: [{header, type?}], rows}` → that table as an Excel file |
+| GET | `/manifest.json`, `/icons/business/<key>-<size>.png` (not under /api, no login) | Home-screen file from Business details (name, logo icons); `gpf` key for the login screen |
 | GET | `/photos/:id`, `/photos/:id/thumb` | Image (thumbnail falls back to the original until Phase 5) |
 
 ## Changes from the original outline

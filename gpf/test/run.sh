@@ -166,6 +166,13 @@ billing="$(bash "${GPF}" billing)"
 echo "${billing}" | sed 's/^/        /'
 check "billing: alpha 1 tech \$75, bravo 0 \$75, total \$150" bash -c "grep -qE '^alpha .* 1 +\\\$75$' <<<'${billing}' && grep -qE '^bravo .* 0 +\\\$75$' <<<'${billing}' && grep -qE '^TOTAL .*\\\$150$' <<<'${billing}'"
 check "users works while a tenant is suspended" bash -c "bash '${GPF}' suspend bravo >/dev/null && bash '${GPF}' users bravo | grep -q '^owner ' ; rc=\$?; bash '${GPF}' resume bravo >/dev/null; exit \$rc"
+manifest_name() { curl -s -H "Host: $1.${GPF_DOMAIN}" "http://${GPF_EDGE_BIND}/manifest.json" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p' | head -1; }
+check "a new business starts with blank Business details" test "$(api alpha "${CA}" GET /settings)" = "200 []"
+check "a blank business is called Great Pool Friend (home screen)" test "$(manifest_name alpha)" = "Great Pool Friend"
+r="$(api alpha "${CA}" POST /settings '{"_id":"00000000-0000-4000-8000-000000000001","businessName":"Alpha Pools"}')"
+check "alpha’s owner names the business (HTTP ${r%% *})" test "${r%% *}" = 201
+check "alpha’s home screen says Alpha Pools" test "$(manifest_name alpha)" = "Alpha Pools"
+check "bravo’s still says Great Pool Friend" test "$(manifest_name bravo)" = "Great Pool Friend"
 check "owner-password alpha" run owner-password alpha
 check "the owner's old session is signed out" test "$(api alpha "${CA}" GET /auth/me | cut -d' ' -f1)" = 401
 check "the new temporary password works (and must be changed)" bash -c "c=\$(curl -s -D - -o /dev/null -H 'Host: alpha.${GPF_DOMAIN}' -H 'content-type: application/json' --data '{\"email\":\"owner@alpha.example\",\"password\":\"$(pw alpha)\"}' http://${GPF_EDGE_BIND}/api/auth/login | sed -n 's/^set-cookie: \\(pool\\.sid=[^;]*\\).*/\\1/Ip'); curl -s -H 'Host: alpha.${GPF_DOMAIN}' -H \"cookie: \$c\" http://${GPF_EDGE_BIND}/api/auth/me | grep -q '\"mustChangePassword\":true'"

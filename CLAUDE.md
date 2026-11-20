@@ -219,7 +219,16 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   - ✅ Segment 3 (tenant kit) built Nov 20: `tenant.sh create <name> [owner-email]` (OWNER_EMAIL in api.env,
     first password temporary), `users`, `billing` (graduated tiers, `price_for`), `owner-password`, TECHS in
     `list`; `cli/users.js table` and `set-password --temporary`. Kit test 86/86, import round trip 12/12.
-    **GPF item 3 is complete in test; NOT deployed.** Next GPF item: blank branding for new tenants (plan first).
+    **GPF item 3 is complete in test; NOT deployed.**
+  ✅ **GPF item 4, branding** (owner Nov 20: product name Great Pool Friend on their own app too; placeholder
+  icon; "Powered by" yes), built Nov 20, NOT deployed: `PRODUCT_NAME` (default Great Pool Friend),
+  `services/branding.ts` (server writes /manifest.json from Business details; icons from the logo at
+  /icons/business/<sha>-<size>.png), `lib/branding.ts` (login/header/footer, cached), placeholder icons from
+  `client/scripts/make-gpf-icons.mjs`, Workbox `extendPWAInjectManifestOptions` ignores manifest.json,
+  `e2e/branding.cjs` (test env only), kit test 91/91. On the owner's app /manifest.json and /icons/* are
+  already open in Cloudflare Access, so the login screen can read them.
+  Next GPF item: Mongo health check 5s → 30s on the owner's stack (tenants already 30s); then the plan doc's
+  phase list (beta, paid launch, warm standby) — ask the owner.
     Before any deploy of this to the owner's app: set OWNER_EMAIL? (owner decides; else their login is "owner").
   - Scratch Mongo for tests needs `--ulimit nofile=64000:64000` (1024 runs out with 9 test files).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
