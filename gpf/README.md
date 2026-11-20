@@ -22,15 +22,19 @@ tenant network (internal)      one per tenant: its app + its Mongo. No internet,
 | `templates/tenant.compose.yml` | One tenant: `mongo` (password login, replica set with key file, 0.25 GB cache, 640 MB cap) and `api` (384 MB cap) |
 | `mongo/10-app-user.js` | First start: the app's own database user (read/write on `pool` only) |
 | `edge/compose.yml`, `edge/notice.cjs` | Traefik v3.6, Docker socket proxy (no write access), the notice page |
-| `test/run.sh` | The throwaway test (72 checks) |
+| `test/run.sh` | The throwaway test (86 checks) |
+| `test/import-roundtrip.sh` | Customer import between two tenants (12 checks) |
 
 ## Commands
 
 ```bash
 bash gpf/tenant.sh build                     # image gpf-api:<commit> from pool-service/
 bash gpf/tenant.sh edge-up
-bash gpf/tenant.sh create <name>             # → https://<name>.<GPF_DOMAIN>
-bash gpf/tenant.sh list
+bash gpf/tenant.sh create <name> [owner-email]   # → https://<name>.<GPF_DOMAIN>
+bash gpf/tenant.sh list                      # state, health, techs this month, image, last backup
+bash gpf/tenant.sh users <name> [YYYY-MM]    # its logins and who was active that month
+bash gpf/tenant.sh billing [YYYY-MM]         # active techs and the monthly price per tenant
+bash gpf/tenant.sh owner-password <name>     # new temporary owner password (to the file; devices signed out)
 bash gpf/tenant.sh update <name|all> [image] # backup, counts, new image, health, counts; stops at the first failure
 bash gpf/tenant.sh backup <name|all>         # nightly (cron): dump + offsite; one failure doesn't skip the rest
 bash gpf/tenant.sh restore-check <name> [--offsite local|r2]
@@ -40,6 +44,10 @@ bash gpf/tenant.sh delete <name> --confirm <name>
 bash gpf/tenant.sh purge <name-time> --confirm <name-time>
 ```
 
+- **Logins:** the owner's login is the email given to `create` (else "owner"); their first password is
+  temporary (they choose their own at the first login). They add their techs in the app (Team).
+  **billing** counts a tech when their login was used that month (owners are free) and prices it:
+  $75 covers 1–3 techs, then 4–5 $20 each, 6–15 $18, 16–30 $15, 31–50 $12, 51–75 $10, 76+ $8.
 - **create** makes the secrets, all random: Mongo root and app passwords, key file, session secret,
   restic key, and the owner's first app password (kept in a file, never printed). It also gives the
   tenant a free /27 subnet of `GPF_SUBNET_BASE` (10.213.x.x), so Docker's address pools never run out.
@@ -80,6 +88,8 @@ bash gpf/test/import-roundtrip.sh   # customer import: tenant alpha's export int
 
 It creates tenants `alpha` and `bravo` and checks:
 - routes, and logins that only work on their own tenant
+- the owner's email login and temporary password, a tech who can't see invoices, `users`, `list`,
+  `billing` (also while a tenant is suspended), `owner-password` signing the owner's devices out
 - data kept apart, no host ports, and no reaching the other tenant's database or the internet
 - database logins, private secret files
 - backups and restore checks (local and R2), and that one tenant's key can't read another's backups

@@ -216,7 +216,11 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     filter, pool form tech picker, full pull replaces local tables. All e2e scripts fill Email (`E2E_EMAIL`,
     default "owner"); `local-cookies.cjs` answers login with the session's `me`. `e2e/accounts.cjs` (8) runs
     only in a test env (real logins). Login limit 5/15 min: restart the test API between batches of 4 scripts.
-  - Next: segment 3 (tenant kit: owner login at create, `users`/active techs count, owner reset; test).
+  - ✅ Segment 3 (tenant kit) built Nov 20: `tenant.sh create <name> [owner-email]` (OWNER_EMAIL in api.env,
+    first password temporary), `users`, `billing` (graduated tiers, `price_for`), `owner-password`, TECHS in
+    `list`; `cli/users.js table` and `set-password --temporary`. Kit test 86/86, import round trip 12/12.
+    **GPF item 3 is complete in test; NOT deployed.** Next GPF item: blank branding for new tenants (plan first).
+    Before any deploy of this to the owner's app: set OWNER_EMAIL? (owner decides; else their login is "owner").
   - Scratch Mongo for tests needs `--ulimit nofile=64000:64000` (1024 runs out with 9 test files).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).

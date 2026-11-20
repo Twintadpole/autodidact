@@ -29,10 +29,16 @@ refuses() { local what="$1"; shift; if "$@" >/var/tmp/gpft-check.log 2>&1; then 
 run() { echo "  \$ tenant.sh $*"; bash "${GPF}" "$@" > >(sed 's/^/        /') 2>&1; }
 http() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.${GPF_DOMAIN}" "http://${GPF_EDGE_BIND}$2"; }
 pw() { cat "$(t_sec "$1")/owner-password"; }
-login_cookie() { # session cookie after logging in as tenant $1 with password of tenant $2
+owner_email() { sed -n 's/^OWNER_EMAIL=//p' "$(t_sec "$1")/api.env"; }
+login_as() { # login_as <tenant> <email> <password>: session cookie, or nothing
   curl -s -D - -o /dev/null -H "Host: $1.${GPF_DOMAIN}" -H 'content-type: application/json' \
-    --data "{\"password\":\"$(pw "$2")\",\"remember\":false}" "http://${GPF_EDGE_BIND}/api/auth/login" |
+    --data "{\"email\":\"$2\",\"password\":\"$3\",\"remember\":false}" "http://${GPF_EDGE_BIND}/api/auth/login" |
     sed -n 's/^set-cookie: \(pool\.sid=[^;]*\).*/\1/Ip' | head -1
+}
+login_cookie() { login_as "$1" "$(owner_email "$2")" "$(pw "$2")"; } # tenant $1 with tenant $2's owner login
+api() { # api <tenant> <cookie> <method> <path> [json]: prints "<status> <body>"
+  curl -s -w '\n%{http_code}' -X "$3" -H "Host: $1.${GPF_DOMAIN}" -H "cookie: $2" ${5:+-H 'content-type: application/json' --data "$5"} "http://${GPF_EDGE_BIND}/api$4" |
+    { body="$(cat)"; echo "${body##*$'\n'} ${body%$'\n'*}"; }
 }
 count() { tmongosh "$1" pool <<<"db.$2.countDocuments({ deletedAt: null })"; }
 api_exec() { tdc "$1" exec -T api "${@:2}"; }
@@ -62,8 +68,8 @@ bash "${GPF}" use-image "${BASE_IMAGE}" >/dev/null
 
 echo "== Edge and two tenants"
 check "edge starts" run edge-up
-check "create alpha" run create alpha
-check "create bravo" run create bravo
+check "create alpha (owner login owner@alpha.example)" run create alpha owner@alpha.example
+check "create bravo (owner login \"owner\")" run create bravo
 refuses "create alpha again" bash "${GPF}" create alpha
 refuses "bad tenant name" bash "${GPF}" create 'Bad_Name'
 run list
@@ -140,6 +146,30 @@ check "backup works while suspended" run backup alpha
 check "resume alpha" run resume alpha
 check "alpha answers 200 again" test "$(http alpha /api/health)" = 200
 check "alpha still has its customer" test "$(count alpha customers)" = 1
+
+echo "== Logins (owner, tech, billing)"
+check "alpha’s old login name \"owner\" is refused" test -z "$(login_as alpha owner "$(pw alpha)")"
+CA="$(login_cookie alpha alpha)"
+check "alpha’s owner logs in with their email" test -n "${CA}"
+check "the first password is temporary (must be changed)" bash -c "grep -q '\"mustChangePassword\":true' <<<'$(api alpha "${CA}" GET /auth/me)'"
+r="$(api alpha "${CA}" POST /team '{"email":"tech@alpha.example","name":"Alpha Tech"}')"
+check "the owner adds a tech (HTTP ${r%% *})" test "${r%% *}" = 201
+TECHPW="$(sed -n 's/.*"password":"\([A-Za-z0-9]*\)".*/\1/p' <<<"${r#* }")"
+CT="$(login_as alpha tech@alpha.example "${TECHPW}")"
+check "the tech logs in" test -n "${CT}"
+check "the tech can read customers" test "$(api alpha "${CT}" GET /customers | cut -d' ' -f1)" = 200
+check "the tech can't read invoices" test "$(api alpha "${CT}" GET /invoices | cut -d' ' -f1)" = 403
+check "the tech's login doesn't work on bravo" test -z "$(login_as bravo tech@alpha.example "${TECHPW}")"
+check "tenant.sh users alpha: owner and tech, tech active this month" bash -c "bash '${GPF}' users alpha | grep -E '^tech@alpha.example +Alpha Tech +tech +yes +yes'"
+check "tenant.sh list: alpha has 1 tech this month" bash -c "bash '${GPF}' list | grep -E '^alpha +active +healthy +1 '"
+billing="$(bash "${GPF}" billing)"
+echo "${billing}" | sed 's/^/        /'
+check "billing: alpha 1 tech \$75, bravo 0 \$75, total \$150" bash -c "grep -qE '^alpha .* 1 +\\\$75$' <<<'${billing}' && grep -qE '^bravo .* 0 +\\\$75$' <<<'${billing}' && grep -qE '^TOTAL .*\\\$150$' <<<'${billing}'"
+check "users works while a tenant is suspended" bash -c "bash '${GPF}' suspend bravo >/dev/null && bash '${GPF}' users bravo | grep -q '^owner ' ; rc=\$?; bash '${GPF}' resume bravo >/dev/null; exit \$rc"
+check "owner-password alpha" run owner-password alpha
+check "the owner's old session is signed out" test "$(api alpha "${CA}" GET /auth/me | cut -d' ' -f1)" = 401
+check "the new temporary password works (and must be changed)" bash -c "c=\$(curl -s -D - -o /dev/null -H 'Host: alpha.${GPF_DOMAIN}' -H 'content-type: application/json' --data '{\"email\":\"owner@alpha.example\",\"password\":\"$(pw alpha)\"}' http://${GPF_EDGE_BIND}/api/auth/login | sed -n 's/^set-cookie: \\(pool\\.sid=[^;]*\\).*/\\1/Ip'); curl -s -H 'Host: alpha.${GPF_DOMAIN}' -H \"cookie: \$c\" http://${GPF_EDGE_BIND}/api/auth/me | grep -q '\"mustChangePassword\":true'"
+check "the tech's session is untouched" test "$(api alpha "${CT}" GET /auth/me | cut -d' ' -f1)" = 200
 
 echo "== Export, delete, purge"
 refuses "delete without a recent export" bash "${GPF}" delete bravo --confirm bravo

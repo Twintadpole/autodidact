@@ -33,7 +33,8 @@ function request(h, cookie, method, path, body, headers = {}) {
 }
 const send = (h, cookie, method, path, data) => request(h, cookie, method, path, data && JSON.stringify(data), data ? { 'content-type': 'application/json' } : {});
 async function login(h, pw) {
-  const r = await send(h, null, 'POST', '/auth/login', { password: pw, remember: false });
+  // Tenants made without an owner email log in as "owner" (GPF item 3).
+  const r = await send(h, null, 'POST', '/auth/login', { email: 'owner', password: pw, remember: false });
   if (r.status !== 200) throw new Error(`login to ${h}: ${r.status}`);
   return String(r.headers['set-cookie'][0]).split(';')[0];
 }

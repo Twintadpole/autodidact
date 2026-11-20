@@ -4,9 +4,13 @@
 #   tenant.sh build                      build the app image from pool-service/ (tag = git commit)
 #   tenant.sh use-image <image>          the image new and updated tenants get
 #   tenant.sh edge-up                    start/refresh Traefik, its Docker proxy and the notice page
-#   tenant.sh create <name>              new business: secrets, folders, sealed network, database users,
-#                                        route <name>.<domain>, backup key; owner password saved to a file
-#   tenant.sh list                       every tenant: state, health, image, last backup
+#   tenant.sh create <name> [owner-email]   new business: secrets, folders, sealed network, database users,
+#                                        route <name>.<domain>, backup key; the owner's login (their email,
+#                                        else "owner") with a temporary password saved to a file
+#   tenant.sh list                       every tenant: state, health, techs this month, image, last backup
+#   tenant.sh users <name> [YYYY-MM]     its logins, and who was active that month
+#   tenant.sh billing [YYYY-MM]          active techs and the monthly price per tenant (graduated tiers)
+#   tenant.sh owner-password <name>      new temporary password for its first owner (saved to the file)
 #   tenant.sh update <name|all> [image]  backup, counts, new image, health, counts again (stops on failure)
 #   tenant.sh backup <name|all> [--predeploy]   database dump; nightly runs also send it and photos offsite
 #   tenant.sh restore-check <name> [--offsite local|r2]   restore into a scratch database and compare
@@ -76,7 +80,9 @@ next_subnet() {
   die "No free tenant subnet in ${GPF_SUBNET_BASE}.0.0/16"
 }
 cmd_create() {
-  local name="${1:-}"; need_name "${name}"; need_domain; need_image
+  local name="${1:-}" owner_email="${2:-owner}"; need_name "${name}"; need_domain; need_image
+  owner_email="${owner_email,,}"
+  [[ "${owner_email}" == owner || "${owner_email}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "The owner's login must be an email address"
   t_exists "${name}" && die "Tenant ${name} already exists"
   edge_running || die "The edge isn't running: '$0 edge-up' first"
   local sec dir image subnet
@@ -102,6 +108,7 @@ ADMIN_PASSWORD_HASH='${hash}'
 SESSION_SECRET=$(rand_hex 32)
 MONGO_URL=mongodb://app:$(cat "${sec}/mongo-app-password")@mongo:27017/pool?replicaSet=rs0&authSource=pool
 LOG_LEVEL=info
+OWNER_EMAIL=${owner_email}
 ENV
     cat > "${sec}/compose.env" <<ENV
 TENANT=${name}
@@ -125,6 +132,8 @@ ENV
   t_wait_healthy "${name}"
   local code; code="$(t_http "${name}" /api/health)"
   [[ "${code}" == 200 ]] || die "${name}.${GPF_DOMAIN} answers ${code} through the edge"
+  # The app made the owner's login on its first start; they choose their own password at the first login.
+  tr -d '\n' < "${sec}/owner-password" | t_users "${name}" set-password --temporary >/dev/null || die "Could not mark ${name}'s owner password as temporary"
 
   local target
   for target in $(offsite_targets); do
@@ -134,19 +143,65 @@ ENV
   cat <<MSG
 
 Tenant ${name} is running: https://${name}.${GPF_DOMAIN}
-  Owner password: in ${sec}/owner-password (give it to the owner; they change it after logging in)
+  Owner login: ${owner_email}
+  Temporary password: in ${sec}/owner-password (give it to the owner; they choose their own at the first login)
   Encryption key for its backups: ${sec}/restic-password (keep a copy off this server)
 MSG
 }
 
-# ---- list
+# ---- list, users, billing, owner password
+# The app's users CLI: in the running app, or (suspended) a one-off copy that Traefik ignores.
+t_users() {
+  local name="$1"; shift
+  if [[ "$(t_health "${name}")" == healthy ]]; then
+    tdc "${name}" exec -T api node server/dist/cli/users.js "$@" 2>/dev/null
+  else
+    tdc "${name}" run --rm -T --no-deps -l traefik.enable=false api node server/dist/cli/users.js "$@" 2>/dev/null
+  fi
+}
+this_month() { date -u +%Y-%m; }
 cmd_list() {
-  printf '%-20s %-10s %-10s %-22s %s\n' TENANT STATE HEALTH LAST_BACKUP IMAGE
+  printf '%-20s %-10s %-10s %-6s %-22s %s\n' TENANT STATE HEALTH TECHS LAST_BACKUP IMAGE
   local t
   for t in $(tenants); do
-    printf '%-20s %-10s %-10s %-22s %s\n' "${t}" "$(t_get "${t}" STATE)" "$(t_health "${t}")" \
+    printf '%-20s %-10s %-10s %-6s %-22s %s\n' "${t}" "$(t_get "${t}" STATE)" "$(t_health "${t}")" "$(t_users "${t}" techs "$(this_month)" || echo '?')" \
       "$(cat "$(t_dir "${t}")/backups/LAST_BACKUP" 2>/dev/null || echo never)" "$(t_get "${t}" IMAGE)"
   done
+}
+cmd_users() {
+  local name="${1:-}" month="${2:-$(this_month)}"; need_tenant "${name}"
+  [[ "${month}" =~ ^[0-9]{4}-[0-9]{2}$ ]] || die "Month as YYYY-MM"
+  t_users "${name}" table "${month}" || die "Could not read ${name}'s logins"
+}
+# Monthly price for n active techs: $75 covers 1-3, then each extra tech at its tier's rate.
+price_for() {
+  local n="$1" total=75 i
+  for ((i = 4; i <= n; i++)); do
+    if ((i <= 5)); then total=$((total + 20)); elif ((i <= 15)); then total=$((total + 18)); elif ((i <= 30)); then total=$((total + 15))
+    elif ((i <= 50)); then total=$((total + 12)); elif ((i <= 75)); then total=$((total + 10)); else total=$((total + 8)); fi
+  done
+  echo "${total}"
+}
+cmd_billing() {
+  local month="${1:-$(this_month)}" t n p sum=0
+  [[ "${month}" =~ ^[0-9]{4}-[0-9]{2}$ ]] || die "Month as YYYY-MM"
+  printf '%-20s %-10s %6s %8s\n' TENANT STATE TECHS PRICE
+  for t in $(tenants); do
+    n="$(t_users "${t}" techs "${month}")" || die "Could not count ${t}'s techs"
+    p="$(price_for "${n}")"
+    sum=$((sum + p))
+    printf '%-20s %-10s %6s %8s\n' "${t}" "$(t_get "${t}" STATE)" "${n}" "\$${p}"
+  done
+  printf '%-20s %-10s %6s %8s\n' TOTAL "" "" "\$${sum}"
+  echo "(${month}: a tech counts if their login was used that month; owners are free; \$75 covers up to 3 techs)"
+}
+cmd_owner_password() {
+  local name="${1:-}"; need_tenant "${name}"
+  local sec; sec="$(t_sec "${name}")"
+  ( umask 077; rand_pw 16 > "${sec}/owner-password.new" )
+  tr -d '\n' < "${sec}/owner-password.new" | t_users "${name}" set-password --temporary >/dev/null || die "Could not set ${name}'s owner password"
+  mv "${sec}/owner-password.new" "${sec}/owner-password"
+  echo "${name}: new temporary owner password in ${sec}/owner-password (the owner's devices are signed out)"
 }
 
 # each <fn> <name|all> args…: runs fn per tenant. A failure stops everything (set -e), so with
@@ -392,8 +447,11 @@ case "${1:-}" in
   build) cmd_build ;;
   use-image) cmd_use_image "${2:-}" ;;
   edge-up) cmd_edge_up ;;
-  create) cmd_create "${2:-}" ;;
+  create) cmd_create "${2:-}" "${3:-}" ;;
   list) cmd_list ;;
+  users) cmd_users "${2:-}" "${3:-}" ;;
+  billing) cmd_billing "${2:-}" ;;
+  owner-password) cmd_owner_password "${2:-}" ;;
   update) shift; cmd_update "$@" ;;
   backup) shift; cmd_backup "$@" ;;
   restore-check) shift; cmd_restore_check "$@" ;;
@@ -402,5 +460,5 @@ case "${1:-}" in
   resume) cmd_resume "${2:-}" ;;
   delete) shift; cmd_delete "$@" ;;
   purge) shift; cmd_purge "$@" ;;
-  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,/^# Settings/p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
