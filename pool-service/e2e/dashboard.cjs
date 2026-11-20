@@ -48,6 +48,7 @@ const DASH = '00000000-0000-4000-8000-000000000002';
   const login = async (p) => {
     await p.goto(url('/login'), { waitUntil: 'networkidle' });
     if (await p.getByLabel('Password').isVisible().catch(() => false)) {
+      await p.getByLabel('Email').fill(process.env.E2E_EMAIL || 'owner');
       await p.getByLabel('Password').fill(password);
       await p.locator('[data-test=login]').click();
     }

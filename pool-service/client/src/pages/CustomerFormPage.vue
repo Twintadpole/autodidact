@@ -4,12 +4,13 @@
       <CustomerFields :form="form" />
 
       <q-btn type="submit" color="primary" unelevated size="lg" :label="isNew ? 'Add customer' : 'Save'" :loading="busy" data-test="customer-save" />
-      <q-btn v-if="!isNew" flat color="negative" icon="delete" label="Delete customer" @click="remove" />
+      <q-btn v-if="!isNew && auth.isOwner" flat color="negative" icon="delete" label="Delete customer" @click="remove" />
     </q-form>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -20,6 +21,7 @@ import { blankCustomerForm, customerFromForm, customerToForm } from '@/lib/custo
 import { useUiStore } from '@/stores/ui';
 
 defineOptions({ name: 'CustomerFormPage' });
+const auth = useAuthStore();
 
 const $q = useQuasar();
 const route = useRoute();

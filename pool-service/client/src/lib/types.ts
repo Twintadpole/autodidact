@@ -39,6 +39,8 @@ export interface Customer extends Base {
   startDate?: string | null;
   endDate?: string | null;
   distanceMiles?: number | null;
+  /** Who added it (set by the server). */
+  createdBy?: string | null;
 }
 
 export interface Equipment {
@@ -67,6 +69,8 @@ export interface Pool extends Base {
   active: boolean;
   week: { done: boolean; doneAt: string | null; changedAt: string | null };
   equipment?: Equipment[];
+  /** Whose route it is (GPF item 3): a user id, or null = nobody's. */
+  techId?: string | null;
 }
 
 export interface Dose {

@@ -21,7 +21,10 @@ A single-user, self-hosted pool service PWA for an Android phone. It works fully
   column choice, totals, a quick-entry row and an edit panel; a dashboard of cards you can resize, move, hide
   and open full screen (the layout follows you to any device).
 
-Out of scope for now: multiple users, customer-facing access.
+**Logins and roles:** owners see everything; techs see the pools on their route without money (see
+CHANGELOG). The server enforces it on every route and on sync (`server/src/services/scope.ts`).
+
+Out of scope for now: customer-facing access.
 
 ## Roadmap
 
@@ -106,6 +109,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `alpha-polish.cjs` | Pool labels, Issues badge, visit history, update message, version, desktop width (7) |
 | `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
 | `export.cjs` | Table exports (Excel and CSV), Export everything, a card's export, the phone's More → Export (5); needs `exceljs` next to Playwright |
+| `accounts.cjs` | Owner and tech logins on one phone: Team, temporary password, routes, no money for the tech, moving a pool off a route, phone copy cleared between people (8). Test environment only (real logins) |
 | `import.cjs` | Customer & pool import: template, column matching, preview with a difference to choose, import, Undo (6) |
 | `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device, the 12 cards, full-screen tools and CSV export (7) |
 
@@ -150,9 +154,13 @@ All routes are under `/api` and need the session cookie, except `/auth/login` an
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/auth/login` | `{password, remember}`: sets the HttpOnly cookie (90 days with `remember`). Rate-limited to 5 per 15 min per IP |
+| POST | `/auth/login` | `{email, password, remember}`: sets the HttpOnly cookie (90 days with `remember`). 5 per 15 min per IP; 10 wrong in a row locks that login 15 min |
 | POST | `/auth/logout` | Ends the session |
-| GET | `/auth/me` | 200 if logged in |
+| GET | `/auth/me` | Who is logged in, and the team's names |
+| POST | `/auth/password` | `{current, password}`; signs out the user's other devices |
+| GET/DELETE | `/auth/devices`, `/auth/devices/:id` (`others`) | The user's signed-in devices; sign one or all others out |
+| GET/POST/PATCH | `/team`, `/team/:id`, `/team/:id/reset-password` | Owner: logins (temporary passwords returned once) |
+| POST | `/pools/assign` | Owner: `{poolIds, techId}` puts pools on a tech's route (null = nobody's) |
 | GET | `/health` | Liveness (`{ok, mongo}`) |
 | GET | `/sync/pull?since=` | Changes since a server timestamp |
 | POST | `/sync/package` | Apply one field package (idempotent on `packageId`) |

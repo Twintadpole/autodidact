@@ -42,7 +42,7 @@
         <div v-else class="text-grey-6 text-body2">No pools yet.</div>
       </div>
 
-      <div data-test="customer-invoices">
+      <div v-if="auth.isOwner" data-test="customer-invoices">
         <div class="row items-center justify-between q-mb-xs">
           <div class="text-subtitle1">Invoices<span v-if="owed" class="text-negative text-body2"> · {{ money(owed) }} owed</span></div>
           <q-btn flat dense no-caps color="primary" icon="add" label="New invoice" data-test="new-invoice" @click="newInvoice" />
@@ -70,6 +70,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth';
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ContactLinks from '@/components/ContactLinks.vue';
@@ -88,6 +89,7 @@ import { format, parseISO } from 'date-fns';
 import type { Pool } from '@/lib/types';
 
 defineOptions({ name: 'CustomerPage' });
+const auth = useAuthStore();
 
 const route = useRoute();
 const data = useDataStore();

@@ -19,9 +19,20 @@
       <AddressFields v-if="useOwnAddress" v-model="form.address" />
 
       <q-toggle v-model="form.active" label="Active (on the route)" />
+      <q-select
+        v-if="auth.isOwner && techOptions.length > 1"
+        v-model="form.techId"
+        outlined
+        emit-value
+        map-options
+        :options="techOptions"
+        label="Tech (whose route it's on)"
+        hint="That tech's phone gets this pool; nobody else's does"
+        data-test="pool-tech"
+      />
 
       <q-btn type="submit" color="primary" unelevated size="lg" :label="isNew ? 'Add pool' : 'Save'" :loading="busy" data-test="pool-save" />
-      <q-btn v-if="!isNew" flat color="negative" icon="delete" label="Delete pool" @click="remove" />
+      <q-btn v-if="!isNew && auth.isOwner" flat color="negative" icon="delete" label="Delete pool" @click="remove" />
     </q-form>
   </q-page>
 </template>
@@ -33,6 +44,7 @@ import { useQuasar } from 'quasar';
 import { SERVICE_DAYS, type ServiceDay } from '@pool/shared';
 import AddressFields from '@/components/AddressFields.vue';
 import { useDataStore } from '@/stores/data';
+import { useAuthStore } from '@/stores/auth';
 import { errorMessage } from '@/stores/api';
 import { DAY_LABELS } from '@/lib/format';
 import { cleanAddress, numberOrNull } from '@/lib/customer';
@@ -44,7 +56,9 @@ const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
 const data = useDataStore();
+const auth = useAuthStore();
 const busy = ref(false);
+const techOptions = computed(() => [{ label: 'Nobody (yours)', value: null as string | null }, ...auth.techs.filter((m) => m.role === 'tech').map((m) => ({ label: m.name, value: m._id as string | null }))]);
 const useOwnAddress = ref(false);
 
 const poolId = computed(() => (route.name === 'pool-edit' ? String(route.params.id) : null));
@@ -60,6 +74,7 @@ const form = reactive({
   type: null as Pool['type'],
   volumeGal: '' as string | number,
   serviceDay: null as ServiceDay | 'once' | null,
+  techId: null as string | null,
   oneTimeDate: '',
   routeOrder: 1,
   surface: '',
@@ -92,6 +107,7 @@ watch(
     form.surface = p.surface ?? '';
     form.accessNotes = p.accessNotes;
     form.active = p.active;
+    form.techId = p.techId ?? null;
     useOwnAddress.value = !!p.address;
     if (p.address) form.address = { line1: '', line2: '', city: '', state: '', zip: '', ...p.address } as typeof form.address;
   },
@@ -112,6 +128,8 @@ async function save() {
     routeOrder: Number(form.routeOrder) || 0,
     accessNotes: form.accessNotes.trim(),
     active: form.active,
+    // A tech's new pool goes on their own route (the server does the same).
+    techId: auth.isOwner ? form.techId : (existing.value?.techId ?? auth.me?._id ?? null),
     ...(form.surface.trim() ? { surface: form.surface.trim() } : {}),
     ...(address ? { address } : {}),
   };

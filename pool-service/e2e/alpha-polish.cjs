@@ -24,6 +24,7 @@ const { chromium, devices } = require('playwright');
 
   try {
     await page.goto(url('/login'), { waitUntil: 'networkidle' });
+    await page.getByLabel('Email').fill(process.env.E2E_EMAIL || 'owner');
     await page.getByLabel('Password').fill(password);
     await page.locator('[data-test=login]').click();
     await page.locator('[data-test=done-count]').waitFor();

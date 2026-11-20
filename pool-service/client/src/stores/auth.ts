@@ -1,28 +1,56 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import type { Me, TeamMember } from '@pool/shared';
 import { api, ApiError } from './api';
+
+/**
+ * Who is signed in (GPF item 3). Remembered on the device so the app opens with no signal and
+ * knows the role offline. The phone's copy of the data belongs to that person: when someone
+ * else signs in, it is cleared first (see LoginPage / lib/session.ts).
+ */
+const KEY = 'pool.loggedIn';
+const ME_KEY = 'pool.me';
+const TEAM_KEY = 'pool.team';
+const store = {
+  get<T>(k: string): T | null {
+    try {
+      const v = localStorage.getItem(k);
+      return v ? (JSON.parse(v) as T) : null;
+    } catch {
+      return null;
+    }
+  },
+  set(k: string, v: unknown) {
+    try {
+      if (v == null) localStorage.removeItem(k);
+      else localStorage.setItem(k, JSON.stringify(v));
+    } catch {
+      // private mode: just ask the server each time
+    }
+  },
+};
 
 export const useAuthStore = defineStore('auth', () => {
   const loggedIn = ref(false);
   const checked = ref(false);
+  const me = ref<Me | null>(store.get<Me>(ME_KEY));
+  const team = ref<TeamMember[]>(store.get<TeamMember[]>(TEAM_KEY) ?? []);
+  /** Owner unless known otherwise (an app from before accounts was the owner's). */
+  const isOwner = computed(() => (me.value?.role ?? 'owner') === 'owner');
+  const techs = computed(() => team.value.filter((m) => m.active));
+  const memberName = (id: string | null | undefined) => (id ? (team.value.find((m) => m._id === id)?.name ?? 'Someone') : '');
 
-  /** Remembered across app restarts so the app opens with no signal. */
-  const KEY = 'pool.loggedIn';
-  const remember = (v: boolean) => {
-    try {
-      if (v) localStorage.setItem(KEY, '1');
-      else localStorage.removeItem(KEY);
-    } catch {
-      // private mode: just ask the server each time
-    }
-  };
-  const remembered = () => {
-    try {
-      return localStorage.getItem(KEY) === '1';
-    } catch {
-      return false;
-    }
-  };
+  function setMe(m: Me | null) {
+    me.value = m;
+    store.set(ME_KEY, m);
+  }
+  function setTeam(t: TeamMember[] | undefined) {
+    if (!t) return;
+    team.value = t;
+    store.set(TEAM_KEY, t);
+  }
+  const remember = (v: boolean) => store.set(KEY, v ? 1 : null);
+  const remembered = () => store.get<number>(KEY) === 1;
 
   /**
    * Asks the server once whether the session cookie is valid. With no signal,
@@ -32,7 +60,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function ensureChecked(): Promise<boolean> {
     if (checked.value) return loggedIn.value;
     try {
-      await api('/auth/me');
+      const r = await api<{ me: Me; team: TeamMember[] }>('/auth/me');
+      setMe(r.me);
+      setTeam(r.team);
       loggedIn.value = true;
       remember(true);
     } catch (err) {
@@ -50,26 +80,31 @@ export const useAuthStore = defineStore('auth', () => {
     return loggedIn.value;
   }
 
-  async function login(password: string, remember: boolean) {
-    await api('/auth/login', { method: 'POST', body: { password, remember } });
+  async function login(email: string, password: string, rememberDevice: boolean): Promise<Me> {
+    const r = await api<{ me: Me }>('/auth/login', { method: 'POST', body: { email, password, remember: rememberDevice } });
+    setMe(r.me);
     loggedIn.value = true;
-    checked.value = true;
-    rememberLogin(true);
+    checked.value = false; // fetch the team on the next check
+    remember(true);
+    return r.me;
   }
 
   async function logout() {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     loggedIn.value = false;
-    rememberLogin(false);
+    remember(false);
   }
 
   /** Called when any request comes back 401 (session expired). */
   function expired() {
     loggedIn.value = false;
     checked.value = true;
-    rememberLogin(false);
+    remember(false);
   }
-  const rememberLogin = remember;
 
-  return { loggedIn, checked, ensureChecked, login, logout, expired };
+  function passwordChanged() {
+    if (me.value) setMe({ ...me.value, mustChangePassword: false });
+  }
+
+  return { loggedIn, checked, me, team, isOwner, techs, memberName, setTeam, ensureChecked, login, logout, expired, passwordChanged };
 });

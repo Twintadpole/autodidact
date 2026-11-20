@@ -40,6 +40,7 @@ const DAY_LABEL = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thurs
   else await page.goto(url('/'), { waitUntil: 'networkidle' });
   await page.waitForURL(/\/login/);
   await shot('01-login');
+  await page.getByLabel('Email').fill(process.env.E2E_EMAIL || 'owner');
   await page.getByLabel('Password').fill(password);
   await page.locator('[data-test=login]').click();
   await page.locator('[data-test=done-count]').waitFor();

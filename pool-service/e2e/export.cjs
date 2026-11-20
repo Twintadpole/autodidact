@@ -30,6 +30,7 @@ const ExcelJS = require('exceljs');
   const login = async (p) => {
     await p.goto(url('/login'), { waitUntil: 'networkidle' });
     if (await p.getByLabel('Password').isVisible().catch(() => false)) {
+      await p.getByLabel('Email').fill(process.env.E2E_EMAIL || 'owner');
       await p.getByLabel('Password').fill(password);
       await p.locator('[data-test=login]').click();
     }

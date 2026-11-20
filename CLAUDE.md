@@ -210,8 +210,13 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     crud `techAccess/techBody/afterWrite`, scoped sync pull/package, `cli/users.ts`, `deploy/set-password.sh`
     updates the owner login, `test/roles.test.ts`. Until segment 2 the app's login screen can't log in (it sends
     no email).
-  - Next: segment 2 (app: login, My account, Team, assign pools, hide money, full-pull replace, e2e);
-    segment 3 (tenant kit: owner at create, users/techs count, owner reset; test).
+  - ✅ Segment 2 (app) built Nov 20, NOT deployed: email login (`type=text`: "owner" must be accepted),
+    `lib/session.ts` (phone copy belongs to one user; cleared on a new login, asks if unsent), `AccountPage`,
+    `TeamPage` (route picker), owner-only route meta, money/delete/history hidden for techs, Route tech
+    filter, pool form tech picker, full pull replaces local tables. All e2e scripts fill Email (`E2E_EMAIL`,
+    default "owner"); `local-cookies.cjs` answers login with the session's `me`. `e2e/accounts.cjs` (8) runs
+    only in a test env (real logins). Login limit 5/15 min: restart the test API between batches of 4 scripts.
+  - Next: segment 3 (tenant kit: owner login at create, `users`/active techs count, owner reset; test).
   - Scratch Mongo for tests needs `--ulimit nofile=64000:64000` (1024 runs out with 9 test files).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).

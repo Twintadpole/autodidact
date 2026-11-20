@@ -2,6 +2,26 @@
 
 ## Unreleased (November 2026)
 
+### Logins, owner and tech roles, assigned routes
+
+- **Each person has their own login** (email + password). Today's password becomes the first owner's
+  login (login name "owner" until changed); phones already logged in stay logged in.
+- **Team** (More → Team, or Team in the desktop menu): add a tech or another owner; they get a temporary
+  password, shown once, and choose their own at first login. Reset a password, turn a login off (it's
+  signed out everywhere), make someone an owner or a tech. There is always at least one active owner.
+- **Routes:** each pool can be on a tech's route (Team → Route, or the pool's form). A tech's phone gets
+  only their own pools, with those customers, visits, issues, photos and notes; a pool they add is on
+  their route. Move a pool and it leaves the first tech's phone at its next sync. The owner's Route can
+  show everyone's or one tech's, and shows whose route each pool is on.
+- **Techs never get money:** no rates or billing, chemical prices or costs, invoices, payments, ledger,
+  reports, dashboard, import/export or business settings beyond what visit recaps need. They can't delete
+  customers or pools. Their chemical costs are worked out on the server. Techs may send visit recaps.
+- **My account:** change your password (your other devices are signed out), see your devices and sign
+  any of them out (a lost phone).
+- A phone used by someone new clears the previous person's copy first; unsent changes are never thrown
+  away without asking.
+- The edit log records who made each change. A login locks for 15 minutes after 10 wrong passwords.
+
 ### Customer & pool import
 
 - **Import customers and pools** from Excel or CSV (desktop view → Customers → Import). One row per pool;

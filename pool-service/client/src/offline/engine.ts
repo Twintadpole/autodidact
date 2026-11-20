@@ -176,12 +176,21 @@ async function pullUnlocked(): Promise<boolean> {
   if (isAccessBlocked(res)) throw new NeedsAccessError();
   if (res.status === 401) throw new NeedsLoginError();
   if (!res.ok) return false;
-  const data = (await res.json()) as Record<string, { _id: string; updatedAt: string }[]> & { serverTime: string };
-  await db.transaction('rw', PULL_TABLES.map((t) => db[t]), async () => {
+  const data = (await res.json()) as Record<string, { _id: string; updatedAt: string }[]> & { serverTime: string; full?: boolean; team?: unknown[] };
+  await db.transaction('rw', [...PULL_TABLES.map((t) => db[t]), db.meta], async () => {
+    // GPF item 3: a full pull is this person's whole copy (e.g. their route changed): replace what
+    // the phone has, so pools moved off their route disappear. The outbox is empty here (pull runs
+    // only after everything was sent), so no local change is lost.
+    if (data.full) for (const t of PULL_TABLES) await db[t].clear();
+    if (data.team) await db.meta.put({ key: 'team', value: data.team });
     for (const t of PULL_TABLES) {
       const incoming = data[t] ?? [];
       if (!incoming.length) continue;
       const table = db[t] as unknown as import('dexie').Table<{ _id: string; updatedAt: string }, string>;
+      if (data.full) {
+        await table.bulkPut(incoming);
+        continue;
+      }
       const existing = await table.bulkGet(incoming.map((d) => d._id));
       // Newer wins; a local edit that hasn't reached the server yet is newer, so it is kept.
       const newer = incoming.filter((d, i) => !existing[i] || existing[i]!.updatedAt <= d.updatedAt);

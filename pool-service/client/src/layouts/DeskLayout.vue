@@ -75,6 +75,7 @@ const MENU = [
   { key: 'money', to: '/desk/money', icon: 'account_balance_wallet', label: 'Expenses & income' },
   { key: 'mileage', to: '/desk/mileage', icon: 'directions_car', label: 'Mileage' },
   { key: 'chemicals', to: '/desk/chemicals', icon: 'science', label: 'Chemicals', gap: true },
+  { key: 'team', to: '/desk/team', icon: 'groups', label: 'Team' },
   { key: 'business', to: '/desk/business', icon: 'storefront', label: 'Business details' },
 ];
 

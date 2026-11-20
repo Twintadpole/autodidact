@@ -10,11 +10,22 @@
             </q-card-section>
             <q-card-section class="q-gutter-md">
               <q-input
+                v-model="email"
+                type="text"
+                inputmode="email"
+                label="Email"
+                outlined
+                :autofocus="!email"
+                autocomplete="username"
+                autocapitalize="off"
+                data-test="email"
+              />
+              <q-input
                 v-model="password"
                 type="password"
                 label="Password"
                 outlined
-                autofocus
+                :autofocus="!!email"
                 autocomplete="current-password"
                 data-test="password"
                 :error="!!error"
@@ -35,30 +46,64 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useAuthStore } from '@/stores/auth';
+import { useDataStore } from '@/stores/data';
 import { ApiError } from '@/stores/api';
+import { clearLocalData, mustClearFor, setDataOwner, unsentCount } from '@/lib/session';
 
 defineOptions({ name: 'LoginPage' });
 
 const auth = useAuthStore();
+const data = useDataStore();
+const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
+const LAST_EMAIL = 'pool.lastEmail';
+const email = ref(localStorage.getItem(LAST_EMAIL) ?? '');
 const password = ref('');
 const remember = ref(true);
 const busy = ref(false);
 const error = ref('');
 
+/** Asks before unsent changes from the previous login are thrown away. */
+function confirmDiscard(n: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    $q.dialog({
+      title: 'Unsent changes on this phone',
+      message: `This phone has ${n} change${n === 1 ? '' : 's'} from the previous login that ${n === 1 ? 'hasn’t' : 'haven’t'} reached the server. Logging in as someone else deletes ${n === 1 ? 'it' : 'them'}. To keep ${n === 1 ? 'it' : 'them'}, cancel, log in as the previous person and let the phone sync first.`,
+      cancel: { label: 'Cancel', flat: true, noCaps: true },
+      ok: { label: 'Delete and continue', color: 'negative', unelevated: true, noCaps: true },
+      persistent: true,
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false));
+  });
+}
+
 async function submit() {
-  if (!password.value) return;
+  if (!email.value.trim() || !password.value) return;
   busy.value = true;
   error.value = '';
   try {
-    await auth.login(password.value, remember.value);
+    const me = await auth.login(email.value.trim(), password.value, remember.value);
+    localStorage.setItem(LAST_EMAIL, email.value.trim());
+    if (await mustClearFor(me._id, me.role)) {
+      const n = await unsentCount();
+      if (n && !(await confirmDiscard(n))) {
+        await auth.logout();
+        return;
+      }
+      await clearLocalData();
+    }
+    await setDataOwner(me._id);
+    await data.loadAll(true);
     const next = typeof route.query.next === 'string' && route.query.next.startsWith('/') ? route.query.next : '/';
-    await router.replace(next);
+    await router.replace(me.mustChangePassword ? '/more/account?change=1' : next);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 429) error.value = 'Too many attempts. Wait 15 minutes.';
-    else if (err instanceof ApiError && err.status === 401) error.value = 'Wrong password';
+    if (err instanceof ApiError && err.status === 429) error.value = err.message.includes('this login') ? err.message : 'Too many attempts. Wait 15 minutes.';
+    else if (err instanceof ApiError && err.status === 401) error.value = 'Wrong email or password';
+    else if (err instanceof ApiError && err.status === 400) error.value = 'Check the email address';
     else error.value = err instanceof Error ? err.message : 'Login failed';
   } finally {
     busy.value = false;

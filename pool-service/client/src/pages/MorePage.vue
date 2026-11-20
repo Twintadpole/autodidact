@@ -1,6 +1,23 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <q-list bordered separator class="bg-white rounded-borders">
+      <q-item clickable to="/more/account" data-test="more-account">
+        <q-item-section avatar><q-icon name="account_circle" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>My account</q-item-label>
+          <q-item-label caption>{{ auth.me ? `${auth.me.name} · ${auth.me.email}` : 'Password and devices' }}</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
+      <q-item v-if="auth.isOwner" clickable to="/more/team" data-test="more-team">
+        <q-item-section avatar><q-icon name="groups" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>Team</q-item-label>
+          <q-item-label caption>Logins for your techs, and their routes</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
+      <template v-if="auth.isOwner">
       <q-item clickable to="/more/money" data-test="more-money">
         <q-item-section avatar><q-icon name="account_balance_wallet" color="primary" /></q-item-section>
         <q-item-section>
@@ -49,7 +66,8 @@
         </q-item-section>
         <q-item-section v-if="exportingAll" side><q-spinner size="18px" /></q-item-section>
       </q-item>
-      <q-item data-test="backup-status">
+      </template>
+      <q-item v-if="auth.isOwner" data-test="backup-status">
         <q-item-section avatar><q-icon name="backup" :color="backupColor" /></q-item-section>
         <q-item-section>
           <q-item-label>Last backup</q-item-label>
@@ -143,6 +161,7 @@ async function logout() {
 }
 
 onMounted(async () => {
+  if (!auth.isOwner) return;
   try {
     lastBackupAt.value = (await api<{ lastBackupAt: string | null }>('/system/status')).lastBackupAt;
   } catch {

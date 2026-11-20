@@ -40,6 +40,20 @@
           { label: 'Done', value: 'done' },
         ]"
       />
+      <!-- GPF item 3: the owner sees every route; pick one tech's -->
+      <q-select
+        v-if="auth.isOwner && techList.length"
+        v-model="techFilter"
+        dense
+        outlined
+        emit-value
+        map-options
+        options-dense
+        :options="techOptions"
+        label="Route"
+        class="q-mt-sm"
+        data-test="route-tech"
+      />
     </div>
 
     <div v-if="!data.loaded && data.loading" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
@@ -72,6 +86,7 @@
           <q-item-section class="cursor-pointer" :data-test="`open-${p._id}`" @click="open(p._id)">
             <q-item-label class="text-weight-medium" :class="{ 'text-grey-6': p.week.done }">{{ customerName(p) }}</q-item-label>
             <q-item-label caption>{{ data.poolName(p) ? `${data.poolName(p)} · ` : '' }}{{ shortAddress(p) }}</q-item-label>
+            <q-item-label v-if="auth.isOwner && techFilter === 'all' && p.techId" caption class="text-teal-8" :data-test="`route-tech-${p._id}`"><q-icon name="person" /> {{ auth.memberName(p.techId) }}</q-item-label>
             <q-item-label v-if="p.oneTimeDate && !p.serviceDay" caption class="text-deep-orange-8" :data-test="`once-${p._id}`">{{ scheduleText(p, DAY_LABELS) }}</q-item-label>
             <q-item-label v-if="runningAt.get(p._id)" class="q-mt-xs">
               <q-chip dense color="positive" text-color="white" icon="timer" class="q-ma-none" :data-test="`running-${p._id}`">{{ runningAt.get(p._id) }}</q-chip>
@@ -88,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { format, startOfISOWeek } from 'date-fns';
@@ -96,6 +111,7 @@ import { routeSlot, serviceDaysFrom, timeLogSeconds, type RouteSlot, type Servic
 import { scheduleText } from '@/lib/customer';
 import { hms } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
+import { useAuthStore } from '@/stores/auth';
 import { errorMessage } from '@/stores/api';
 import { DAY_LABELS, hasAddress, mapsUrl, poolAddress } from '@/lib/format';
 import type { Pool } from '@/lib/types';
@@ -105,11 +121,27 @@ defineOptions({ name: 'RoutePage' });
 const $q = useQuasar();
 const router = useRouter();
 const data = useDataStore();
+const auth = useAuthStore();
 const filter = ref<'all' | 'remaining' | 'done'>('all');
+
+/** Owner: whose route to show ('all', 'none' = pools on nobody's route, or a tech's id). Remembered on this device. */
+const TECH_KEY = 'pool.routeTech';
+const techFilter = ref<string>(localStorage.getItem(TECH_KEY) ?? 'all');
+const techList = computed(() => auth.team.filter((m) => m.role === 'tech'));
+const techOptions = computed(() => [
+  { label: 'Everyone’s', value: 'all' },
+  { label: 'Not on a tech’s route', value: 'none' },
+  ...techList.value.map((m) => ({ label: `${m.name}’s${m.active ? '' : ' (login off)'}`, value: m._id })),
+]);
+watch(techFilter, (v) => localStorage.setItem(TECH_KEY, v));
 
 const now = ref(new Date());
 /** Active pools of current customers (prospects and past customers aren't on the Route). */
-const activePools = computed(() => data.routePools);
+const activePools = computed(() =>
+  !auth.isOwner || techFilter.value === 'all'
+    ? data.routePools
+    : data.routePools.filter((p) => (techFilter.value === 'none' ? !p.techId : p.techId === techFilter.value)),
+);
 /** Where each pool goes this week (weekly day, one-time date, coming up, past one-time, not scheduled). */
 // Regroups when the day changes, not on every tick of the timer clock.
 const todayKey = computed(() => now.value.toDateString());

@@ -64,6 +64,7 @@ export const useSyncStore = defineStore('sync', () => {
           useAuthStore().expired();
           break;
         }
+        if (r.pulled) useAuthStore().setTeam((await getMeta<import('@pool/shared').TeamMember[]>('team')) ?? undefined);
         if (r.sent || r.pulled) await useDataStore().refreshFromDb();
       } while (again);
     } catch (err) {

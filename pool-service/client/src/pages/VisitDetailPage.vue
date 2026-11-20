@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <Teleport defer to="#header-actions">
-      <q-btn v-if="visit" flat round icon="history" aria-label="Change history" data-test="detail-history" @click="historyOpen = true" />
+      <q-btn v-if="visit && auth.isOwner" flat round icon="history" aria-label="Change history" data-test="detail-history" @click="historyOpen = true" />
     </Teleport>
 
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { isToday, parseISO } from 'date-fns';
@@ -45,6 +46,7 @@ import { visitChemicalCost } from '@/lib/money';
 import { money } from '@/lib/customer';
 
 defineOptions({ name: 'VisitDetailPage' });
+const auth = useAuthStore();
 
 const route = useRoute();
 const data = useDataStore();

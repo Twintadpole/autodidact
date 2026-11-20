@@ -7,7 +7,7 @@
         <div class="text-caption text-grey-7" data-test="timer-state">{{ stateLabel }}</div>
       </div>
       <q-btn flat round dense icon="edit_calendar" aria-label="Edit times" :disable="!timeLog.segments.length || busy" data-test="timer-edit" @click="emit('edit')" />
-      <q-btn flat round dense icon="history" aria-label="Change history" data-test="timer-history" @click="emit('history')" />
+      <q-btn v-if="auth.isOwner" flat round dense icon="history" aria-label="Change history" data-test="timer-history" @click="emit('history')" />
     </q-card-section>
     <q-card-actions class="q-pt-none q-px-md q-pb-md row q-col-gutter-sm">
       <div v-if="state === 'idle'" class="col-12">
@@ -30,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/auth';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { timeLogSeconds, timeLogState } from '@pool/shared';
 import { clock, hms } from '@/lib/time';
@@ -38,6 +39,7 @@ import type { TimeLog } from '@/lib/types';
 export type TimerAction = 'start' | 'pause' | 'resume' | 'stop';
 
 const props = defineProps<{ timeLog: TimeLog; busy?: boolean }>();
+const auth = useAuthStore();
 const emit = defineEmits<{ action: [TimerAction]; edit: []; history: [] }>();
 
 const now = ref(new Date());

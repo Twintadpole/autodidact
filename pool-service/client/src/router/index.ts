@@ -20,11 +20,18 @@ export default defineRouter(function ({ store }) {
   router.beforeEach(async (to) => {
     if (to.meta.public) return true;
     // A computer set to the desktop view opens there (the phone's home is the Route).
-    if (to.path === '/' && savedView() === 'desk') return { path: '/desk' };
+    if (to.path === '/' && savedView() === 'desk' && auth.isOwner) return { path: '/desk' };
+    let ok: boolean;
     try {
-      if (await auth.ensureChecked()) return true;
+      ok = await auth.ensureChecked();
     } catch {
-      // Server unreachable: let the page load and show its own error.
+      // Server unreachable: let the page load and show its own error (owner screens stay the owner's).
+      return to.matched.some((r) => r.meta.owner) && !auth.isOwner ? { path: '/' } : true;
+    }
+    if (ok) {
+      // GPF item 3: a temporary password is changed first; owner-only screens send a tech home.
+      if (auth.me?.mustChangePassword && to.name !== 'account') return { path: '/more/account', query: { change: '1' } };
+      if (to.matched.some((r) => r.meta.owner) && !auth.isOwner) return { path: '/' };
       return true;
     }
     return { path: '/login', query: to.fullPath !== '/' ? { next: to.fullPath } : {} };

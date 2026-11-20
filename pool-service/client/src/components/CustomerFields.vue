@@ -35,7 +35,7 @@
 
     <q-input v-model="form.notes" outlined autogrow type="textarea" label="Notes" />
 
-    <div>
+    <div v-if="auth.isOwner">
       <div class="text-subtitle2 q-mb-xs">Billing and service</div>
       <div class="row q-col-gutter-sm">
         <q-input v-model="form.monthlyRate" outlined dense label="Monthly rate" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" class="col-6" data-test="customer-rate" />
@@ -51,10 +51,13 @@
 
 <script setup lang="ts">
 import AddressFields from '@/components/AddressFields.vue';
+import { useAuthStore } from '@/stores/auth';
 import { normalizePhone } from '@/lib/format';
 import { looksLikeEmail, PAYMENT_OPTIONS, STATUS_OPTIONS } from '@/lib/customer';
 import type { CustomerForm } from '@/lib/customerForm';
 
 /** The parent's reactive form, edited in place. */
 defineProps<{ form: CustomerForm }>();
+/** Billing fields are the owner's (GPF item 3): a tech's phone never has them. */
+const auth = useAuthStore();
 </script>

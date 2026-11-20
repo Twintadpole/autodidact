@@ -21,11 +21,12 @@ pw.chromium.launch = async (...args) => {
     const ctx = await newContext(...opts);
     if (session) {
       await ctx.addCookies([{ name: 'pool.sid', value: session, domain: '127.0.0.1', path: '/', httpOnly: true, secure: true, sameSite: 'Lax' }]);
-      await ctx.route('**/api/auth/login', (route) =>
-        route.request().method() === 'POST'
-          ? route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' })
-          : route.continue(),
-      );
+      // Accounts (GPF item 3): the answer names who is logged in, so take it from /api/auth/me.
+      await ctx.route('**/api/auth/login', async (route) => {
+        if (route.request().method() !== 'POST') return route.continue();
+        const me = await ctx.request.get(new URL('/api/auth/me', route.request().url()).toString()).then((r) => r.json()).catch(() => ({}));
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, me: me.me }) });
+      });
     }
     const req = ctx.request;
     for (const m of ['get', 'post', 'put', 'patch', 'delete', 'head', 'fetch']) {
