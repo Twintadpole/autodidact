@@ -193,7 +193,10 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     Reads the app's own Export everything back (round trip tested).
   - ✅ Segment 2 (desktop screen) built Nov 20, not deployed: `pages/desk/DeskImportPage.vue` (route `/desk/import`,
     button on Customers), `e2e/import.cjs` (6 checks; undoes its import, hides its customers).
-  - Next: segment 3, round trip through the tenant kit (export one tenant → import into a blank one). No deploy (owner).
+  - ✅ Segment 3 Nov 20: `gpf/test/import-roundtrip.sh` (fill tenant alpha → `tenant.sh export` → import into blank
+    bravo; every field matches; re-import = nothing; Undo empties bravo; live untouched). Found and fixed: pools
+    at stop #0 were "updated" on every re-import. **Import is complete in test; NOT deployed** (owner: no deploys
+    until told). Next GPF item: user accounts + roles (plan first).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

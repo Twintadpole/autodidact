@@ -75,6 +75,7 @@ GPF_PREFIX=gpft GPF_ROOT=/var/tmp/gpft GPF_CONFIG=/var/tmp/gpft/config bash gpf/
 bash gpf/test/run.sh          # local offsite folder only
 bash gpf/test/run.sh --r2     # also R2, under pool-backup/gpf-test/ (removed again at the end)
 bash gpf/test/run.sh --clean  # leftovers after a failed run
+bash gpf/test/import-roundtrip.sh   # customer import: tenant alpha's export into blank tenant bravo
 ```
 
 It creates tenants `alpha` and `bravo` and checks:
