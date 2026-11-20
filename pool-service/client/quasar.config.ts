@@ -46,5 +46,9 @@ export default defineConfig(() => ({
     manifestFilename: 'manifest.json',
     injectPwaMetaTags: true,
     useCredentialsForManifestTag: false,
+    // GPF item 4: the server writes manifest.json (the business's name and logo); never precache it.
+    extendPWAInjectManifestOptions(cfg: { globIgnores?: string[] }) {
+      cfg.globIgnores = [...(cfg.globIgnores ?? []), 'manifest.json'];
+    },
   },
 }));

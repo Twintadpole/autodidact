@@ -4,6 +4,7 @@ import { db, getMeta, type OutboxRow } from '@/offline/db';
 import { failedCount, pendingCount, syncNow } from '@/offline/engine';
 import { onAccessChange } from '@/offline/access';
 import { useAuthStore } from './auth';
+import { refreshBranding } from '@/lib/branding';
 import { useDataStore } from './data';
 
 /**
@@ -64,6 +65,7 @@ export const useSyncStore = defineStore('sync', () => {
           useAuthStore().expired();
           break;
         }
+        if (r.sent || r.pulled) void refreshBranding(); // Business details may have changed (GPF item 4)
         if (r.pulled) useAuthStore().setTeam((await getMeta<import('@pool/shared').TeamMember[]>('team')) ?? undefined);
         if (r.sent || r.pulled) await useDataStore().refreshFromDb();
       } while (again);

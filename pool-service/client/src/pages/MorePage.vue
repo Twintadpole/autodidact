@@ -86,7 +86,7 @@
 
     <q-btn outline color="grey-8" icon="logout" label="Log out" data-test="logout" @click="logout" />
 
-    <div class="text-center text-caption text-grey-6" data-test="app-version">Pool Service v{{ version }} · built {{ builtAt }}</div>
+    <div class="text-center text-caption text-grey-6" data-test="app-version">{{ brand.product }} v{{ version }} · built {{ builtAt }}</div>
   </q-page>
 </template>
 
@@ -95,6 +95,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { useAuthStore } from '@/stores/auth';
+import { brand } from '@/lib/branding';
 import { useDataStore } from '@/stores/data';
 import { money } from '@/lib/customer';
 import { moneySummary, periodRange } from '@/lib/report';

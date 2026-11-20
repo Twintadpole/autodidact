@@ -13,6 +13,7 @@ import { reportRoutes } from './routes/reports.js';
 import { exportRoutes } from './routes/export.js';
 import { importRoutes } from './routes/import.js';
 import { teamRoutes } from './routes/team.js';
+import { businessIcon, manifest } from './services/branding.js';
 import { accessLoginRoutes, clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
@@ -86,6 +87,20 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
     },
     { prefix: '/api' },
   );
+
+  // GPF item 4: the home-screen file and icons carry the business's name and logo (public, like
+  // the app's other files). Answered before the built files, which hold the product defaults.
+  const product = config.productName ?? 'Great Pool Friend';
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.method !== 'GET' || request.url.split('?')[0] !== '/manifest.json') return;
+    const body = await manifest(product, config.clientDist);
+    return reply.header('content-type', 'application/manifest+json').header('cache-control', 'no-cache').send(body);
+  });
+  app.get('/icons/business/:file', async (request, reply) => {
+    const png = await businessIcon((request.params as { file: string }).file);
+    if (!png) return reply.code(404).send({ error: 'Not Found', message: 'No such icon' });
+    return reply.type('image/png').header('cache-control', 'public, max-age=31536000, immutable').send(png);
+  });
 
   // Serve the built PWA (Phase 6 copies it into the image) with SPA fallback.
   if (config.clientDist && fs.existsSync(path.join(config.clientDist, 'index.html'))) {

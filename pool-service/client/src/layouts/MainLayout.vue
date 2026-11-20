@@ -4,7 +4,7 @@
       <q-toolbar class="q-px-sm">
         <q-btn v-if="route.meta.back" flat round icon="arrow_back" aria-label="Back" data-test="back" @click="goBack" />
         <q-toolbar-title class="ellipsis" :class="route.meta.back ? 'q-pl-xs' : 'q-pl-sm'">
-          <div class="ellipsis" data-test="page-title">{{ ui.title || route.meta.title || 'Pool Service' }}</div>
+          <div class="ellipsis" data-test="page-title">{{ ui.title || route.meta.title || appName }}</div>
           <div v-if="ui.subtitle" class="text-caption ellipsis header-sub">{{ ui.subtitle }}</div>
         </q-toolbar-title>
         <!-- Sync status: tap for the Sync screen -->
@@ -48,6 +48,7 @@
 </template>
 
 <script setup lang="ts">
+import { appName, refreshBranding } from '@/lib/branding';
 import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDataStore } from '@/stores/data';
@@ -55,6 +56,7 @@ import { useUiStore } from '@/stores/ui';
 import { useAppShell } from '@/composables/useAppShell';
 
 defineOptions({ name: 'MainLayout' });
+void refreshBranding();
 
 const route = useRoute();
 const router = useRouter();

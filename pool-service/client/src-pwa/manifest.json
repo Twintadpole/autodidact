@@ -1,7 +1,7 @@
 {
-  "name": "Pool Service",
-  "short_name": "Pools",
-  "description": "Weekly pool service route, readings, doses and issues",
+  "name": "Great Pool Friend",
+  "short_name": "Pool Friend",
+  "description": "Pool service routes, visits, readings, issues and billing",
   "start_url": ".",
   "scope": ".",
   "orientation": "portrait",

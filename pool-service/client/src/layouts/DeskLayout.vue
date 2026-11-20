@@ -4,7 +4,7 @@
       <q-toolbar class="q-px-sm">
         <q-btn flat round icon="menu" aria-label="Menu" data-test="desk-menu-toggle" @click="menuOpen = !menuOpen" />
         <q-toolbar-title class="ellipsis q-pl-sm">
-          <span data-test="page-title">{{ ui.title || route.meta.title || 'Pool Service' }}</span>
+          <span data-test="page-title">{{ ui.title || route.meta.title || appName }}</span>
           <span v-if="ui.subtitle" class="text-caption q-ml-sm header-sub">{{ ui.subtitle }}</span>
         </q-toolbar-title>
         <div id="header-actions" class="row no-wrap items-center q-mr-sm" />
@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { appName, refreshBranding } from '@/lib/branding';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDataStore } from '@/stores/data';
@@ -64,6 +65,7 @@ import { errorMessage } from '@/stores/api';
 import { useQuasar } from 'quasar';
 
 defineOptions({ name: 'DeskLayout' });
+void refreshBranding();
 
 const MENU = [
   { key: 'home', to: '/desk', icon: 'dashboard', label: 'Dashboard' },

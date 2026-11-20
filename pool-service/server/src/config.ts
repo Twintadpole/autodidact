@@ -21,6 +21,8 @@ const envSchema = z.object({
     .pipe(z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash')),
   /** Login name of the first owner, made from ADMIN_PASSWORD_HASH on the first start with accounts ("owner" if unset). */
   OWNER_EMAIL: z.string().trim().toLowerCase().optional(),
+  /** The product's name (GPF item 4), shown where a business hasn't set its own. */
+  PRODUCT_NAME: z.string().trim().min(1).default('Great Pool Friend'),
   PHOTO_DIR: z.string().default('./data/photos'),
   /** Built Quasar PWA to serve from `/` (optional in development). */
   CLIENT_DIST: z.string().optional(),
@@ -40,6 +42,7 @@ export interface AppConfig {
   sessionSecret: string;
   adminPasswordHash: string;
   ownerEmail?: string;
+  productName?: string;
   photoDir: string;
   clientDist?: string;
   backupDir?: string;
@@ -65,6 +68,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sessionSecret: e.SESSION_SECRET,
     adminPasswordHash: e.ADMIN_PASSWORD_HASH,
     ...(e.OWNER_EMAIL && { ownerEmail: e.OWNER_EMAIL }),
+    productName: e.PRODUCT_NAME,
     photoDir: path.resolve(e.PHOTO_DIR),
     clientDist: e.CLIENT_DIST ? path.resolve(e.CLIENT_DIST) : undefined,
     backupDir: e.BACKUP_DIR ? path.resolve(e.BACKUP_DIR) : undefined,

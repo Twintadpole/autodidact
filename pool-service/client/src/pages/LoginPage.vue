@@ -5,8 +5,10 @@
         <q-card flat bordered class="full-width" style="max-width: 420px">
           <q-form @submit.prevent="submit">
             <q-card-section class="text-center q-pb-none">
-              <q-icon name="pool" size="56px" color="primary" />
-              <div class="text-h5 q-mt-sm">Pool Service</div>
+              <img v-if="brand.logo" :src="brand.logo" alt="" class="login-logo" data-test="login-logo" />
+              <img v-else src="/icons/icon-128x128.png" alt="" class="login-logo" />
+              <div class="text-h5 q-mt-sm" data-test="login-name">{{ appName }}</div>
+              <div v-if="brand.business" class="text-caption text-grey-7" data-test="login-powered">Powered by {{ brand.product }}</div>
             </q-card-section>
             <q-card-section class="q-gutter-md">
               <q-input
@@ -44,7 +46,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { appName, brand, refreshBranding } from '@/lib/branding';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '@/stores/auth';
@@ -109,4 +112,13 @@ async function submit() {
     busy.value = false;
   }
 }
+onMounted(refreshBranding);
 </script>
+
+<style scoped>
+.login-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+</style>
