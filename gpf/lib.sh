@@ -11,6 +11,13 @@ APP_SRC="${REPO_DIR}/pool-service"
 GPF_PREFIX="${GPF_PREFIX:-gpf}"                       # Docker name prefix; tests use "gpft"
 GPF_ROOT="${GPF_ROOT:-${HOME}/gpf}"                   # tenants/<name>/ data, backups, exports
 GPF_CONFIG="${GPF_CONFIG:-${HOME}/.config/gpf}"       # secrets, one folder per tenant (700/600)
+# An install's own settings (GPF_DOMAIN, GPF_OFFSITE_LOCAL, …), so they needn't be typed each time.
+# The environment wins over the file. No secrets in it.
+if [[ -f "${GPF_CONFIG}/kit.env" ]]; then
+  while IFS='=' read -r k v; do
+    if [[ "${k}" =~ ^GPF_[A-Z0-9_]+$ && -z "${!k:-}" ]]; then export "${k}=${v}"; fi
+  done < <(grep -E '^GPF_[A-Z0-9_]+=' "${GPF_CONFIG}/kit.env")
+fi
 GPF_DOMAIN="${GPF_DOMAIN:-}"                          # tenant address = <name>.<GPF_DOMAIN>
 GPF_EDGE_BIND="${GPF_EDGE_BIND:-127.0.0.1:8080}"      # where Traefik listens (cloudflared connects here)
 GPF_SUBNET_BASE="${GPF_SUBNET_BASE:-10.213}"          # tenant networks: <base>.<n*32>/27 style blocks

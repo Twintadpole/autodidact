@@ -53,7 +53,8 @@ services:
       - "${GPF_EDGE_BIND}:8080"
     networks: [edge, dockerapi]
     depends_on: [dockerproxy]
-    mem_limit: 128m
+    # Measured ~85 MB idle with two tenants (Nov 20); room for traffic and more tenants.
+    mem_limit: 256m
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping", "--entrypoints.web.address=:8080", "--ping.entrypoint=web"]
       interval: 30s

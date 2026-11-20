@@ -227,6 +227,15 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   `client/scripts/make-gpf-icons.mjs`, Workbox `extendPWAInjectManifestOptions` ignores manifest.json,
   `e2e/branding.cjs` (test env only), kit test 91/91. On the owner's app /manifest.json and /icons/* are
   already open in Cloudflare Access, so the login screen can read them.
+  **GPF test install running on the VPS (Nov 20, owner: dummy data, prove isolation; subdomain later):**
+  `~/gpf` + `~/.config/gpf` (kit.env: GPF_DOMAIN=evolutiondfw.com, edge 127.0.0.1:8080, local offsite
+  folder), image `gpf-api:81f920a`, tenants **gpf** (GPF Demo Pools, owner@gpf.example, 14 customers) and
+  **bluewave** (Bluewave Pool Co, owner@bluewave.example, 9), dummy data from `gpf/demo/seed-demo.cjs`;
+  `gpf/demo/verify.sh gpf bluewave` 31/31 (3 logins per tenant: wait 15 min between runs). Not public: the
+  owner will add tunnel hostname gpf.evolutiondfw.com → http://localhost:8080 later. No backup cron for it.
+  Measured idle: GPF containers ~565 MB (per tenant ~230 MB: api ~80, mongo ~150; edge ~110 MB), live
+  stack ~280 MB, server used ~1.6 of 3.3 GB, ~1.8 GB available; disk 7 MB. Stop it: `docker compose -p
+  gpf-t-<name> stop` per tenant, `docker compose -p gpf-edge stop`.
   Next GPF item: Mongo health check 5s → 30s on the owner's stack (tenants already 30s); then the plan doc's
   phase list (beta, paid launch, warm standby) — ask the owner.
     Before any deploy of this to the owner's app: set OWNER_EMAIL? (owner decides; else their login is "owner").
