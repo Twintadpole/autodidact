@@ -39,9 +39,11 @@ export const customer = collectionSchemas({
   endDate: dateSchema.nullable().optional(),
   /** Miles from HQ, one way (for mileage). */
   distanceMiles: z.number().nonnegative().nullable().optional(),
+  /** User who added it (set by the server). A tech also sees customers they added that have no pool yet. */
+  createdBy: z.string().nullable().optional(),
 });
 /** Customer fields the server keeps when a sender leaves them out. */
-export const CUSTOMER_PRESERVED_FIELDS = ['status', 'monthlyRate', 'billingEmail', 'paymentMethod', 'startDate', 'endDate', 'distanceMiles'] as const;
+export const CUSTOMER_PRESERVED_FIELDS = ['status', 'monthlyRate', 'billingEmail', 'paymentMethod', 'startDate', 'endDate', 'distanceMiles', 'createdBy'] as const;
 export type Customer = z.infer<typeof customer.doc>;
 
 // ---------------------------------------------------------------- pools
@@ -88,9 +90,11 @@ export const pool = collectionSchemas({
   week: weekSchema.default({ done: false, doneAt: null, changedAt: null }),
   /** No default: an older app that leaves it out must not wipe it (see POOL_PRESERVED_FIELDS). */
   equipment: z.array(equipmentSchema).optional(),
+  /** The tech whose route it is (user id), or null. A tech's phone only gets their own pools. */
+  techId: z.string().nullable().optional(),
 });
 export type Pool = z.infer<typeof pool.doc>;
-export const POOL_PRESERVED_FIELDS = ['equipment', 'oneTimeDate'] as const;
+export const POOL_PRESERVED_FIELDS = ['equipment', 'oneTimeDate', 'techId'] as const;
 
 // ---------------------------------------------------------------- visits
 const readingShape = Object.fromEntries(READING_KEYS.map((k) => [k, z.number().nullable().optional()])) as Record<

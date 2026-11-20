@@ -1,12 +1,21 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
-import { SessionDoc } from '../models/index.js';
+import { SessionDoc, User } from '../models/index.js';
 import type { AppConfig } from '../config.js';
+import { firstOwnerId, touchActive, type Actor } from '../services/users.js';
 
 declare module 'fastify' {
   interface Session {
     authenticated?: boolean;
+    /** GPF item 3. Sessions from before accounts have none: they belong to the first owner. */
+    userId?: string;
+    device?: string;
+    signedInAt?: string;
+    lastSeenAt?: string;
+  }
+  interface FastifyRequest {
+    actor?: Actor;
   }
 }
 
@@ -80,9 +89,45 @@ export async function registerSessions(app: FastifyInstance, config: AppConfig):
   });
 }
 
-/** preHandler for every protected route. */
+/** Short device description for the Devices list, from the browser's user agent. */
+export function deviceName(ua: string | undefined): string {
+  const s = ua ?? '';
+  const os = /Android/.test(s) ? 'Android' : /iPhone|iPad/.test(s) ? 'iPhone/iPad' : /Windows/.test(s) ? 'Windows' : /Mac OS/.test(s) ? 'Mac' : /Linux/.test(s) ? 'Linux' : 'Device';
+  const browser = /Edg\//.test(s) ? 'Edge' : /SamsungBrowser/.test(s) ? 'Samsung Internet' : /Firefox\//.test(s) ? 'Firefox' : /Chrome\//.test(s) ? 'Chrome' : /Safari\//.test(s) ? 'Safari' : 'browser';
+  return `${browser} on ${os}`;
+}
+
+const SEEN_EVERY_MS = 60 * 60 * 1000;
+
+/** preHandler for every protected route: a live session of an active user. Sets request.actor. */
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   if (!request.session.get('authenticated')) {
     await reply.code(401).send({ error: 'Unauthorized', message: 'Login required' });
+    return;
+  }
+  let userId = request.session.get('userId');
+  if (!userId) {
+    userId = (await firstOwnerId()) ?? undefined;
+    if (userId) request.session.set('userId', userId);
+  }
+  const user = userId ? await User.findById(userId).lean<{ _id: string; role: Actor['role']; name: string; active: boolean }>() : null;
+  if (!user || user.active === false) {
+    await request.session.destroy();
+    await reply.code(401).send({ error: 'Unauthorized', message: 'Login required' });
+    return;
+  }
+  request.actor = { userId: user._id, role: user.role, name: user.name };
+  await touchActive(user._id);
+  const seen = request.session.get('lastSeenAt');
+  if (!seen || Date.now() - new Date(seen).getTime() > SEEN_EVERY_MS) {
+    request.session.set('lastSeenAt', new Date().toISOString());
+    if (!request.session.get('device')) request.session.set('device', deviceName(request.headers['user-agent']));
+  }
+}
+
+/** preHandler for owner-only routes (after requireAuth). */
+export async function requireOwner(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  if (request.actor?.role !== 'owner') {
+    await reply.code(403).send({ error: 'Forbidden', message: 'Only an owner can do that' });
   }
 }

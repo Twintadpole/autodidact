@@ -10,6 +10,7 @@ import type { AppConfig } from '../src/config.js';
 import { Chemical, ensureCollections } from '../src/models/index.js';
 import { seedChemicals } from '../src/seed/chemicals.js';
 import { newId } from '../src/util.js';
+import { ensureFirstOwner } from '../src/services/users.js';
 
 export const TEST_PASSWORD = 'correct horse battery staple';
 
@@ -29,6 +30,8 @@ export async function setupTestApp(overrides: Partial<AppConfig> = {}): Promise<
   await mongoose.connect(inject('mongoUrl'), { dbName });
   await ensureCollections();
   await seedChemicals();
+  cachedHash ??= await argon2.hash(TEST_PASSWORD);
+  await ensureFirstOwner(cachedHash);
 
   const photoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pool-photos-'));
   const config: AppConfig = {
@@ -62,8 +65,8 @@ export async function setupTestApp(overrides: Partial<AppConfig> = {}): Promise<
 }
 
 /** Logs in and returns the Cookie header value. */
-export async function login(app: FastifyInstance, remember = false): Promise<string> {
-  const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { password: TEST_PASSWORD, remember } });
+export async function login(app: FastifyInstance, remember = false, email = 'owner', password = TEST_PASSWORD): Promise<string> {
+  const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email, password, remember } });
   if (res.statusCode !== 200) throw new Error(`login failed: ${res.statusCode} ${res.body}`);
   const cookie = res.cookies.find((c) => c.name === 'pool.sid');
   if (!cookie) throw new Error('no session cookie');

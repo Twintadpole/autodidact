@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { syncPackageSchema, syncPullQuerySchema, type SyncPullResponse } from '@pool/shared';
-import { Issue, Photo, SYNC_MODELS, Visit } from '../models/index.js';
+import { Issue, Photo, SYNC_MODELS, User, Visit } from '../models/index.js';
+import { redact, scopeFilter, techScope } from '../services/scope.js';
+import { isOwner, toMember } from '../services/users.js';
 import { applyPackage } from '../services/applyPackage.js';
 import type { PhotoStore } from '../services/photoStore.js';
 import { HttpError } from '../util.js';
@@ -49,23 +51,36 @@ async function readUpload(request: FastifyRequest, store: PhotoStore): Promise<P
 export const syncRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (app, { photos: store }) => {
   app.get('/sync/pull', async (request) => {
     const { since } = syncPullQuerySchema.parse(request.query);
+    const actor = request.actor!;
     const serverTime = new Date();
     const result: Record<string, unknown[]> = {};
+    // GPF item 3: a tech gets their route only (scope.ts), money removed. When the set of pools
+    // they may see has changed since their last pull, they get a full pull instead, and the phone
+    // replaces its copy (so pools moved off their route disappear).
+    const me = await User.findById(actor.userId, { accessChangedAt: 1 }).lean<{ accessChangedAt?: Date | null }>();
+    // `since` is the serverTime of the phone's last pull, taken before that pull read anything:
+    // a change after it may not be in that pull, so the next one is full.
+    const full = !since || (!isOwner(actor) && !!me?.accessChangedAt && me.accessChangedAt.getTime() > since.getTime());
+    const scope = isOwner(actor) ? undefined : await techScope(actor);
+    const scoped = async (name: string) => scopeFilter(name, actor, scope);
+    const out = (name: string, docs: Record<string, any>[]) => docs.map((d) => redact(name, stripServerFields(d), actor)).filter(Boolean);
 
-    if (since) {
-      const filter = { syncedAt: { $gt: new Date(since.getTime() - PULL_OVERLAP_MS) } };
+    if (!full) {
+      const filter = { syncedAt: { $gt: new Date(since!.getTime() - PULL_OVERLAP_MS) } };
       for (const [name, model] of Object.entries(SYNC_MODELS)) {
-        result[name] = (await model.find(filter).lean()).map(stripServerFields);
+        const f = await scoped(name);
+        result[name] = f ? out(name, await model.find({ $and: [filter, f] }).lean()) : [];
       }
     } else {
-      // First pull: everything live, but only what the phone keeps locally:
+      // Full pull: everything live, but only what the phone keeps locally:
       // the last 2 visits per pool and open + recently resolved issues.
       for (const [name, model] of Object.entries(SYNC_MODELS)) {
         if (model === Visit || model === Issue) continue;
-        result[name] = (await model.find({ deletedAt: null }).lean()).map(stripServerFields);
+        const f = await scoped(name);
+        result[name] = f ? out(name, await model.find({ $and: [{ deletedAt: null }, f] }).lean()) : [];
       }
       const grouped = await Visit.aggregate<{ docs: Record<string, any>[] }>([
-        { $match: { deletedAt: null } },
+        { $match: { deletedAt: null, ...(scope && { poolId: { $in: scope.poolIds } }) } },
         {
           $group: {
             _id: '$poolId',
@@ -73,16 +88,18 @@ export const syncRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (app
           },
         },
       ]);
-      result.visits = grouped.flatMap((g) => g.docs).map(stripServerFields);
-      result.issues = (
+      result.visits = out('visits', grouped.flatMap((g) => g.docs));
+      result.issues = out(
+        'issues',
         await Issue.find({
           deletedAt: null,
+          ...(scope && { poolId: { $in: scope.poolIds } }),
           $or: [{ status: { $ne: 'resolved' } }, { resolvedAt: { $gte: new Date(serverTime.getTime() - RESOLVED_ISSUE_WINDOW_MS) } }],
-        }).lean()
-      ).map(stripServerFields);
+        }).lean(),
+      );
     }
-
-    return { serverTime: serverTime.toISOString(), ...result } as unknown as SyncPullResponse;
+    const team = (await User.find({}).sort({ role: 1, name: 1 }).lean()).map(toMember);
+    return { serverTime: serverTime.toISOString(), full, team, ...result } as unknown as SyncPullResponse;
   });
 
   app.post('/sync/package', async (request, reply) => {
@@ -115,7 +132,7 @@ export const syncRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (app
       }
 
       try {
-        const result = await applyPackage(pkg, { photoFiles });
+        const result = await applyPackage(pkg, { photoFiles, actor: request.actor! });
         return result;
       } catch (err) {
         // Roll back files that no committed photo document refers to.

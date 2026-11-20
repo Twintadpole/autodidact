@@ -19,6 +19,8 @@ const envSchema = z.object({
     .string()
     .transform((v) => v.trim().replace(/^(['"])(.*)\1$/, '$2'))
     .pipe(z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash')),
+  /** Login name of the first owner, made from ADMIN_PASSWORD_HASH on the first start with accounts ("owner" if unset). */
+  OWNER_EMAIL: z.string().trim().toLowerCase().optional(),
   PHOTO_DIR: z.string().default('./data/photos'),
   /** Built Quasar PWA to serve from `/` (optional in development). */
   CLIENT_DIST: z.string().optional(),
@@ -37,6 +39,7 @@ export interface AppConfig {
   mongoUrl: string;
   sessionSecret: string;
   adminPasswordHash: string;
+  ownerEmail?: string;
   photoDir: string;
   clientDist?: string;
   backupDir?: string;
@@ -61,6 +64,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     mongoUrl: e.MONGO_URL,
     sessionSecret: e.SESSION_SECRET,
     adminPasswordHash: e.ADMIN_PASSWORD_HASH,
+    ...(e.OWNER_EMAIL && { ownerEmail: e.OWNER_EMAIL }),
     photoDir: path.resolve(e.PHOTO_DIR),
     clientDist: e.CLIENT_DIST ? path.resolve(e.CLIENT_DIST) : undefined,
     backupDir: e.BACKUP_DIR ? path.resolve(e.BACKUP_DIR) : undefined,

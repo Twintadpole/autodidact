@@ -3,11 +3,14 @@ import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { ensureCollections } from './models/index.js';
 import { seedChemicals } from './seed/chemicals.js';
+import { ensureFirstOwner } from './services/users.js';
 
 async function main() {
   const config = loadConfig();
   await mongoose.connect(config.mongoUrl);
   await ensureCollections();
+  // GPF item 3: the first start with accounts turns today's password into the first owner.
+  await ensureFirstOwner(config.adminPasswordHash, config.ownerEmail);
   const seeded = await seedChemicals();
 
   const app = await buildApp(config);

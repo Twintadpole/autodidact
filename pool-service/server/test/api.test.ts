@@ -22,7 +22,7 @@ describe('auth', () => {
   });
 
   it('logs in, sets an HttpOnly SameSite=Lax cookie, and logs out', async () => {
-    const res = await ctx.app.inject({ method: 'POST', url: '/api/auth/login', payload: { password: TEST_PASSWORD } });
+    const res = await ctx.app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'owner', password: TEST_PASSWORD } });
     expect(res.statusCode).toBe(200);
     const cookie = res.cookies.find((c) => c.name === 'pool.sid')!;
     expect(cookie.httpOnly).toBe(true);
@@ -36,7 +36,7 @@ describe('auth', () => {
   });
 
   it('"remember this device" gives a ~90-day cookie', async () => {
-    const res = await ctx.app.inject({ method: 'POST', url: '/api/auth/login', payload: { password: TEST_PASSWORD, remember: true } });
+    const res = await ctx.app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'owner', password: TEST_PASSWORD, remember: true } });
     const cookie = res.cookies.find((c) => c.name === 'pool.sid')!;
     const days = (new Date(cookie.expires!).getTime() - Date.now()) / 86_400_000;
     expect(days).toBeGreaterThan(89);
@@ -50,7 +50,7 @@ describe('login rate limit', () => {
     try {
       const codes: number[] = [];
       for (let i = 0; i < 6; i++) {
-        const res = await limited.app.inject({ method: 'POST', url: '/api/auth/login', payload: { password: 'wrong' } });
+        const res = await limited.app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'owner', password: 'wrong' } });
         codes.push(res.statusCode);
       }
       expect(codes.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);

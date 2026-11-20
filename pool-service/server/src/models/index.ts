@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model } from 'mongoose';
-import { BILLING_TIMINGS, CUSTOMER_STATUSES, EQUIPMENT_KINDS, INVOICE_STATUSES, INVOICE_TERMS, ISSUE_STATUSES, LEDGER_KINDS, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
+import { ROLES, BILLING_TIMINGS, CUSTOMER_STATUSES, EQUIPMENT_KINDS, INVOICE_STATUSES, INVOICE_TERMS, ISSUE_STATUSES, LEDGER_KINDS, NOTE_PARENT_TYPES, PAYMENT_METHODS, POOL_TYPES, SERVICE_DAYS, UNITS, READING_KEYS } from '@pool/shared';
 
 /**
  * Every document:
@@ -46,6 +46,8 @@ const customerSchema = makeSchema({
   startDate: Date,
   endDate: Date,
   distanceMiles: Number,
+  /** User who added it (GPF item 3). */
+  createdBy: String,
 });
 customerSchema.index({ name: 1 });
 
@@ -63,6 +65,8 @@ const poolSchema = makeSchema({
   routeOrder: { type: Number, default: 0 },
   accessNotes: { type: String, default: '' },
   active: { type: Boolean, default: true },
+  /** The tech whose route it is (GPF item 3); null = nobody's (the owner's). */
+  techId: { type: String, default: null, index: true },
   week: {
     done: { type: Boolean, default: false },
     doneAt: { type: Date, default: null },
@@ -274,6 +278,8 @@ const auditLogSchema = new Schema(
     source: { type: String, enum: ['app', 'sync', 'system'], required: true },
     changes: [new Schema({ path: String, from: Schema.Types.Mixed, to: Schema.Types.Mixed }, { _id: false })],
     note: String,
+    /** Who made the change (GPF item 3); missing on older entries and system jobs. */
+    userId: String,
   },
   { versionKey: false },
 );
@@ -300,6 +306,31 @@ const importLogSchema = new Schema(
 );
 importLogSchema.index({ at: -1 });
 
+// ---------------------------------------------------------------- users
+/** Logins (GPF item 3). Not synced; phones get names only (the "team" in each pull). */
+const userSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    name: { type: String, required: true },
+    role: { type: String, enum: ROLES, required: true },
+    passwordHash: { type: String, required: true },
+    active: { type: Boolean, default: true },
+    /** Set by an owner's password reset: the app asks for a new password. */
+    mustChangePassword: { type: Boolean, default: false },
+    failedLogins: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
+    lastLoginAt: { type: Date, default: null },
+    /** "2026-11": months with any activity (a tech counts toward billing in those months). */
+    activeMonths: { type: [String], default: [] },
+    /** When this user's set of visible pools last changed: their next pull is a full one. */
+    accessChangedAt: { type: Date, default: null },
+    createdAt: { type: Date, required: true },
+    updatedAt: { type: Date, required: true },
+  },
+  { versionKey: false },
+);
+
 // ---------------------------------------------------------------- sessions
 const sessionSchema = new Schema(
   {
@@ -311,6 +342,7 @@ const sessionSchema = new Schema(
   { versionKey: false },
 );
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+sessionSchema.index({ 'session.userId': 1 });
 
 function model(name: string, schema: Schema, collection: string): Model<any> {
   return (mongoose.models[name] as Model<any>) ?? mongoose.model(name, schema, collection);
@@ -330,6 +362,7 @@ export const SyncLog = model('SyncLog', syncLogSchema, 'syncLog');
 export const SessionDoc = model('Session', sessionSchema, 'sessions');
 export const AuditLog = model('AuditLog', auditLogSchema, 'auditLog');
 export const ImportLog = model('ImportLog', importLogSchema, 'imports');
+export const User = model('User', userSchema, 'users');
 
 /** Models exposed through `/sync/pull`, keyed by collection name. */
 export const SYNC_MODELS = {
@@ -347,7 +380,7 @@ export const SYNC_MODELS = {
 
 /** Create collections and indexes up front (transactions can't create collections implicitly on older servers). */
 export async function ensureCollections(): Promise<void> {
-  const models = [...Object.values(SYNC_MODELS), SyncLog, SessionDoc, AuditLog, ImportLog];
+  const models = [...Object.values(SYNC_MODELS), SyncLog, SessionDoc, AuditLog, ImportLog, User];
   for (const m of models) {
     await m.createCollection().catch((err: { codeName?: string }) => {
       if (err?.codeName !== 'NamespaceExists') throw err;

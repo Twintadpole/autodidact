@@ -196,7 +196,23 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   - ✅ Segment 3 Nov 20: `gpf/test/import-roundtrip.sh` (fill tenant alpha → `tenant.sh export` → import into blank
     bravo; every field matches; re-import = nothing; Undo empties bravo; live untouched). Found and fixed: pools
     at stop #0 were "updated" on every re-import. **Import is complete in test; NOT deployed** (owner: no deploys
-    until told). Next GPF item: user accounts + roles (plan first).
+    until told).
+  **GPF item 3, user accounts + roles** (plan approved Nov 20 with changes): login = **email** + password; roles
+  owner / tech (tech: no money, no deletes of customers/pools, no business settings/import/export/team);
+  techs **may send recaps**; **assigned routes now**: `pools.techId`, a tech's phone gets only their pools
+  (+ those customers, visits, issues, photos, notes; customers they added); moving a pool → that tech's next
+  pull is `full` and the phone replaces its copy. Server prices a tech's doses (dose pricing moved to shared).
+  First start: `ADMIN_PASSWORD_HASH` becomes the first owner, login name `OWNER_EMAIL` or "owner";
+  old sessions map to that owner.
+  - ✅ Segment 1 (server) built Nov 20, NOT deployed: `models` User (+ pools.techId, customers.createdBy,
+    auditLog.userId), `services/users.ts`, `services/scope.ts`, `plugins/auth.ts` (request.actor, requireOwner,
+    preValidation), `routes/auth.ts` (login, me, password, devices), `routes/team.ts` (team, reset, `/pools/assign`),
+    crud `techAccess/techBody/afterWrite`, scoped sync pull/package, `cli/users.ts`, `deploy/set-password.sh`
+    updates the owner login, `test/roles.test.ts`. Until segment 2 the app's login screen can't log in (it sends
+    no email).
+  - Next: segment 2 (app: login, My account, Team, assign pools, hide money, full-pull replace, e2e);
+    segment 3 (tenant kit: owner at create, users/techs count, owner reset; test).
+  - Scratch Mongo for tests needs `--ulimit nofile=64000:64000` (1024 runs out with 9 test files).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

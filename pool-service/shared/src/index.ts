@@ -5,3 +5,5 @@ export * from './schemas/common.js';
 export * from './schemas/collections.js';
 export * from './schemas/sync.js';
 export * from './schemas/import.js';
+export * from './schemas/users.js';
+export * from './money.js';

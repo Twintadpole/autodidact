@@ -57,7 +57,7 @@ export function diff(before: Record<string, unknown> | null | undefined, after: 
 }
 
 export async function recordAudit(
-  entry: { collectionName: string; docId: string; action: 'create' | 'update' | 'delete' | 'bulk'; source: AuditSource; changes?: Change[]; note?: string },
+  entry: { collectionName: string; docId: string; action: 'create' | 'update' | 'delete' | 'bulk'; source: AuditSource; changes?: Change[]; note?: string; userId?: string },
   session?: ClientSession,
 ): Promise<void> {
   if (entry.action === 'update' && !entry.changes?.length) return;

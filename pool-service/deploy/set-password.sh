@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Changes the app password: hashes it, updates .env, restarts the API (sessions stay valid).
+# Changes the first owner's password (GPF item 3: logins live in the database; .env's hash only
+# seeds the first owner on the first start with accounts, and is kept in step here). That
+# owner's devices are signed out. Other logins: More → Team in the app.
 # Usage: bash deploy/set-password.sh          (prompts twice, hidden)
 #        echo 'new password' | bash deploy/set-password.sh -
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -26,4 +28,5 @@ mv "${tmp}" .env
 
 dc up -d --no-deps --force-recreate api
 wait_healthy
+printf '%s' "${pw}" | dc exec -T api node server/dist/cli/users.js set-password
 echo "Password changed."

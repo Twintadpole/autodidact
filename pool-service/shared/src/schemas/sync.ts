@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema, idSchema } from './common.js';
+import type { TeamMember } from './users.js';
 import { chemical, customer, invoice, issue, ledger, note, photo, pool, settings, visit } from './collections.js';
 
 /**
@@ -67,6 +68,10 @@ export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];
 
 export interface SyncPullResponse {
   serverTime: string;
+  /** GPF item 3: true = a complete copy for this user; the phone replaces what it has. */
+  full?: boolean;
+  /** Everyone's name and role (for "assigned to …" and who made a change). */
+  team?: TeamMember[];
   customers: z.infer<typeof customer.doc>[];
   pools: z.infer<typeof pool.doc>[];
   visits: z.infer<typeof visit.doc>[];

@@ -7,11 +7,12 @@ import fastifyStatic from '@fastify/static';
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod';
 import mongoose from 'mongoose';
 import type { AppConfig } from './config.js';
-import { registerSessions, requireAuth } from './plugins/auth.js';
+import { registerSessions, requireAuth, requireOwner } from './plugins/auth.js';
 import { authRoutes } from './routes/auth.js';
 import { reportRoutes } from './routes/reports.js';
 import { exportRoutes } from './routes/export.js';
 import { importRoutes } from './routes/import.js';
+import { teamRoutes } from './routes/team.js';
 import { accessLoginRoutes, clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
@@ -65,16 +66,22 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
 
       // Everything else requires the session cookie
       await api.register(async (secured) => {
-        secured.addHook('preHandler', requireAuth);
+        // preValidation: a missing login or role answers 401/403 before any input is checked.
+        secured.addHook('preValidation', requireAuth);
         await secured.register(resourceRoutes);
         await secured.register(routeRoutes);
         await secured.register(clientLogRoutes);
-        await secured.register(systemRoutes, config.backupDir ? { backupDir: config.backupDir } : {});
         await secured.register(syncRoutes, { photos });
         await secured.register(photoRoutes, { photos });
-        await secured.register(reportRoutes);
-        await secured.register(exportRoutes);
-        await secured.register(importRoutes);
+        // Owner only (GPF item 3): money reports, exports, imports, system status, the team.
+        await secured.register(async (owner) => {
+          owner.addHook('preValidation', requireOwner);
+          await owner.register(systemRoutes, config.backupDir ? { backupDir: config.backupDir } : {});
+          await owner.register(reportRoutes);
+          await owner.register(exportRoutes);
+          await owner.register(importRoutes);
+          await owner.register(teamRoutes);
+        });
       });
     },
     { prefix: '/api' },

@@ -12,6 +12,7 @@ import Fastify from 'fastify';
 import mongoose from 'mongoose';
 import { loadConfig } from '../config.js';
 import { registerSessions } from '../plugins/auth.js';
+import { User } from '../models/index.js';
 
 const TTL_MS = 30 * 60 * 1000;
 
@@ -22,6 +23,13 @@ await registerSessions(app, config);
 app.post('/e2e-session', async (request) => {
   await request.session.regenerate();
   request.session.set('authenticated', true);
+  // E2E_USER=<email> picks the login (GPF item 3); default: the first owner.
+  const who = process.env.E2E_USER
+    ? await User.findOne({ email: process.env.E2E_USER.toLowerCase(), active: true }).lean<{ _id: string }>()
+    : await User.findOne({ role: 'owner', active: true }).sort({ createdAt: 1 }).lean<{ _id: string }>();
+  if (!who) throw new Error('no such active login');
+  request.session.set('userId', who._id);
+  request.session.set('device', 'E2E test');
   request.session.cookie.maxAge = TTL_MS;
   await request.session.save();
   return { ok: true };

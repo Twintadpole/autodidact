@@ -8,6 +8,8 @@ import { idSchema } from '@pool/shared';
 import { Photo, Pool } from '../models/index.js';
 import type { PhotoStore } from '../services/photoStore.js';
 import { diff, recordAudit } from '../services/audit.js';
+import { scopeFilter } from '../services/scope.js';
+import { isOwner } from '../services/users.js';
 
 /** Public: Docker liveness check. */
 export const healthRoutes: FastifyPluginAsync = async (app) => {
@@ -94,14 +96,15 @@ export const clientLogRoutes: FastifyPluginAsync = async (parent) => {
 
 /** Weekly service list actions. */
 export const routeRoutes: FastifyPluginAsync = async (app) => {
-  /** Clears every pool's weekly checkmark. */
-  app.post('/route/reset-week', async () => {
+  /** Clears every pool's weekly checkmark (a tech: the pools on their route). */
+  app.post('/route/reset-week', async (request) => {
     const now = new Date();
+    const mine = isOwner(request.actor) ? {} : { techId: request.actor!.userId };
     const res = await Pool.updateMany(
-      { deletedAt: null },
+      { deletedAt: null, ...mine },
       { $set: { 'week.done': false, 'week.doneAt': null, 'week.changedAt': now, updatedAt: now, syncedAt: now } },
     );
-    await recordAudit({ collectionName: 'pools', docId: '*', action: 'bulk', source: 'app', note: `Reset week: cleared ${res.modifiedCount} checkmark(s)` });
+    await recordAudit({ collectionName: 'pools', docId: '*', action: 'bulk', source: 'app', note: `Reset week: cleared ${res.modifiedCount} checkmark(s)`, userId: request.actor!.userId });
     return { ok: true, pools: res.modifiedCount, resetAt: now.toISOString() };
   });
 };
@@ -111,8 +114,11 @@ export const photoRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (pa
   const app = parent.withTypeProvider<ZodTypeProvider>();
   const params = z.object({ id: idSchema });
 
-  async function send(id: string, thumb: boolean, reply: any) {
-    const photo = await Photo.findOne({ _id: id, deletedAt: null }).lean<{ file: string }>();
+  /** Only photos of pools the user may see (techs: their route). */
+  const mine = async (req: { actor?: import('../services/users.js').Actor }) => (await scopeFilter('photos', req.actor!))!;
+
+  async function send(req: any, id: string, thumb: boolean, reply: any) {
+    const photo = await Photo.findOne({ _id: id, deletedAt: null, ...(await mine(req)) }).lean<{ file: string }>();
     if (!photo) return reply.code(404).send({ error: 'Not Found', message: 'No such photo' });
     let rel = photo.file;
     if (thumb && (await store.exists(store.thumbRelPath(rel)))) rel = store.thumbRelPath(rel);
@@ -136,7 +142,7 @@ export const photoRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (pa
       },
     },
     async (req) => {
-      const filter: Record<string, unknown> = { deletedAt: null };
+      const filter: Record<string, unknown> = { deletedAt: null, ...(await mine(req)) };
       if (req.query.poolId) filter.poolId = req.query.poolId;
       if (req.query.issueId) filter.issueId = req.query.issueId;
       if (req.query.savedToPool) filter.savedToPool = req.query.savedToPool === 'true';
@@ -150,13 +156,13 @@ export const photoRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (pa
     '/photos/:id',
     { schema: { params, body: z.object({ savedToPool: z.boolean().optional(), caption: z.string().max(500).optional() }) } },
     async (req, reply) => {
-      const existing = await Photo.findOne({ _id: req.params.id, deletedAt: null }).lean<Record<string, unknown>>();
+      const existing = await Photo.findOne({ _id: req.params.id, deletedAt: null, ...(await mine(req)) }).lean<Record<string, unknown>>();
       if (!existing) return reply.code(404).send({ error: 'Not Found', message: 'No such photo' });
       const now = new Date();
       const updated = await Photo.findByIdAndUpdate(req.params.id, { $set: { ...req.body, updatedAt: now, syncedAt: now } }, { returnDocument: 'after' }).lean<
         Record<string, unknown>
       >();
-      await recordAudit({ collectionName: 'photos', docId: req.params.id, action: 'update', source: 'app', changes: diff(existing, req.body) });
+      await recordAudit({ collectionName: 'photos', docId: req.params.id, action: 'update', source: 'app', changes: diff(existing, req.body), userId: req.actor!.userId });
       const { file: _file, syncedAt: _s, ...rest } = updated!;
       return rest;
     },
@@ -165,12 +171,12 @@ export const photoRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (pa
   /** Soft delete; the image file stays on disk (and in backups). */
   app.delete('/photos/:id', { schema: { params } }, async (req, reply) => {
     const now = new Date();
-    const res = await Photo.updateOne({ _id: req.params.id, deletedAt: null }, { $set: { deletedAt: now, updatedAt: now, syncedAt: now } });
+    const res = await Photo.updateOne({ _id: req.params.id, deletedAt: null, ...(await mine(req)) }, { $set: { deletedAt: now, updatedAt: now, syncedAt: now } });
     if (!res.matchedCount) return reply.code(404).send({ error: 'Not Found', message: 'No such photo' });
-    await recordAudit({ collectionName: 'photos', docId: req.params.id, action: 'delete', source: 'app' });
+    await recordAudit({ collectionName: 'photos', docId: req.params.id, action: 'delete', source: 'app', userId: req.actor!.userId });
     return { ok: true };
   });
 
-  app.get('/photos/:id', { schema: { params } }, (req, reply) => send(req.params.id, false, reply));
-  app.get('/photos/:id/thumb', { schema: { params } }, (req, reply) => send(req.params.id, true, reply));
+  app.get('/photos/:id', { schema: { params } }, (req, reply) => send(req, req.params.id, false, reply));
+  app.get('/photos/:id/thumb', { schema: { params } }, (req, reply) => send(req, req.params.id, true, reply));
 };
