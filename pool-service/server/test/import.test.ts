@@ -224,6 +224,10 @@ describe('import: the app’s own Export everything, into an empty app', () => {
     expect(c.phones).toEqual([{ label: 'mobile', number: '+14695550401' }, { label: 'work', number: '+14695550402' }]);
     const p = await Pool.findOne({ customerId: c._id }).lean<any>();
     expect(p).toMatchObject({ name: 'Main', type: 'salt', surface: 'Plaster', volumeGal: 18000, serviceDay: 'thu', routeOrder: 4, active: false, accessNotes: 'Code 9' });
+    // The same file again: nothing to do (stop #0 and every other field compare equal).
+    await Pool.updateOne({ _id: p._id }, { $set: { routeOrder: 0 } });
+    const again = await apply('everything.xlsx', (await ctx.app.inject({ method: 'GET', url: '/api/export/everything.xlsx', headers: { cookie } })).rawPayload, { mapping: [] });
+    expect(again.json().message).toMatch(/Nothing to import/);
     expect(p.equipment.map((e: any) => [e.kind, e.name, e.model, e.serial, e.installedOn?.toISOString(), e.notes])).toEqual([
       ['heater', undefined, 'MasterTemp', 'H1', '2020-05-01T00:00:00.000Z', 'gas'],
       ['other', 'Booster', 'B2', undefined, undefined, undefined],

@@ -19,6 +19,8 @@ Stack:
 - `e2e/`: Playwright scripts
 
 ## How the owner wants to work
+- **No deploys until the owner says so (Nov 20).** Build and test in throwaway environments only; commit and push,
+  but don't run `deploy/update.sh` or touch the live stack until the owner explicitly asks for a deploy.
 - **Plan each segment, ask for approval, then do it.** The owner approves segments in chat; don't change the server outside an approved segment. Bug fixes the owner reports may be fixed and deployed after a short "Deploy?" check.
 - **The owner is not a go-between.** Claude does the server work itself, and the owner only approves.
 - **Never lose customer data.** Changes are additive only. Every deploy uses `deploy/update.sh`, which takes a backup first and compares record counts before and after. Report the counts to the owner.
@@ -60,7 +62,8 @@ Then start the VPS session:
 ## Session handoff (Nov 18)
 - The cloud ↔ VPS bridge described above was not used in the Nov 14–18 sessions: the owner talked to Claude
   running ON the VPS (Remote Control, user `claude`, `~/autodidact`), which built, tested and deployed directly.
-- How work was tested there: a throwaway copy (`rsync` to `/tmp/pstest`, `node:22` container for typecheck/tests,
+- How work was tested there: a throwaway copy (`rsync` to `/var/tmp/pstest`; **not /tmp**, which is a 1.7 GB RAM disk on
+  this VPS: filling it starves the live app and Mongo there reports OutOfDiskSpace), `node:22` container for typecheck/tests,
   `docker build -f server/Dockerfile`, throwaway mongo + api on 127.0.0.1:3300), Playwright in
   `mcr.microsoft.com/playwright:v1.56.1-noble` with `E2E_SESSION` + `e2e/local-cookies.cjs`, then
   `deploy/update.sh`, live e2e on 127.0.0.1:3000, `cleanup-orphans.sh` (dry run), `record_counts`.
@@ -175,7 +178,7 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   ✅ **GPF item 1, tenant kit built Nov 19** (`gpf/`, see `gpf/README.md`). It has `tenant.sh`
   (build/edge-up/create/list/update/backup/restore-check/export/suspend/resume/delete/purge), the tenant
   compose template, the edge (Traefik v3.6 + read-only socket proxy + 503 notice), and `gpf/test/run.sh`
-  (72 checks, throwaway `gpft-*` under /tmp; `--r2` uses pool-backup/gpf-test/ and removes it). Owner's
+  (72 checks, throwaway `gpft-*` under /var/tmp; `--r2` uses pool-backup/gpf-test/ and removes it). Owner's
   choices: test backups both local and R2; suspend = offline with a notice; delete keeps a final backup
   **90 days**, then `purge`. Not in it yet: cloudflared/wildcard DNS, a monitor entry per tenant, a cron line
   for backups, a real restore command. Never run it against the live stack.
@@ -190,7 +193,7 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
     Reads the app's own Export everything back (round trip tested).
   - ✅ Segment 2 (desktop screen) built Nov 20, not deployed: `pages/desk/DeskImportPage.vue` (route `/desk/import`,
     button on Customers), `e2e/import.cjs` (6 checks; undoes its import, hides its customers).
-  - Next: segment 3, round trip through the tenant kit (export one tenant → import into a blank one), then deploy.
+  - Next: segment 3, round trip through the tenant kit (export one tenant → import into a blank one). No deploy (owner).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
 - **Ideas the owner liked or may want:** chemical cost per dose, recurring maintenance reminders, dosing calculator, customer service reports (needs the owner's OK).

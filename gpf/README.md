@@ -71,7 +71,7 @@ of each key off the server: without it, that tenant's offsite copies can't be re
 ## Test
 
 ```bash
-GPF_PREFIX=gpft GPF_ROOT=/tmp/gpft GPF_CONFIG=/tmp/gpft/config bash gpf/tenant.sh build   # once per version
+GPF_PREFIX=gpft GPF_ROOT=/var/tmp/gpft GPF_CONFIG=/var/tmp/gpft/config bash gpf/tenant.sh build   # once per version
 bash gpf/test/run.sh          # local offsite folder only
 bash gpf/test/run.sh --r2     # also R2, under pool-backup/gpf-test/ (removed again at the end)
 bash gpf/test/run.sh --clean  # leftovers after a failed run

@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # Throwaway test of the tenant kit on one machine. Never touches the live pool-service stack:
-# everything is named gpft-*, lives under /tmp/gpft, Traefik listens on 127.0.0.1:8089, and the
+# everything is named gpft-*, lives under /var/tmp/gpft, Traefik listens on 127.0.0.1:8089, and the
 # script proves at the end that the live containers weren't restarted and kept every record.
 #
 #   bash gpf/test/run.sh [--r2]     --r2 also sends test backups to the R2 bucket, under gpf-test/
 #                                   (uses ~/.config/pool-backup/r2.env; removed again at the end)
-# Needs an image: GPF_PREFIX=gpft GPF_ROOT=/tmp/gpft GPF_CONFIG=/tmp/gpft/config bash gpf/tenant.sh build
+# Needs an image: GPF_PREFIX=gpft GPF_ROOT=/var/tmp/gpft GPF_CONFIG=/var/tmp/gpft/config bash gpf/tenant.sh build
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GPF="${HERE}/../tenant.sh"
 LIVE="${HERE}/../../pool-service"
 
-export GPF_PREFIX=gpft GPF_ROOT=/tmp/gpft GPF_CONFIG=/tmp/gpft/config GPF_DOMAIN=gpf.test
-export GPF_EDGE_BIND=127.0.0.1:8089 GPF_SUBNET_BASE=10.214 GPF_OFFSITE_LOCAL=/tmp/gpft/offsite
+export GPF_PREFIX=gpft GPF_ROOT=/var/tmp/gpft GPF_CONFIG=/var/tmp/gpft/config GPF_DOMAIN=gpf.test
+export GPF_EDGE_BIND=127.0.0.1:8089 GPF_SUBNET_BASE=10.214 GPF_OFFSITE_LOCAL=/var/tmp/gpft/offsite
 R2=0
 if [[ "${1:-}" == --r2 ]]; then
   R2=1
@@ -24,8 +24,8 @@ set +e
 pass=0; fail=0
 ok() { echo "  PASS  $*"; pass=$((pass + 1)); }
 bad() { echo "  FAIL  $*"; fail=$((fail + 1)); }
-check() { local what="$1"; shift; if "$@" >/tmp/gpft-check.log 2>&1; then ok "${what}"; else bad "${what}"; sed 's/^/        /' /tmp/gpft-check.log | tail -15; fi; }
-refuses() { local what="$1"; shift; if "$@" >/tmp/gpft-check.log 2>&1; then bad "${what} (it did not refuse)"; else ok "${what}"; fi; }
+check() { local what="$1"; shift; if "$@" >/var/tmp/gpft-check.log 2>&1; then ok "${what}"; else bad "${what}"; sed 's/^/        /' /var/tmp/gpft-check.log | tail -15; fi; }
+refuses() { local what="$1"; shift; if "$@" >/var/tmp/gpft-check.log 2>&1; then bad "${what} (it did not refuse)"; else ok "${what}"; fi; }
 run() { echo "  \$ tenant.sh $*"; bash "${GPF}" "$@" > >(sed 's/^/        /') 2>&1; }
 http() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.${GPF_DOMAIN}" "http://${GPF_EDGE_BIND}$2"; }
 pw() { cat "$(t_sec "$1")/owner-password"; }
@@ -48,7 +48,7 @@ cleanup() {
   [[ -e "${GPF_CONFIG}/current-image" ]] && edc down >/dev/null 2>&1
   docker ps -aq --filter name=gpft- | xargs -r docker rm -f >/dev/null
   docker network ls -q --filter name=gpft- | xargs -r docker network rm >/dev/null
-  docker run --rm -v /tmp/gpft:/t "${HELPER_IMAGE}" rm -rf /t/tenants /t/deleted /t/offsite /t/config/tenants /t/config/deleted /t/config/edge
+  docker run --rm -v /var/tmp/gpft:/t "${HELPER_IMAGE}" rm -rf /t/tenants /t/deleted /t/offsite /t/config/tenants /t/config/deleted /t/config/edge
 }
 if [[ "${1:-}" == --clean || "${2:-}" == --clean ]]; then cleanup; echo "Test leftovers removed"; exit 0; fi
 setup_ok() { (( fail == 0 )) || { echo "Setup failed; stopping. Leftovers: bash $0 --clean"; exit 1; }; }
@@ -80,7 +80,7 @@ CA="$(login_cookie alpha alpha)"
 check "alpha owner logs in to alpha" test -n "${CA}"
 check "alpha's password is refused by bravo" test -z "$(login_cookie bravo alpha)"
 cid="$(cat /proc/sys/kernel/random/uuid)"
-code="$(curl -s -o /tmp/gpft-post.json -w '%{http_code}' -H "Host: alpha.${GPF_DOMAIN}" -H "cookie: ${CA}" \
+code="$(curl -s -o /var/tmp/gpft-post.json -w '%{http_code}' -H "Host: alpha.${GPF_DOMAIN}" -H "cookie: ${CA}" \
   -H 'content-type: application/json' --data "{\"_id\":\"${cid}\",\"name\":\"Test customer A\"}" "http://${GPF_EDGE_BIND}/api/customers")"
 check "add a customer to alpha (HTTP ${code})" test "${code}" = 200 -o "${code}" = 201
 check "alpha has 1 customer" test "$(count alpha customers)" = 1

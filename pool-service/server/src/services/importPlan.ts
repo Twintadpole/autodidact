@@ -323,12 +323,12 @@ function mergeFields(prefix: string, existing: Doc, incoming: Doc, take: Set<str
     let from = existing[f];
     if (f === 'status') from = customerStatus(existing); // no class stored = current
     if (f === 'name' && norm(from) === norm(to)) continue; // "john smith" = "John Smith"
-    if (f === 'routeOrder') {
-      if (!from) ops.set[f] = to; // fill a default 0 only; never a conflict
-      continue;
-    }
     if (f === 'active' && from === undefined) from = true;
     if (same(from, to)) continue;
+    if (f === 'routeOrder') {
+      if (!from) ops.set[f] = to; // fill the default stop 0 only; never a conflict
+      continue;
+    }
     const label = LABEL[f] ?? f;
     if (isBlank(from)) {
       ops.set[f] = to;
