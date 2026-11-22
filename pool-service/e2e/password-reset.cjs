@@ -66,7 +66,7 @@ const { chromium, request } = require('playwright');
     const mail = await mailTo(tech.email);
     const link = mail.text.match(/https?:\/\/\S+\/reset\?token=[\w-]+/)?.[0];
     if (!link) throw new Error(`no link in: ${mail.text}`);
-    if (!/reset your .* password/.test(mail.subject)) throw new Error(`subject: ${mail.subject}`);
+    if (!/reset your .* password/i.test(mail.subject)) throw new Error(`subject: ${mail.subject}`);
     const notice = await mailTo(boss.email);
     if (!notice.text.includes(tech.name) || !notice.text.includes(tech.email) || /token=/.test(notice.text)) throw new Error(`notice: ${notice.text}`);
     ok(`the tech got the link ("${mail.subject}", from ${mail.from}); the other owner got a notice without it`);

@@ -105,6 +105,28 @@ Log: `backups/monitor.log`. Open problems: `~/.local/state/pool-monitor/*.down`.
 
 Manage ntfy accounts: `docker compose exec ntfy ntfy user list` (see `ntfy user --help`, `ntfy access --help`).
 
+## Email (password reset links)
+
+The app never sends mail itself: it queues each email in its database (`mailOutbox`) and
+`deploy/mail.sh` sends it, every minute from cron, through the mailbox in `~/.config/pool-mail` of user
+`claude` (shared with the GPF kit's `tenant.sh mail`):
+
+| File | |
+| --- | --- |
+| `mail.env` | `MAIL_SMTP_URL=smtps://smtp.gmail.com:465`, `MAIL_USER`, `MAIL_FROM` (not secret) |
+| `gmail-app-password` | the Gmail **app password** (600). The owner types it: `nano ~/.config/pool-mail/gmail-app-password` |
+
+Gmail: 2-Step Verification on, then myaccount.google.com → Security → App passwords. Until that file
+exists, nothing is sent and the app's "Forgot password?" screen says to ask the owner instead (the
+sender writes `backups/MAIL_READY` when a mailbox is set up; the app reads it). Cron (user `claude`):
+
+```
+* * * * * bash /home/claude/autodidact/pool-service/deploy/mail.sh >> /home/claude/autodidact/pool-service/backups/mail.log 2>&1
+```
+
+Links in the emails use `PUBLIC_URL` (docker-compose.yml). Cloudflare Access locks `/api/*`: someone
+opening a reset link logs in to Access first (as for the app itself).
+
 ## Cloudflare Access (emailed-code login)
 
 Access (Cloudflare Zero Trust → Access → Applications) sits in front of the API of `poolapp.evolutiondfw.com`.

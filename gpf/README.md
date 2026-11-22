@@ -43,6 +43,7 @@ bash gpf/tenant.sh monitor health|backups|disk|test   # alerts (monitor.sh), usu
 bash gpf/tenant.sh cron [--install]          # print / install the cron jobs below
 bash gpf/tenant.sh welcome <name>            # docs/welcome-<name>.pdf + beta-tester-guide.pdf for a new business
 bash gpf/tenant.sh docs                      # <GPF_ROOT>/docs/: beta-tester-guide.pdf, translator-guide.pdf
+bash gpf/tenant.sh mail [name|all]           # sends the apps' queued emails (cron: every minute)
 bash gpf/tenant.sh feedback <name|all> [days]   # beta feedback its users sent (14 days)
 bash gpf/tenant.sh errors <name|all> [days]     # errors the app reported from phones (7 days)
 bash gpf/tenant.sh export <name>             # exports/<time>/everything.xlsx + photos.zip
@@ -80,11 +81,19 @@ bash gpf/tenant.sh purge <name-time> --confirm <name-time>
 | hourly | `monitor.sh disk`: over `GPF_DISK_LIMIT` % (80) |
 | 06:41 daily | `monitor.sh backups`: per tenant, backup or offsite copy over 26 h old, restore check over 8 days |
 | hourly :53 | `monitor.sh feedback`: one alert per tenant with new beta feedback (the newest note + how many) |
+| every minute | `tenant.sh mail all`: sends each app's queued emails (password reset); the apps have no internet |
 
 Logs in `<GPF_ROOT>/logs/`. Alerts go to ntfy (`GPF_NTFY_URL`, token file `GPF_NTFY_TOKEN_FILE`);
 one when a problem starts, one "OK again" when it ends. If Traefik is down there is one "edge down"
 alert, not one per tenant; suspended tenants are skipped. Each tenant's `backups/MONITOR_STATUS` is
 written too, so its own System card shows its open alerts (plus server-wide ones: edge, disk).
+
+## Email
+
+Each app queues its emails (password reset links, notices to the owner) in its own database; `tenant.sh
+mail` reads every outbox with `docker compose exec` on that tenant's mongo and sends through the mailbox
+in `~/.config/pool-mail` (see `pool-service/deploy/README.md`, "Email"). The mail password never enters
+a tenant container. Links use `PUBLIC_URL=https://<name>.<GPF_DOMAIN>` (tenant template).
 
 ## Onboarding a business (beta)
 
@@ -140,6 +149,7 @@ It creates tenants `alpha` and `bravo` and checks:
   old backup, edge down = one alert), each tenant's status file and System card, the cron lines
 - `feedback` and `errors` per tenant (kept apart), and one alert per batch of new feedback
 - `welcome`: the two guide PDFs
+- email: no reset offered before a mailbox; then a sealed app's queued reset email reaches a test mailbox (Mailpit)
 - update, suspend and resume, export, delete and its refusals, purge and its 90-day refusal
 
 Finally it confirms the live app's containers weren't restarted and its record counts are unchanged.

@@ -93,9 +93,15 @@ Then start the VPS session:
      lists comments). Sheets for the owner in `~/translation-review/` on the VPS with translator-guide.pdf
      (`gpf/docs/translator-guide.md`, `tenant.sh docs`). Owner finds reviewers; returned files → dry run →
      show the owner → import → i18n:check → drop "beta" for that language when fully reviewed.
-  4. Password reset by email: owner Nov 22: send from **twintadpole@gmail.com** (Gmail app password, owner types it
-     with nano), the message says it's from the app, which business, which tech; goes to **both** the tech and
-     the owner.
+  4. ✅ Password reset by email (built Nov 22, not deployed): `routes/passwordReset.ts` (/auth/options, /auth/forgot,
+     /auth/reset; token sha256 in `passwordResets`, 30 min, one use, 3/h per login; notice without link to other
+     owners), `services/mail.ts` (queue in `mailOutbox`, raw without From), `ForgotPage`/`ResetPage`/`PublicCard`.
+     Sender: `deploy/mail-lib.sh` (curl SMTP, password via -K fd; writes backups/MAIL_READY) used by
+     `deploy/mail.sh` (owner app) and `tenant.sh mail` (docker exec into each tenant mongo; cron every minute).
+     Mailbox config `~/.config/pool-mail/mail.env` (made Nov 22: twintadpole@gmail.com) + `gmail-app-password`
+     (**owner still to create** with nano). PUBLIC_URL in docker-compose.yml + tenant template.
+     **At the owner's deploy: add the cron line for deploy/mail.sh** (deploy/README.md "Email").
+     Tests: reset.test.ts 7, e2e/password-reset.cjs 4 (Mailpit `axllent/mailpit:v1.27`, MAILPIT env), kit 127/127.
   - Owner also asked (Nov 22) for a **docs + onboarding plan**: in-app Help, owner onboarding, beta tester guide,
     terms/privacy. Owner's answers: legal line **"Great Pool Friend. Created by S R Donaldson, all rights
     reserved."**; support contact **steven@evolutiondfw.com**.
