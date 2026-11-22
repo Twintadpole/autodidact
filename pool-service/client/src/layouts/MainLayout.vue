@@ -46,6 +46,8 @@
         <q-route-tab to="/more" icon="more_horiz" :label="$t(`More`)" data-test="tab-more" />
       </q-tabs>
     </q-footer>
+    <!-- Beta onboarding: once, after the first login -->
+    <WelcomeDialog />
   </q-layout>
 </template>
 
@@ -57,6 +59,7 @@ import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { useAppShell } from '@/composables/useAppShell';
 import { topicForScreen } from '@/lib/help';
+import WelcomeDialog from '@/components/WelcomeDialog.vue';
 
 defineOptions({ name: 'MainLayout' });
 void refreshBranding();

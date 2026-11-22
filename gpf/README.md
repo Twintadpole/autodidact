@@ -41,6 +41,7 @@ bash gpf/tenant.sh restore-check <name> [--offsite local|r2]
 bash gpf/tenant.sh restore-check all --offsite   # weekly (cron): every tenant, every offsite target
 bash gpf/tenant.sh monitor health|backups|disk|test   # alerts (monitor.sh), usually from cron
 bash gpf/tenant.sh cron [--install]          # print / install the cron jobs below
+bash gpf/tenant.sh welcome <name>            # docs/welcome-<name>.pdf + beta-tester-guide.pdf for a new business
 bash gpf/tenant.sh feedback <name|all> [days]   # beta feedback its users sent (14 days)
 bash gpf/tenant.sh errors <name|all> [days]     # errors the app reported from phones (7 days)
 bash gpf/tenant.sh export <name>             # exports/<time>/everything.xlsx + photos.zip
@@ -84,6 +85,17 @@ one when a problem starts, one "OK again" when it ends. If Traefik is down there
 alert, not one per tenant; suspended tenants are skipped. Each tenant's `backups/MONITOR_STATUS` is
 written too, so its own System card shows its open alerts (plus server-wide ones: edge, disk).
 
+## Onboarding a business (beta)
+
+1. `tenant.sh create <name> <owner-email>`; the temporary password is in `<secrets>/<name>/owner-password`.
+2. `tenant.sh welcome <name>`: `tenants/<name>/docs/welcome-<name>.pdf` (address, login, first steps, support)
+   and `beta-tester-guide.pdf`. Email both; send the temporary password separately (text).
+3. The owner's first login asks for their own password, then shows three welcome screens; the Route's
+   Getting started card ticks itself as they fill in their business. They invite techs from Team (Invite).
+
+The guides are `docs/*.md` (edit them there); `docs/make-pdf.cjs` turns them into PDFs in the Playwright
+image (`npm i playwright` once, cached in `<GPF_ROOT>/.pdf-node`). Support address: `GPF_SUPPORT_EMAIL`.
+
 ## Settings (environment)
 
 | Variable | Default | |
@@ -98,6 +110,7 @@ written too, so its own System card shows its open alerts (plus server-wide ones
 | `GPF_PURGE_DAYS` | `90` | |
 | `GPF_NTFY_URL`, `GPF_NTFY_TOKEN_FILE` | — | alerts, e.g. `http://127.0.0.1:2586/gpf-alerts`; without a URL they only go to the log |
 | `GPF_DISK_LIMIT` | `80` | disk alert, % full |
+| `GPF_SUPPORT_EMAIL` | `steven@evolutiondfw.com` | in the welcome and tester guides |
 
 Any `GPF_*` setting can also go in `<GPF_CONFIG>/kit.env` (no secrets there).
 
@@ -125,6 +138,7 @@ It creates tenants `alpha` and `bravo` and checks:
 - `restore-check all`, alerts through a throwaway ntfy (down after 2 checks, no repeats, OK again,
   old backup, edge down = one alert), each tenant's status file and System card, the cron lines
 - `feedback` and `errors` per tenant (kept apart), and one alert per batch of new feedback
+- `welcome`: the two guide PDFs
 - update, suspend and resume, export, delete and its refusals, purge and its 90-day refusal
 
 Finally it confirms the live app's containers weren't restarted and its record counts are unchanged.

@@ -232,6 +232,24 @@ export const HELP: HelpTopic[] = [
     ],
   },
   {
+    id: 'tester',
+    title: h('Beta tester guide'),
+    icon: 'science',
+    screens: [],
+    body: [
+      { p: h('Thank you for testing! Use the app for your real work and tell us what gets in your way.') },
+      { steps: [
+        h('Try a normal week: the route, visits with readings and chemicals, issues with photos.'),
+        h('Try it with no signal, then check that everything uploads.'),
+        h('Owners: set up your business, add a tech, make and send an invoice.'),
+        h('Anything odd, slow or confusing: More → Send feedback, right away while you remember.'),
+      ] },
+      { p: h('Your data: each business has its own server space and its own database. It is backed up every night, with an encrypted copy kept off the server. Your data is yours: it is never sold or shared.') },
+      { p: h('Leaving: the owner can download everything at any time (More → Export everything). When a business closes its account, a final backup is kept for 90 days and then deleted.') },
+      { tip: h('During the beta, things may change from week to week. Your data stays safe through every update.') },
+    ],
+  },
+  {
     id: 'beta',
     title: h('Beta: feedback and support'),
     icon: 'campaign',

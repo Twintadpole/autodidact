@@ -2,6 +2,18 @@
 
 ## Unreleased (November 2026)
 
+### Beta: onboarding
+
+- **Invite** (Team → add a login, or a new temporary password): opens the phone's share sheet with a
+  ready message: the app's address, their login and the temporary password (copied when there's no share sheet).
+- **Welcome screens** right after someone's first login (once they've chosen their own password):
+  install the app and pick a language; "Your route" for techs, "Set up your business" for owners;
+  working without signal and where Help is. Skip any time.
+- **Getting started** card for owners at the top of the Route and the dashboard: business details,
+  logo, chemical prices, customers, pools on the route, monthly rates, techs, installing the app. Each
+  step ticks itself from the business's own data and opens its screen; Hide puts it away.
+- **Beta tester guide** in Help (what to try, how to send feedback, your data, leaving).
+
 ### Beta: Help, feedback, error reports
 
 - **Help** (More → Help, Help in the desktop menu): short how-tos for every part of the app, in all six

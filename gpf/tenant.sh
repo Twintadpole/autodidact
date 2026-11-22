@@ -17,6 +17,8 @@
 #   tenant.sh restore-check all --offsite [local|r2]      every tenant (the weekly cron job)
 #   tenant.sh monitor health|backups|disk|test   alerts through ntfy (see monitor.sh)
 #   tenant.sh cron [--install]           the cron lines for nightly backups, restore checks and alerts
+#   tenant.sh welcome <name>             PDFs for a new business: its welcome guide (address, login) and
+#                                        the beta tester guide, in tenants/<name>/docs/ (password not included)
 #   tenant.sh feedback <name|all> [days] beta feedback its users sent (default: last 14 days)
 #   tenant.sh errors <name|all> [days]   errors the app reported from phones (default: last 7 days)
 #   tenant.sh export <name>              Excel "export everything" + photos.zip, for the customer
@@ -135,7 +137,7 @@ ENV
   tdc "${name}" up -d
   edge_connect "${name}"
   t_wait_healthy "${name}"
-  local code; code="$(t_http "${name}" /api/health)"
+  local code; code="$(t_edge_code "${name}")"
   [[ "${code}" == 200 ]] || die "${name}.${GPF_DOMAIN} answers ${code} through the edge"
   # The app made the owner's login on its first start; they choose their own password at the first login.
   tr -d '\n' < "${sec}/owner-password" | t_users "${name}" set-password --temporary >/dev/null || die "Could not mark ${name}'s owner password as temporary"
@@ -343,6 +345,27 @@ cmd_cron() {
   echo "Cron jobs installed for ${GPF_PREFIX} (crontab -l to see them)"
 }
 
+# ---- beta: the welcome guide and tester guide as PDFs (gpf/docs/*.md → Playwright's Chromium)
+make_pdf() { # make_pdf <doc.md> <out.pdf> [KEY=value…]
+  local md="$1" out="$2"; shift 2
+  mkdir -p "${GPF_ROOT}/.pdf-node" "$(dirname "${out}")"
+  docker_ run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "${GPF_DIR}/docs:/docs:ro" -v "${GPF_ROOT}/.pdf-node:/pdfnode" \
+    -v "$(dirname "${out}"):/out" "${PLAYWRIGHT_IMAGE}" bash -c '
+      [ -d /pdfnode/node_modules/playwright ] || (cd /pdfnode && npm i -s --no-audit --no-fund playwright@1.56.1 >/dev/null)
+      NODE_PATH=/pdfnode/node_modules node /docs/make-pdf.cjs "/docs/$1" "/out/$2" "${@:3}"' _ "${md}" "$(basename "${out}")" "$@"
+}
+cmd_welcome() {
+  local name="${1:-}"; need_tenant "${name}"
+  local login business docs
+  login="$(sed -n 's/^OWNER_EMAIL=//p' "$(t_sec "${name}")/api.env" 2>/dev/null | tail -1)"
+  business="$(tmongosh "${name}" pool <<<"(db.settings.findOne({ businessName: { \$nin: [null, ''] } }) || {}).businessName || ''" 2>/dev/null || true)"
+  docs="$(t_dir "${name}")/docs"
+  make_pdf welcome-owner.md "${docs}/welcome-${name}.pdf" "BUSINESS=${business:-your business}" \
+    "ADDRESS=https://${name}.${GPF_DOMAIN}" "LOGIN=${login:-owner}" "SUPPORT=Questions or problems: ${GPF_SUPPORT_EMAIL}, or More → Send feedback in the app."
+  make_pdf beta-tester-guide.md "${docs}/beta-tester-guide.pdf" "SUPPORT=${GPF_SUPPORT_EMAIL}, or More → Send feedback in the app."
+  echo "${name}: welcome guide and tester guide in ${docs}/ (send the temporary password separately)"
+}
+
 # ---- beta: feedback and app errors, read from each tenant's database (read only)
 feedback_one() {
   local name="$1" days="${2:-14}"
@@ -385,7 +408,7 @@ update_one() {
     local latest; latest="$(ls -1t "$(t_dir "${name}")"/backups/pool-predeploy-*.archive.gz | head -1)"
     die "${name}: records missing after the update. Backup kept: ${latest}. Previous image: ${old}"
   fi
-  [[ "$(t_http "${name}" /api/health)" == 200 ]] || die "${name}: not reachable through the edge after the update"
+  [[ "$(t_edge_code "${name}")" == 200 ]] || die "${name}: not reachable through the edge after the update"
   echo "${name}: updated; all records accounted for"
 }
 cmd_update() { local which="${1:-}"; shift || true; each update_one "${which}" "$@"; }
@@ -523,6 +546,7 @@ case "${1:-}" in
   restore-check) shift; cmd_restore_check "$@" ;;
   monitor) shift; bash "$(dirname "${BASH_SOURCE[0]}")/monitor.sh" "$@" ;;
   cron) cmd_cron "${2:-}" ;;
+  welcome) cmd_welcome "${2:-}" ;;
   feedback) shift; cmd_feedback "$@" ;;
   errors) shift; cmd_errors "$@" ;;
   export) cmd_export "${2:-}" ;;

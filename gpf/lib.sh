@@ -27,9 +27,11 @@ GPF_R2_ENV="${GPF_R2_ENV:-}"                          # file with R2_ENDPOINT, A
 GPF_R2_BUCKET="${GPF_R2_BUCKET:-}"
 GPF_R2_PREFIX="${GPF_R2_PREFIX:-gpf}"                 # repo = <bucket>/<prefix>/<tenant>
 GPF_PURGE_DAYS="${GPF_PURGE_DAYS:-90}"                # deleted tenants' final backups are kept this long
+GPF_SUPPORT_EMAIL="${GPF_SUPPORT_EMAIL:-steven@evolutiondfw.com}"   # shown in the welcome guide and tester guide
 
 MONGO_IMAGE="mongo:8"
 RESTIC_IMAGE="restic/restic:0.18.1"
+PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.56.1-noble"   # PDFs of the docs (tenant.sh welcome)
 HELPER_IMAGE="alpine:latest"
 API_REPO="${GPF_PREFIX}-api"
 
@@ -130,6 +132,12 @@ t_wait_healthy() {
 }
 # HTTP status of <path> on a tenant's address, through the edge (as a visitor would arrive).
 t_http() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.${GPF_DOMAIN}" "http://${GPF_EDGE_BIND}$2"; }
+# Traefik picks up a (re)started app a few seconds after it is healthy: wait up to 30 s for a 200.
+t_edge_code() {
+  local code=000
+  for _ in $(seq 1 30); do code="$(t_http "$1" /api/health)"; [[ "${code}" == 200 ]] && break; sleep 1; done
+  echo "${code}"
+}
 
 # ---- Offsite (restic). Each tenant has its own key: secrets/<name>/restic-password
 # offsite_targets: prints "local" and/or "r2"

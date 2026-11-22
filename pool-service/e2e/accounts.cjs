@@ -117,6 +117,8 @@ const { chromium, request } = require('playwright');
     await page.locator('[data-test=account-new2]').fill(`tech-pass-${tag}`);
     await page.locator('[data-test=account-save]').click();
     await page.waitForURL((u) => new URL(u).pathname === '/');
+    // Beta: the welcome screens follow a first login (onboarding.cjs checks them).
+    await page.locator('[data-test=welcome-skip]').click();
     ok('tech logs in on the same phone: asked to choose their own password first');
 
     // ---- 5

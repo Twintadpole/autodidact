@@ -51,6 +51,8 @@
       <!-- Keyed: Expenses & income and Mileage share one screen component. -->
       <router-view :key="route.path" />
     </q-page-container>
+    <!-- Beta onboarding: once, after the first login -->
+    <WelcomeDialog />
   </q-layout>
 </template>
 
@@ -67,6 +69,7 @@ import { exportEverything } from '@/lib/exportTable';
 import { errorMessage } from '@/stores/api';
 import { useQuasar } from 'quasar';
 import { topicForScreen } from '@/lib/help';
+import WelcomeDialog from '@/components/WelcomeDialog.vue';
 
 defineOptions({ name: 'DeskLayout' });
 const onHelp = computed(() => route.name === 'desk-help' || route.name === 'desk-feedback');

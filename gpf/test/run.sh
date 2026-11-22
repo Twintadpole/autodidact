@@ -175,6 +175,9 @@ check "tenant.sh errors lists alpha's error" bash -c "bash '${GPF}' errors alpha
 check "bravo's feedback doesn't show alpha's" bash -c "! bash '${GPF}' feedback bravo | grep -q 'Kit test'"
 mon feedback; mon feedback
 check "new feedback: one alert, not repeated" test "$(alerts | grep -c 'alpha: 1 new feedback')" = 1
+check "welcome: guide PDFs for alpha" run welcome alpha
+check "alpha's welcome guide is a PDF" bash -c "head -c4 '$(t_dir alpha)/docs/welcome-alpha.pdf' | grep -q '%PDF'"
+check "the tester guide is a PDF" bash -c "head -c4 '$(t_dir alpha)/docs/beta-tester-guide.pdf' | grep -q '%PDF'"
 docker rm -f gpft-ntfy >/dev/null; unset GPF_NTFY_URL
 check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'monitor.sh feedback' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
 

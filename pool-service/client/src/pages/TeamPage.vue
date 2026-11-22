@@ -64,13 +64,14 @@
     <!-- Temporary password, shown once -->
     <q-dialog v-model="pwOpen" persistent>
       <q-card style="width: 420px; max-width: 95vw" data-test="team-temp-password">
-        <q-card-section class="text-h6">Temporary password for {{ pwFor }}</q-card-section>
+        <q-card-section class="text-h6">{{ $t('Temporary password for {name}', { name: pwFor }) }}</q-card-section>
         <q-card-section>
           <div class="text-h5 text-weight-bold q-pa-sm bg-grey-2 rounded-borders text-center" style="letter-spacing: 1px; font-family: monospace" data-test="team-temp-value">{{ pw }}</div>
           <div class="text-caption text-grey-8 q-mt-sm">{{ $t(`Give it to them in person or by text. It's shown only now; they choose their own password when they first log in.`) }}</div>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat no-caps icon="content_copy" :label="$t(`Copy`)" @click="copy" />
+          <q-btn flat no-caps color="primary" icon="send" :label="$t(`Invite`)" data-test="team-invite" @click="invite" />
           <q-btn color="primary" unelevated no-caps :label="$t(`Done`)" data-test="team-temp-done" @click="closePassword" />
         </q-card-actions>
       </q-card>
@@ -109,6 +110,7 @@
 import { locale, t, tn } from '@/i18n';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useQuasar, copyToClipboard } from 'quasar';
+import { appName } from '@/lib/branding';
 import type { Role, TeamMemberFull } from '@pool/shared';
 import { api, errorMessage } from '@/stores/api';
 import { useAuthStore } from '@/stores/auth';
@@ -128,6 +130,7 @@ const draft = reactive({ name: '', email: '', role: 'tech' as Role });
 const pwOpen = ref(false);
 const pw = ref('');
 const pwFor = ref('');
+const pwEmail = ref('');
 const routeOpen = ref(false);
 const routeFor = ref<TeamMemberFull | null>(null);
 const routeSearch = ref('');
@@ -151,7 +154,7 @@ async function add() {
     const r = await api<{ member: TeamMemberFull; password: string }>('/team', { method: 'POST', body: { ...draft, email: draft.email.trim(), name: draft.name.trim() } });
     addOpen.value = false;
     Object.assign(draft, { name: '', email: '', role: 'tech' });
-    showPassword(r.member.name, r.password);
+    showPassword(r.member.name, r.password, r.member.email);
     await load();
   } catch (err) {
     fail(err);
@@ -159,14 +162,41 @@ async function add() {
     busy.value = false;
   }
 }
-function showPassword(name: string, value: string) {
+function showPassword(name: string, value: string, email = '') {
   pwFor.value = name;
+  pwEmail.value = email;
   pw.value = value;
   pwOpen.value = true;
 }
 function closePassword() {
   pwOpen.value = false;
   pw.value = '';
+}
+/** The invite: the app's address, their login and the temporary password, for the share sheet. */
+function inviteText() {
+  return [
+    t('Hi {name}! Here is your login for {business}.', { name: pwFor.value, business: appName.value }),
+    '',
+    t('1. On your phone, open: {url}', { url: location.origin }),
+    t('2. Log in with: {email}', { email: pwEmail.value }),
+    `   ${t('Temporary password: {password}', { password: pw.value })}`,
+    t('3. Choose your own password, then add the app to your home screen.'),
+    '',
+    t('Help is under More → Help.'),
+  ].join('\n');
+}
+async function invite() {
+  const text = inviteText();
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: appName.value, text });
+      return;
+    }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return; // closed the share sheet
+  }
+  await copyToClipboard(text);
+  $q.notify({ message: t('Invite copied: paste it into a text or email.'), timeout: 2500 });
 }
 function copy() {
   void copyToClipboard(pw.value).then(() => $q.notify({ message: t('Copied'), timeout: 1200 }));
@@ -175,7 +205,7 @@ function resetPassword(m: TeamMemberFull) {
   $q.dialog({ title: t('New temporary password for {name}?', { name: m.name }), message: t('Their devices are signed out; they log in with the new one and choose their own.'), cancel: true, ok: { label: t('Make one'), unelevated: true, noCaps: true } }).onOk(async () => {
     try {
       const r = await api<{ password: string }>(`/team/${m._id}/reset-password`, { method: 'POST' });
-      showPassword(m.name, r.password);
+      showPassword(m.name, r.password, m.email);
       await load();
     } catch (err) {
       fail(err);

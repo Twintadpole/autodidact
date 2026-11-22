@@ -17,6 +17,9 @@
       </q-btn>
     </Teleport>
 
+    <!-- Beta onboarding (owners): ticks itself from the business's data -->
+    <GettingStartedCard />
+
     <!-- Progress + filter -->
     <div class="q-px-md q-pt-md q-pb-sm">
       <div class="row items-baseline justify-between">
@@ -113,6 +116,7 @@ import { scheduleText } from '@/lib/customer';
 import { hms } from '@/lib/time';
 import { useDataStore } from '@/stores/data';
 import { useAuthStore } from '@/stores/auth';
+import GettingStartedCard from '@/components/GettingStartedCard.vue';
 import { errorMessage } from '@/stores/api';
 import { DAY_LABELS, hasAddress, mapsUrl, poolAddress } from '@/lib/format';
 import type { Pool } from '@/lib/types';

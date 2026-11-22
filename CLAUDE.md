@@ -81,7 +81,12 @@ Then start the VPS session:
      VPS test recipe used: `/var/tmp/pst.sh '<cmd>'` (node:22 on a /var/tmp/pstest copy), scratch mongo
      `pst-mongo` :27099, API `pst-api` :3300 with `/var/tmp/pst-beta.env` (password in `/var/tmp/pst-beta.pw`),
      `/var/tmp/pw-run.sh <script>` / `/var/tmp/pw-all.sh` (restarts the API every 4 scripts; login limit).
-  2. Tech onboarding: "Invite tech" share message, first-login welcome + install how-to.
+  2. ✅ Onboarding (built Nov 22, not deployed): Team → Invite (navigator.share, else copy), `WelcomeDialog`
+     (after a forced password change: `lib/welcome.ts` queueWelcome/welcomeOpen), `GettingStartedCard` (owners;
+     Route + desk dashboard; hide per person per device), Help topic "Beta tester guide". Docs: `gpf/docs/`
+     welcome-owner.md + beta-tester-guide.md → `tenant.sh welcome <name>` PDFs (make-pdf.cjs in the Playwright
+     image). `e2e/onboarding.cjs` (5); accounts.cjs skips the welcome. All 20 e2e pass; kit 118/118
+     (fixed a race: create/update now wait up to 30 s for Traefik to route a restarted app, `t_edge_code`).
   5. Translation review sheets (export/import), reviewers found by the owner.
   4. Password reset by email: owner Nov 22: send from **twintadpole@gmail.com** (Gmail app password, owner types it
      with nano), the message says it's from the app, which business, which tech; goes to **both** the tech and

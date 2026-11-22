@@ -67,6 +67,7 @@ import { useQuasar } from 'quasar';
 import type { Device } from '@pool/shared';
 import { useAuthStore } from '@/stores/auth';
 import LanguagePicker from '@/components/LanguagePicker.vue';
+import { queueWelcome } from '@/lib/welcome';
 import { api, errorMessage } from '@/stores/api';
 
 defineOptions({ name: 'AccountPage' });
@@ -99,7 +100,11 @@ async function changePassword() {
     auth.passwordChanged();
     current.value = next1.value = next2.value = '';
     $q.notify({ type: 'positive', message: r.signedOut ? tn(r.signedOut, 'Password changed; {n} other device signed out', 'Password changed; {n} other devices signed out') : t('Password changed') });
-    if (route.query.change === '1') await router.replace('/');
+    if (route.query.change === '1') {
+      // First login: the welcome screens come next (beta onboarding).
+      queueWelcome();
+      await router.replace('/');
+    }
     else await loadDevices();
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

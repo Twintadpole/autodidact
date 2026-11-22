@@ -19,6 +19,7 @@
         </q-menu>
       </q-btn>
     </Teleport>
+    <GettingStartedCard desk />
 
     <div v-if="!shown.length" class="text-center text-grey-7 q-pa-xl">{{ $t(`All cards are hidden. Use`) }} <b>{{ $t(`Cards`) }}</b> {{ $t(`at the top to show some.`) }}</div>
 
@@ -122,6 +123,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from
 import { useQuasar } from 'quasar';
 import type { CardSize, DashboardLayout } from '@pool/shared';
 import DashCard from '@/components/desk/DashCard.vue';
+import GettingStartedCard from '@/components/GettingStartedCard.vue';
 import WeekCard from '@/components/desk/cards/WeekCard.vue';
 import MoneyCard from '@/components/desk/cards/MoneyCard.vue';
 import OwedCard from '@/components/desk/cards/OwedCard.vue';
