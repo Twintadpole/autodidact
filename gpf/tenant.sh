@@ -17,6 +17,8 @@
 #   tenant.sh restore-check all --offsite [local|r2]      every tenant (the weekly cron job)
 #   tenant.sh monitor health|backups|disk|test   alerts through ntfy (see monitor.sh)
 #   tenant.sh cron [--install]           the cron lines for nightly backups, restore checks and alerts
+#   tenant.sh feedback <name|all> [days] beta feedback its users sent (default: last 14 days)
+#   tenant.sh errors <name|all> [days]   errors the app reported from phones (default: last 7 days)
 #   tenant.sh export <name>              Excel "export everything" + photos.zip, for the customer
 #   tenant.sh suspend|resume <name>      app offline behind a "paused" notice (503); data and backups untouched
 #   tenant.sh delete <name> --confirm <name>    needs an export from the last 24 h; keeps a final backup
@@ -330,6 +332,7 @@ cron_lines() {
   echo "*/5 * * * * ${env} bash ${kit}/monitor.sh health >> ${log}/monitor.log 2>&1"
   echo "23 * * * * ${env} bash ${kit}/monitor.sh disk >> ${log}/monitor.log 2>&1"
   echo "41 6 * * * ${env} bash ${kit}/monitor.sh backups >> ${log}/monitor.log 2>&1"
+  echo "53 * * * * ${env} bash ${kit}/monitor.sh feedback >> ${log}/monitor.log 2>&1"
   echo "# ${GPF_PREFIX}-kit end"
 }
 cmd_cron() {
@@ -339,6 +342,28 @@ cmd_cron() {
   { [[ -n "${current}" ]] && printf '%s\n' "${current}" | sed "/^# ${GPF_PREFIX}-kit begin/,/^# ${GPF_PREFIX}-kit end/d"; cron_lines; } | crontab -
   echo "Cron jobs installed for ${GPF_PREFIX} (crontab -l to see them)"
 }
+
+# ---- beta: feedback and app errors, read from each tenant's database (read only)
+feedback_one() {
+  local name="$1" days="${2:-14}"
+  echo "== ${name}"
+  tmongosh "${name}" pool <<<"
+    const since = new Date(Date.now() - ${days} * 864e5);
+    const rows = db.feedback.find({ createdAt: { \$gte: since } }).sort({ createdAt: -1 }).toArray();
+    if (!rows.length) print('  (none in ${days} days)');
+    for (const f of rows) print('  ' + f.createdAt.toISOString().slice(0, 16).replace('T', ' ') + '  ' + (f.kind || '') + '  ' + (f.userName || '?') + ' (' + (f.role || '') + ')  ' + (f.screen || '') + '  v' + (f.appVersion || '?') + '  ' + (f.language || '') + (f.doneAt ? '  [done]' : '') + '\n    ' + f.text.replace(/\n/g, '\n    '));"
+}
+errors_one() {
+  local name="$1" days="${2:-7}"
+  echo "== ${name}"
+  tmongosh "${name}" pool <<<"
+    const since = new Date(Date.now() - ${days} * 864e5);
+    const rows = db.clientErrors.find({ lastAt: { \$gte: since } }).sort({ count: -1 }).toArray();
+    if (!rows.length) print('  (none in ${days} days)');
+    for (const e of rows) print('  ' + String(e.count).padStart(4) + 'x  v' + (e.appVersion || '?') + '  ' + e.where + '  ' + (e.screen || '') + '  last ' + e.lastAt.toISOString().slice(0, 16).replace('T', ' ') + '\n        ' + e.message + (e.stack ? '\n        ' + e.stack.split('\n').slice(0, 3).join('\n        ') : ''));"
+}
+cmd_feedback() { local which="${1:-}"; shift || true; each feedback_one "${which}" "$@"; }
+cmd_errors() { local which="${1:-}"; shift || true; each errors_one "${which}" "$@"; }
 
 # ---- update
 update_one() {
@@ -498,6 +523,8 @@ case "${1:-}" in
   restore-check) shift; cmd_restore_check "$@" ;;
   monitor) shift; bash "$(dirname "${BASH_SOURCE[0]}")/monitor.sh" "$@" ;;
   cron) cmd_cron "${2:-}" ;;
+  feedback) shift; cmd_feedback "$@" ;;
+  errors) shift; cmd_errors "$@" ;;
   export) cmd_export "${2:-}" ;;
   suspend) cmd_suspend "${2:-}" ;;
   resume) cmd_resume "${2:-}" ;;

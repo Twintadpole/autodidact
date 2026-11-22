@@ -2,6 +2,21 @@
 
 ## Unreleased (November 2026)
 
+### Beta: Help, feedback, error reports
+
+- **Help** (More → Help, Help in the desktop menu): short how-tos for every part of the app, in all six
+  languages, with a search box. The **?** at the top of each screen opens that screen's topic. Techs
+  don't see the owner-only topics (money, invoices, team, import). Support email and
+  "Great Pool Friend. Created by S R Donaldson, all rights reserved." at the bottom.
+- **Send feedback** (More, Help, or the desktop menu): a problem, an idea, a question or other, sent
+  with the person's name, the screen they came from, the app version and their language. With no
+  signal it waits on the phone and is sent when the signal is back. Owners see everyone's feedback
+  and can tick it done; techs see their own.
+- **Errors the app runs into** are sent to the business's own server (no outside service), counted
+  per kind of problem and version, and kept 60 days, so they can be found and fixed.
+- A **Beta** label on the login screen, the More footer and the desktop header.
+- Server: the database health check runs every 30 s instead of every 5 s (every 2 s while starting).
+
 ### Languages: English, Español, Tiếng Việt, 中文, Tagalog, العربية
 
 - **The app speaks the person's language.** My account → Language: English, or (beta) Español,

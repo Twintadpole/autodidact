@@ -41,6 +41,8 @@ bash gpf/tenant.sh restore-check <name> [--offsite local|r2]
 bash gpf/tenant.sh restore-check all --offsite   # weekly (cron): every tenant, every offsite target
 bash gpf/tenant.sh monitor health|backups|disk|test   # alerts (monitor.sh), usually from cron
 bash gpf/tenant.sh cron [--install]          # print / install the cron jobs below
+bash gpf/tenant.sh feedback <name|all> [days]   # beta feedback its users sent (14 days)
+bash gpf/tenant.sh errors <name|all> [days]     # errors the app reported from phones (7 days)
 bash gpf/tenant.sh export <name>             # exports/<time>/everything.xlsx + photos.zip
 bash gpf/tenant.sh suspend|resume <name>
 bash gpf/tenant.sh delete <name> --confirm <name>
@@ -75,6 +77,7 @@ bash gpf/tenant.sh purge <name-time> --confirm <name-time>
 | every 5 min | `monitor.sh health`: each active tenant through the edge; alert after 2 failures in a row |
 | hourly | `monitor.sh disk`: over `GPF_DISK_LIMIT` % (80) |
 | 06:41 daily | `monitor.sh backups`: per tenant, backup or offsite copy over 26 h old, restore check over 8 days |
+| hourly :53 | `monitor.sh feedback`: one alert per tenant with new beta feedback (the newest note + how many) |
 
 Logs in `<GPF_ROOT>/logs/`. Alerts go to ntfy (`GPF_NTFY_URL`, token file `GPF_NTFY_TOKEN_FILE`);
 one when a problem starts, one "OK again" when it ends. If Traefik is down there is one "edge down"
@@ -121,6 +124,7 @@ It creates tenants `alpha` and `bravo` and checks:
 - backups and restore checks (local and R2), and that one tenant's key can't read another's backups
 - `restore-check all`, alerts through a throwaway ntfy (down after 2 checks, no repeats, OK again,
   old backup, edge down = one alert), each tenant's status file and System card, the cron lines
+- `feedback` and `errors` per tenant (kept apart), and one alert per batch of new feedback
 - update, suspend and resume, export, delete and its refusals, purge and its 90-day refusal
 
 Finally it confirms the live app's containers weren't restarted and its record counts are unchanged.

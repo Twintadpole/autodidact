@@ -7,7 +7,7 @@
             <q-card-section class="text-center q-pb-none">
               <img v-if="brand.logo" :src="brand.logo" alt="" class="login-logo" data-test="login-logo" />
               <img v-else src="/icons/icon-128x128.png" alt="" class="login-logo" />
-              <div class="text-h5 q-mt-sm" data-test="login-name">{{ appName }}</div>
+              <div class="q-mt-sm"><span class="text-h5" data-test="login-name">{{ appName }}</span><q-badge outline color="primary" align="top" class="q-ml-xs" :label="$t(`Beta`)" data-test="beta-badge" /></div>
               <div v-if="brand.business" class="text-caption text-grey-7" data-test="login-powered">Powered by {{ brand.product }}</div>
             </q-card-section>
             <q-card-section class="q-gutter-md">

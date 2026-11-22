@@ -84,9 +84,31 @@
       </q-item>
     </q-list>
 
+    <q-list bordered separator class="bg-white rounded-borders">
+      <q-item clickable to="/more/help" data-test="more-help">
+        <q-item-section avatar><q-icon name="help_outline" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>{{ $t(`Help`) }}</q-item-label>
+          <q-item-label caption>{{ $t(`How-tos for every screen`) }}</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
+      <q-item clickable :to="{ path: '/more/feedback', query: { from: '/more' } }" data-test="more-feedback">
+        <q-item-section avatar><q-icon name="feedback" color="primary" /></q-item-section>
+        <q-item-section>
+          <q-item-label>{{ $t(`Send feedback`) }}</q-item-label>
+          <q-item-label caption>{{ $t(`A problem, an idea or a question`) }}</q-item-label>
+        </q-item-section>
+        <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      </q-item>
+    </q-list>
+
     <q-btn outline color="grey-8" icon="logout" :label="$t(`Log out`)" data-test="logout" @click="logout" />
 
-    <div class="text-center text-caption text-grey-6" data-test="app-version">{{ brand.product }} v{{ version }} · {{ $t('built {date}', { date: builtAt }) }}</div>
+    <div class="text-center text-caption text-grey-6" data-test="app-version">
+      {{ brand.product }} v{{ version }} <q-badge outline color="primary" :label="$t(`Beta`)" data-test="beta-badge" /> · {{ $t('built {date}', { date: builtAt }) }}
+      <div>{{ LEGAL_LINE }}</div>
+    </div>
   </q-page>
 </template>
 
@@ -97,6 +119,7 @@ import { useRouter } from 'vue-router';
 import { parseISO } from 'date-fns';
 import { useAuthStore } from '@/stores/auth';
 import { brand } from '@/lib/branding';
+import { LEGAL_LINE } from '@/lib/help';
 import { useDataStore } from '@/stores/data';
 import { money } from '@/lib/customer';
 import { moneySummary, periodRange } from '@/lib/report';

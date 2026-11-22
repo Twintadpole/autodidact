@@ -14,7 +14,7 @@ import { exportRoutes } from './routes/export.js';
 import { importRoutes } from './routes/import.js';
 import { teamRoutes } from './routes/team.js';
 import { businessIcon, manifest } from './services/branding.js';
-import { accessLoginRoutes, clientLogRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
+import { accessLoginRoutes, clientLogRoutes, feedbackRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
 import { PhotoStore } from './services/photoStore.js';
@@ -72,6 +72,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
         await secured.register(resourceRoutes);
         await secured.register(routeRoutes);
         await secured.register(clientLogRoutes);
+        await secured.register(feedbackRoutes);
         await secured.register(syncRoutes, { photos });
         await secured.register(photoRoutes, { photos });
         // Owner only (GPF item 3): money reports, exports, imports, system status, the team.

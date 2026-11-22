@@ -11,6 +11,8 @@
         <q-chip clickable dense :color="chip.color" text-color="white" :icon="chip.icon" class="q-mr-sm" data-test="sync-chip" @click="router.push('/more/sync')">
           {{ chip.label }}
         </q-chip>
+        <q-badge outline color="white" :label="$t(`Beta`)" class="q-mr-sm" data-test="beta-badge" />
+        <q-btn v-if="!onHelp" flat round dense icon="help_outline" :aria-label="$t(`Help`)" class="q-mr-xs" data-test="help-button" @click="openHelp" />
         <q-btn flat no-caps icon="smartphone" :label="$q.screen.gt.xs ? $t('Phone view') : undefined" :aria-label="$t(`Phone view`)" data-test="phone-view" @click="toPhone" />
       </q-toolbar>
     </q-header>
@@ -64,8 +66,14 @@ import { saveView } from '@/lib/view';
 import { exportEverything } from '@/lib/exportTable';
 import { errorMessage } from '@/stores/api';
 import { useQuasar } from 'quasar';
+import { topicForScreen } from '@/lib/help';
 
 defineOptions({ name: 'DeskLayout' });
+const onHelp = computed(() => route.name === 'desk-help' || route.name === 'desk-feedback');
+function openHelp() {
+  const topic = topicForScreen(route.name);
+  void router.push({ name: 'desk-help', ...(topic && { params: { topic } }), query: { from: route.fullPath } });
+}
 void refreshBranding();
 
 const MENU = [
@@ -80,6 +88,8 @@ const MENU = [
   { key: 'chemicals', to: '/desk/chemicals', icon: 'science', label: t('Chemicals'), gap: true },
   { key: 'team', to: '/desk/team', icon: 'groups', label: t('Team') },
   { key: 'business', to: '/desk/business', icon: 'storefront', label: t('Business details') },
+  { key: 'help', to: '/desk/help', icon: 'help_outline', label: t('Help'), gap: true },
+  { key: 'feedback', to: '/desk/feedback', icon: 'feedback', label: t('Send feedback') },
 ];
 
 const route = useRoute();

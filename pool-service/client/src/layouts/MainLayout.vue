@@ -7,6 +7,8 @@
           <div class="ellipsis" data-test="page-title">{{ ui.title || (route.meta.title ? $t(route.meta.title) : appName) }}</div>
           <div v-if="ui.subtitle" class="text-caption ellipsis header-sub">{{ ui.subtitle }}</div>
         </q-toolbar-title>
+        <!-- Help for this screen (beta) -->
+        <q-btn v-if="!onHelp" flat round dense icon="help_outline" :aria-label="$t(`Help`)" data-test="help-button" @click="openHelp" />
         <!-- Sync status: tap for the Sync screen -->
         <q-chip
           clickable
@@ -54,6 +56,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDataStore } from '@/stores/data';
 import { useUiStore } from '@/stores/ui';
 import { useAppShell } from '@/composables/useAppShell';
+import { topicForScreen } from '@/lib/help';
 
 defineOptions({ name: 'MainLayout' });
 void refreshBranding();
@@ -68,6 +71,12 @@ const { chip, load, loadError } = useAppShell();
 const activeIssues = computed(() => data.openIssues.filter((i) => i.status !== 'postponed'));
 const openCount = computed(() => activeIssues.value.length);
 const doNowCount = computed(() => activeIssues.value.filter((i) => i.urgent && i.important).length);
+
+const onHelp = computed(() => route.name === 'help' || route.name === 'feedback');
+function openHelp() {
+  const topic = topicForScreen(route.name);
+  void router.push({ name: 'help', ...(topic && { params: { topic } }), query: { from: route.fullPath } });
+}
 
 function goBack() {
   if (window.history.state?.back) router.back();

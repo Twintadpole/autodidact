@@ -71,11 +71,21 @@ Then start the VPS session:
      alerts go to ntfy topic **gpf-alerts** (owner OK'd Nov 22: `ntfy access monitor gpf-alerts write-only`,
      `owner … read-only`; auth.db copy `data/ntfy/auth.db.bak-20261122`); kit.env has GPF_NTFY_URL/TOKEN_FILE.
      Owner's app: Mongo health check 30s (start 2s) in `pool-service/docker-compose.yml`, deploys with the next deploy.
-  3. Help + feedback + error log (app records its own errors; `clientLogRoutes` exists) + "Beta" label.
+  3. ✅ Help + feedback + errors + Beta label (built Nov 22, not deployed): `lib/help.ts` (15 topics, texts in
+     h(); `screens` = route names for the header "?"), `HelpPage` (/more/help/:topic?, /desk/help), `FeedbackPage`
+     + `lib/feedback.ts` (offline queue in localStorage), `boot/errors.ts` → `/client-log` → `clientErrors`
+     (counted, TTL 60 d), `feedback` collection (`/feedback` GET/POST/PATCH), `server/test/feedback.test.ts`,
+     `e2e/help-feedback.cjs` (9; clears the owner's language at the end). Operator: `tenant.sh feedback|errors`,
+     `monitor.sh feedback` hourly alert. Kit test 115/115; all 19 e2e scripts pass. Help mentions an "Invite"
+     button on Team that segment 2 adds.
+     VPS test recipe used: `/var/tmp/pst.sh '<cmd>'` (node:22 on a /var/tmp/pstest copy), scratch mongo
+     `pst-mongo` :27099, API `pst-api` :3300 with `/var/tmp/pst-beta.env` (password in `/var/tmp/pst-beta.pw`),
+     `/var/tmp/pw-run.sh <script>` / `/var/tmp/pw-all.sh` (restarts the API every 4 scripts; login limit).
   2. Tech onboarding: "Invite tech" share message, first-login welcome + install how-to.
   5. Translation review sheets (export/import), reviewers found by the owner.
   4. Password reset by email: owner Nov 22: send from **twintadpole@gmail.com** (Gmail app password, owner types it
-     with nano), the message says it's from the app, which business, which tech.
+     with nano), the message says it's from the app, which business, which tech; goes to **both** the tech and
+     the owner.
   - Owner also asked (Nov 22) for a **docs + onboarding plan**: in-app Help, owner onboarding, beta tester guide,
     terms/privacy. Owner's answers: legal line **"Great Pool Friend. Created by S R Donaldson, all rights
     reserved."**; support contact **steven@evolutiondfw.com**.

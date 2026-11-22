@@ -8,6 +8,7 @@
 #   monitor.sh backups    daily: per tenant, alerts if the nightly backup or its offsite copy is over
 #                         26 h old, or the weekly offsite restore check hasn't passed in 8 days
 #   monitor.sh disk       hourly: alerts when the disk holding GPF_ROOT is over GPF_DISK_LIMIT % (80)
+#   monitor.sh feedback   hourly: one alert per tenant with new beta feedback since the last check
 #   monitor.sh test       sends a test alert
 #
 # Alerts go to GPF_NTFY_URL (e.g. http://127.0.0.1:2586/gpf-alerts) with the token in the file
@@ -110,6 +111,23 @@ check_disk() {
   fi
 }
 
+# New beta feedback: the newest note and how many arrived since the last check (state: <t>.feedback.seen).
+check_feedback() {
+  local t seen out n first
+  for t in $(tenants); do
+    seen="$(cat "${STATE}/${t}.feedback.seen" 2>/dev/null || echo 1970-01-01T00:00:00Z)"
+    out="$(tmongosh "${t}" pool <<<"
+      const rows = db.feedback.find({ createdAt: { \$gt: new Date('${seen}') } }).sort({ createdAt: -1 }).toArray();
+      print(rows.length);
+      if (rows.length) { print(rows[0].createdAt.toISOString()); print((rows[0].userName || '?') + ' (' + (rows[0].kind || '') + '): ' + rows[0].text.slice(0, 300)); }" 2>/dev/null)" || continue
+    n="$(sed -n 1p <<<"${out}")"
+    [[ "${n}" =~ ^[0-9]+$ ]] && (( n > 0 )) || continue
+    sed -n 2p <<<"${out}" > "${STATE}/${t}.feedback.seen"
+    first="$(sed -n '3,$p' <<<"${out}")"
+    notify "${t}: ${n} new feedback" "${first}$( (( n > 1 )) && echo " (and $((n - 1)) more)"). Read all: tenant.sh feedback ${t}" default speech_balloon
+  done
+}
+
 # Each tenant's System card reads backups/MONITOR_STATUS: "checked <time>", then "down <check> <since>".
 # Server-wide problems (edge, disk) are shown to every tenant.
 write_status() {
@@ -135,7 +153,8 @@ case "${1:-}" in
   health) check_health ;;
   backups) check_backups ;;
   disk) check_disk ;;
+  feedback) check_feedback; exit 0 ;;
   test) notify "GPF test alert" "Alerts from the GPF server reach this phone." default bell; exit 0 ;;
-  *) die "Usage: monitor.sh health|backups|disk|test" ;;
+  *) die "Usage: monitor.sh health|backups|disk|feedback|test" ;;
 esac
 write_status

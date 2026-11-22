@@ -333,6 +333,50 @@ const userSchema = new Schema(
   { versionKey: false },
 );
 
+// ---------------------------------------------------------------- beta feedback and app errors
+/** "Send feedback" (beta): what a user wrote, from which screen and app version. Not synced. */
+const feedbackSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+    userId: { type: String, required: true },
+    userName: String,
+    role: String,
+    kind: { type: String, enum: ['problem', 'idea', 'question', 'other'], default: 'other' },
+    text: { type: String, required: true },
+    screen: String,
+    appVersion: String,
+    language: String,
+    userAgent: String,
+    createdAt: { type: Date, required: true },
+    /** The owner marked it done on the Feedback screen. */
+    doneAt: { type: Date, default: null },
+  },
+  { versionKey: false },
+);
+feedbackSchema.index({ createdAt: -1 });
+
+/**
+ * Problems the app ran into on a phone (errors, photos that wouldn't load), one record per kind of
+ * problem per app version, counted. Kept 60 days after it was last seen. Not synced.
+ */
+const clientErrorSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+    where: String,
+    message: String,
+    stack: String,
+    screen: String,
+    appVersion: String,
+    userId: String,
+    userAgent: String,
+    count: { type: Number, default: 1 },
+    firstAt: { type: Date, required: true },
+    lastAt: { type: Date, required: true },
+  },
+  { versionKey: false },
+);
+clientErrorSchema.index({ lastAt: 1 }, { expireAfterSeconds: 60 * 24 * 3600 });
+
 // ---------------------------------------------------------------- sessions
 const sessionSchema = new Schema(
   {
@@ -365,6 +409,8 @@ export const SessionDoc = model('Session', sessionSchema, 'sessions');
 export const AuditLog = model('AuditLog', auditLogSchema, 'auditLog');
 export const ImportLog = model('ImportLog', importLogSchema, 'imports');
 export const User = model('User', userSchema, 'users');
+export const Feedback = model('Feedback', feedbackSchema, 'feedback');
+export const ClientError = model('ClientError', clientErrorSchema, 'clientErrors');
 
 /** Models exposed through `/sync/pull`, keyed by collection name. */
 export const SYNC_MODELS = {

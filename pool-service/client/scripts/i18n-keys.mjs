@@ -38,7 +38,7 @@ for (const f of files(path.join(root, 'client/src'), ['.vue', '.ts'])) {
       else if (src[end] === ')' && --depth === 0) break;
     }
     const body = src.slice(i, end);
-    for (const v of body.matchAll(new RegExp(String.raw`(?:label|(?!value\b)[\w']+)\s*:\s*(${STR})`, 'g'))) add(unq(v[1]));
+    for (const v of body.matchAll(new RegExp(String.raw`(?<![\w'])(?:label|(?!value\b)[\w']+)\s*:\s*(${STR})`, 'g'))) add(unq(v[1]));
   }
 }
 // Screen titles (routes), dashboard card titles, shared labels.
@@ -48,6 +48,8 @@ const grab = (file, re) => {
 };
 grab('client/src/router/routes.ts', new RegExp(String.raw`title:\s*(${STR})`, 'g'));
 grab('client/src/lib/dashboard.ts', new RegExp(String.raw`title:\s*(${STR})`, 'g'));
+// Help topics (beta): every text is wrapped in h().
+grab('client/src/lib/help.ts', new RegExp(String.raw`(?<![\w.])h\(\s*(${STR})`, 'g'));
 grab('shared/src/readings.ts', new RegExp(String.raw`(?:label|short):\s*(${STR})`, 'g'));
 grab('shared/src/schemas/import.ts', new RegExp(String.raw`label:\s*(${STR})`, 'g'));
 for (const how of ['name and street', 'name', 'email', 'phone', 'Uncategorized']) add(how);

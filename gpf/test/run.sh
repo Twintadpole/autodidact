@@ -169,8 +169,14 @@ docker stop gpft-traefik >/dev/null; mon health; mon health
 check "edge down: one edge alert, not one per tenant" bash -c "sleep 1; a=\$(curl -s 'http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all'); grep -q 'GPF edge is DOWN' <<<\"\$a\" && ! grep -q 'alpha is DOWN' <<<\"\$a\""
 docker start gpft-traefik >/dev/null; sleep 3; mon health
 check "edge back: OK again" test ! -e "${GPF_ROOT}/monitor/edge.down"
+tmongosh alpha pool <<<"db.feedback.insertOne({ _id: 'fb-1', userId: 'u', userName: 'Kit Test', role: 'tech', kind: 'idea', text: 'Kit test feedback', screen: '/', appVersion: '9.9.9', createdAt: new Date() }); db.clientErrors.insertOne({ _id: 'er-1', where: 'window', message: 'Kit test error', count: 3, appVersion: '9.9.9', firstAt: new Date(), lastAt: new Date() })" >/dev/null
+check "tenant.sh feedback lists alpha's note" bash -c "bash '${GPF}' feedback alpha | grep -q 'Kit test feedback'"
+check "tenant.sh errors lists alpha's error" bash -c "bash '${GPF}' errors alpha | grep -q 'Kit test error'"
+check "bravo's feedback doesn't show alpha's" bash -c "! bash '${GPF}' feedback bravo | grep -q 'Kit test'"
+mon feedback; mon feedback
+check "new feedback: one alert, not repeated" test "$(alerts | grep -c 'alpha: 1 new feedback')" = 1
 docker rm -f gpft-ntfy >/dev/null; unset GPF_NTFY_URL
-check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
+check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'monitor.sh feedback' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
 
 echo "== Update (new image tag)"
 img="${BASE_IMAGE}"; docker tag "${img}" "${img}-next"

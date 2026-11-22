@@ -5,7 +5,8 @@ import mongoose from 'mongoose';
 import type { FastifyPluginAsync } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { idSchema } from '@pool/shared';
-import { Photo, Pool } from '../models/index.js';
+import crypto from 'node:crypto';
+import { ClientError, Feedback, Photo, Pool } from '../models/index.js';
 import type { PhotoStore } from '../services/photoStore.js';
 import { diff, recordAudit } from '../services/audit.js';
 import { scopeFilter } from '../services/scope.js';
@@ -71,7 +72,10 @@ export const systemRoutes: FastifyPluginAsync<{ backupDir?: string }> = async (a
   });
 };
 
-/** Problems seen on the phone (e.g. a photo that wouldn't load), written to the server log for diagnosis. */
+/**
+ * Problems seen on the phone (e.g. a photo that wouldn't load, an error in a screen), written to the
+ * server log and kept, counted, in `clientErrors` (beta: the operator reads them with tenant.sh errors).
+ */
 export const clientLogRoutes: FastifyPluginAsync = async (parent) => {
   const app = parent.withTypeProvider<ZodTypeProvider>();
   app.post(
@@ -83,12 +87,80 @@ export const clientLogRoutes: FastifyPluginAsync = async (parent) => {
           message: z.string().max(500),
           details: z.record(z.string(), z.unknown()).optional(),
           userAgent: z.string().max(300).optional(),
+          stack: z.string().max(2000).optional(),
+          screen: z.string().max(200).optional(),
+          appVersion: z.string().max(40).optional(),
         }),
       },
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     },
     async (req) => {
-      req.log.warn({ clientProblem: req.body }, `client problem: ${req.body.where}: ${req.body.message}`);
+      const b = req.body;
+      req.log.warn({ clientProblem: b }, `client problem: ${b.where}: ${b.message}`);
+      // One record per kind of problem: numbers and ids in the message don't make a new one.
+      const shape = b.message.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/gi, '<id>').replace(/\d+/g, '<n>');
+      const id = crypto.createHash('sha256').update(`${b.where}|${shape}|${b.appVersion ?? ''}`).digest('hex').slice(0, 32);
+      const now = new Date();
+      await ClientError.updateOne(
+        { _id: id },
+        {
+          $set: { where: b.where, message: b.message, stack: b.stack, screen: b.screen, appVersion: b.appVersion, userId: req.actor?.userId, userAgent: b.userAgent, lastAt: now },
+          $setOnInsert: { firstAt: now },
+          $inc: { count: 1 },
+        },
+        { upsert: true },
+      );
+      return { ok: true };
+    },
+  );
+};
+
+/** "Send feedback" (beta). Anyone signed in sends; the owner reads them all and marks them done. */
+export const feedbackRoutes: FastifyPluginAsync = async (parent) => {
+  const app = parent.withTypeProvider<ZodTypeProvider>();
+  app.post(
+    '/feedback',
+    {
+      schema: {
+        body: z.object({
+          _id: idSchema.optional(),
+          kind: z.enum(['problem', 'idea', 'question', 'other']).optional(),
+          text: z.string().trim().min(1).max(4000),
+          screen: z.string().max(200).optional(),
+          appVersion: z.string().max(40).optional(),
+          language: z.string().max(10).optional(),
+          userAgent: z.string().max(300).optional(),
+          createdAt: z.string().datetime().optional(),
+        }),
+      },
+      config: { rateLimit: { max: 20, timeWindow: '10 minutes' } },
+    },
+    async (req, reply) => {
+      const b = req.body;
+      const _id = b._id ?? crypto.randomUUID();
+      // Sent again after a lost answer (the phone retries): the first copy stands.
+      if (await Feedback.exists({ _id })) return reply.code(200).send({ ok: true, _id });
+      await Feedback.create({
+        _id, userId: req.actor!.userId, userName: req.actor!.name, role: req.actor!.role, kind: b.kind ?? 'other', text: b.text,
+        screen: b.screen, appVersion: b.appVersion, language: b.language, userAgent: b.userAgent,
+        createdAt: b.createdAt ? new Date(b.createdAt) : new Date(),
+      });
+      return reply.code(201).send({ ok: true, _id });
+    },
+  );
+  /** An owner sees everyone's; a tech sees their own. */
+  app.get('/feedback', async (req) => {
+    const filter = isOwner(req.actor) ? {} : { userId: req.actor!.userId };
+    const items = await Feedback.find(filter, { userAgent: 0 }).sort({ createdAt: -1 }).limit(200).lean();
+    return { items };
+  });
+  app.patch(
+    '/feedback/:id',
+    { schema: { params: z.object({ id: idSchema }), body: z.object({ done: z.boolean() }) } },
+    async (req, reply) => {
+      if (!isOwner(req.actor)) return reply.code(403).send({ error: 'Forbidden', message: 'Only an owner can do that' });
+      const res = await Feedback.updateOne({ _id: req.params.id }, { $set: { doneAt: req.body.done ? new Date() : null } });
+      if (!res.matchedCount) return reply.code(404).send({ error: 'Not Found', message: 'No such feedback' });
       return { ok: true };
     },
   );

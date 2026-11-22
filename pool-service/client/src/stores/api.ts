@@ -130,13 +130,23 @@ export function errorMessage(err: unknown): string {
  * so it can be diagnosed from the server logs. Best effort; never throws.
  */
 export async function reportClientProblem(where: string, message: string, details: Record<string, unknown> = {}): Promise<void> {
+  // stack/screen/appVersion are stored as their own fields (beta error list); the rest goes in details.
+  const { stack, screen, appVersion, ...rest } = details;
   try {
     await fetch('/api/client-log', {
       method: 'POST',
       credentials: 'same-origin',
       redirect: API_REDIRECT,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ where, message: message.slice(0, 500), details, userAgent: navigator.userAgent }),
+      body: JSON.stringify({
+        where: where.slice(0, 60),
+        message: message.slice(0, 500),
+        details: rest,
+        userAgent: navigator.userAgent.slice(0, 300),
+        ...(typeof stack === 'string' && stack && { stack: stack.slice(0, 2000) }),
+        screen: typeof screen === 'string' ? screen.slice(0, 200) : (location.hash || location.pathname).slice(0, 200),
+        appVersion: typeof appVersion === 'string' ? appVersion : __APP_VERSION__,
+      }),
     });
   } catch {
     // offline: nothing to do
