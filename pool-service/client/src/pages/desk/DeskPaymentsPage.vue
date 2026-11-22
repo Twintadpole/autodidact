@@ -3,21 +3,21 @@
     <DeskTable :rows="rows" :columns="columns" storage-key="payments" export-name="payments" sort-by="date" descending test-id="desk-payments" @row="(r) => openInvoice(r.invoiceId)">
       <template #filters>
         <q-select v-model="period" dense outlined emit-value map-options :options="PERIOD_OPTIONS" style="width: 150px" data-test="desk-period" />
-        <q-select v-model="method" dense outlined emit-value map-options clearable :options="PAYMENT_OPTIONS" label="Method" style="width: 140px" />
+        <q-select v-model="method" dense outlined emit-value map-options clearable :options="PAYMENT_OPTIONS" :label="$t(`Method`)" style="width: 140px" />
       </template>
       <template #quick>
         <q-form class="row items-center q-gutter-sm quick-row" data-test="desk-payment-quick" @submit.prevent="quickAdd">
           <q-icon name="bolt" color="grey-6" />
-          <q-select v-model="quick.invoiceId" dense outlined emit-value map-options use-input input-debounce="0" :options="invoiceOptions" label="Payment for invoice…" style="width: 300px" data-test="quick-invoice" @filter="filterInvoices" />
-          <q-input v-model="quick.amount" dense outlined label="Amount" prefix="$" type="number" min="0" step="0.01" style="width: 120px" data-test="quick-amount" />
+          <q-select v-model="quick.invoiceId" dense outlined emit-value map-options use-input input-debounce="0" :options="invoiceOptions" :label="$t(`Payment for invoice…`)" style="width: 300px" data-test="quick-invoice" @filter="filterInvoices" />
+          <q-input v-model="quick.amount" dense outlined :label="$t(`Amount`)" prefix="$" type="number" min="0" step="0.01" style="width: 120px" data-test="quick-amount" />
           <q-input v-model="quick.date" dense outlined type="date" style="width: 150px" data-test="quick-date" />
-          <q-select v-model="quick.method" dense outlined emit-value map-options clearable :options="PAYMENT_OPTIONS" label="Method" style="width: 140px" data-test="quick-method" />
-          <q-input v-model="quick.reference" dense outlined label="Check # / reference" style="width: 170px" data-test="quick-reference" />
-          <q-btn type="submit" color="positive" outline no-caps icon="add" label="Record" :disable="!quickReady" data-test="quick-add" />
+          <q-select v-model="quick.method" dense outlined emit-value map-options clearable :options="PAYMENT_OPTIONS" :label="$t(`Method`)" style="width: 140px" data-test="quick-method" />
+          <q-input v-model="quick.reference" dense outlined :label="$t(`Check # / reference`)" style="width: 170px" data-test="quick-reference" />
+          <q-btn type="submit" color="positive" outline no-caps icon="add" :label="$t(`Record`)" :disable="!quickReady" data-test="quick-add" />
         </q-form>
       </template>
     </DeskTable>
-    <div class="text-caption text-grey-7 q-mt-sm">Payments on void invoices are left out, as in the money report. Click a payment to open its invoice.</div>
+    <div class="text-caption text-grey-7 q-mt-sm">{{ $t(`Payments on void invoices are left out, as in the money report. Click a payment to open its invoice.`) }}</div>
 
     <SidePanel v-model="panel" :title="panelTitle">
       <InvoiceEditor v-if="openId" :id="openId" :key="openId" @deleted="panel = false" />
@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { locale, t } from '@/i18n';
 import { computed, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { invoiceBalance, invoiceState, type PaymentMethod } from '@pool/shared';
@@ -73,14 +74,14 @@ const rows = computed<Row[]>(() =>
         })),
     ),
 );
-const day = (d: string) => new Date(d + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const day = (d: string) => new Date(d + 'T12:00').toLocaleDateString(locale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 const columns: DeskColumn<Row>[] = [
-  { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true, required: true, format: day, exportType: 'date' },
-  { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
-  { name: 'number', label: 'Invoice #', field: 'number', align: 'left', sortable: true },
-  { name: 'method', label: 'Method', field: 'method', align: 'left', sortable: true },
-  { name: 'reference', label: 'Reference', field: 'reference', align: 'left' },
-  { name: 'amount', label: 'Amount', field: 'amount', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'date', label: t('Date'), field: 'date', align: 'left', sortable: true, required: true, format: day, exportType: 'date' },
+  { name: 'customer', label: t('Customer'), field: 'customer', align: 'left', sortable: true },
+  { name: 'number', label: t('Invoice #'), field: 'number', align: 'left', sortable: true },
+  { name: 'method', label: t('Method'), field: 'method', align: 'left', sortable: true },
+  { name: 'reference', label: t('Reference'), field: 'reference', align: 'left' },
+  { name: 'amount', label: t('Amount'), field: 'amount', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
 ];
 
 // ---- panel: the payment's invoice
@@ -98,7 +99,7 @@ function openInvoice(id: string) {
 // ---- quick entry: a payment on an unpaid invoice
 const unpaid = computed(() => data.invoices.filter((i) => ['sent', 'overdue', 'draft'].includes(invoiceState(i)) && invoiceBalance(i) > 0));
 const allInvoiceOptions = computed(() =>
-  unpaid.value.map((i) => ({ value: i._id, label: `#${i.number} · ${data.customerById.get(i.customerId)?.name ?? 'Customer'} · ${money(invoiceBalance(i))} owed${i.status === 'draft' ? ' (draft)' : ''}` })),
+  unpaid.value.map((i) => ({ value: i._id, label: `#${i.number} · ${data.customerById.get(i.customerId)?.name ?? t('Customer')} · ${t('{money} owed', { money: money(invoiceBalance(i)) })}${i.status === 'draft' ? ` (${t('draft')})` : ''}` })),
 );
 const invoiceOptions = ref(allInvoiceOptions.value);
 function filterInvoices(val: string, update: (fn: () => void) => void) {
@@ -126,7 +127,7 @@ async function quickAdd() {
   try {
     await data.recordPayment(id, { amount, date: quick.date || localDate(new Date()), method: quick.method ?? null, ...(quick.reference.trim() ? { reference: quick.reference.trim() } : {}) });
     const left = invoiceBalance(data.invoiceById.get(id)!);
-    $q.notify({ type: 'positive', message: left <= 0 ? 'Paid in full' : `Payment recorded · ${money(left)} still owed`, timeout: 2000 });
+    $q.notify({ type: 'positive', message: left <= 0 ? t('Paid in full') : t('Payment recorded · {money} still owed', { money: money(left) }), timeout: 2000 });
     Object.assign(quick, { invoiceId: null, amount: '', reference: '' });
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

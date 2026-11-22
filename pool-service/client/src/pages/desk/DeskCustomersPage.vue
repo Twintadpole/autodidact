@@ -5,17 +5,17 @@
         <q-btn-toggle v-model="ui.customerFilter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="classOptions" data-test="desk-customer-class" />
       </template>
       <template #actions>
-        <q-btn flat no-caps icon="upload_file" label="Import" to="/desk/import" data-test="desk-customer-import" />
-        <q-btn color="primary" unelevated no-caps icon="person_add" label="New customer" data-test="desk-customer-new" @click="openNew" />
+        <q-btn flat no-caps icon="upload_file" :label="$t(`Import`)" to="/desk/import" data-test="desk-customer-import" />
+        <q-btn color="primary" unelevated no-caps icon="person_add" :label="$t(`New customer`)" data-test="desk-customer-new" @click="openNew" />
       </template>
       <template #quick>
         <q-form class="row items-center q-gutter-sm quick-row" data-test="desk-customer-quick" @submit.prevent="quickAdd">
           <q-icon name="bolt" color="grey-6" />
-          <q-input v-model="quick.name" dense outlined label="Name" class="col-3" data-test="quick-name" />
-          <q-select v-model="quick.status" dense outlined emit-value map-options :options="STATUS_OPTIONS" label="Class" style="width: 130px" />
-          <q-input v-model="quick.phone" dense outlined label="Phone" type="tel" style="width: 170px" data-test="quick-phone" />
-          <q-input v-model="quick.rate" dense outlined label="Monthly rate" prefix="$" type="number" min="0" step="0.01" style="width: 150px" data-test="quick-rate" />
-          <q-btn type="submit" color="primary" outline no-caps icon="add" label="Add" :disable="!quick.name.trim()" data-test="quick-add" />
+          <q-input v-model="quick.name" dense outlined :label="$t(`Name`)" class="col-3" data-test="quick-name" />
+          <q-select v-model="quick.status" dense outlined emit-value map-options :options="STATUS_OPTIONS" :label="$t(`Class`)" style="width: 130px" />
+          <q-input v-model="quick.phone" dense outlined :label="$t(`Phone`)" type="tel" style="width: 170px" data-test="quick-phone" />
+          <q-input v-model="quick.rate" dense outlined :label="$t(`Monthly rate`)" prefix="$" type="number" min="0" step="0.01" style="width: 150px" data-test="quick-rate" />
+          <q-btn type="submit" color="primary" outline no-caps icon="add" :label="$t(`Add`)" :disable="!quick.name.trim()" data-test="quick-add" />
         </q-form>
       </template>
       <template #body-cell-status="props">
@@ -26,24 +26,25 @@
       </template>
     </DeskTable>
 
-    <SidePanel v-model="panel" :title="editingId ? form.name || 'Customer' : 'New customer'">
+    <SidePanel v-model="panel" :title="editingId ? form.name || $t('Customer') : $t('New customer')">
       <template #head>
-        <q-btn v-if="editingId" flat dense no-caps icon="open_in_new" label="Pools & notes" :to="`/customers/${editingId}`" data-test="panel-open-customer" />
+        <q-btn v-if="editingId" flat dense no-caps icon="open_in_new" :label="$t(`Pools & notes`)" :to="`/customers/${editingId}`" data-test="panel-open-customer" />
       </template>
       <q-form id="desk-customer-form" @submit.prevent="save">
         <CustomerFields :key="editingId ?? 'new'" :form="form" />
       </q-form>
       <template #actions>
-        <q-btn v-if="editingId" flat color="negative" icon="delete" label="Delete" no-caps @click="remove" />
+        <q-btn v-if="editingId" flat color="negative" icon="delete" :label="$t(`Delete`)" no-caps @click="remove" />
         <q-space />
-        <q-btn flat label="Cancel" no-caps v-close-popup />
-        <q-btn type="submit" form="desk-customer-form" color="primary" unelevated no-caps :label="editingId ? 'Save' : 'Add customer'" :loading="busy" data-test="panel-save" />
+        <q-btn flat :label="$t(`Cancel`)" no-caps v-close-popup />
+        <q-btn type="submit" form="desk-customer-form" color="primary" unelevated no-caps :label="editingId ? $t('Save') : $t('Add customer')" :loading="busy" data-test="panel-save" />
       </template>
     </SidePanel>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, reactive, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { customerStatus, type CustomerStatus } from '@pool/shared';
@@ -109,28 +110,28 @@ const rows = computed(() => (ui.customerFilter === 'all' ? rowsAll.value : rowsA
 const classOptions = computed(() => {
   const n = (s: CustomerStatus) => rowsAll.value.filter((r) => r.status === s).length;
   return [
-    { label: `Current ${n('current')}`, value: 'current' },
-    { label: `Prospects ${n('prospect')}`, value: 'prospect' },
-    { label: `Past ${n('past')}`, value: 'past' },
-    { label: `All ${rowsAll.value.length}`, value: 'all' },
+    { label: t('Current {n}', { n: n('current') }), value: 'current' },
+    { label: t('Prospects {n}', { n: n('prospect') }), value: 'prospect' },
+    { label: t('Past {n}', { n: n('past') }), value: 'past' },
+    { label: t('All {n}', { n: rowsAll.value.length }), value: 'all' },
   ];
 });
 
 const dollars = (v: number | null) => (v == null ? '' : money(v));
 const columns: DeskColumn<Row>[] = [
-  { name: 'name', label: 'Name', field: 'name', align: 'left', sortable: true, required: true },
-  { name: 'status', label: 'Class', field: 'status', align: 'left', sortable: true, exportValue: (r) => STATUS_LABEL[r.status] },
-  { name: 'phone', label: 'Phone', field: 'phone', align: 'left' },
-  { name: 'email', label: 'Email', field: 'email', align: 'left', sortable: true },
-  { name: 'city', label: 'City', field: 'city', align: 'left', sortable: true },
-  { name: 'pools', label: 'Pools', field: 'pools', align: 'right', sortable: true, hidden: true },
-  { name: 'schedule', label: 'Service day', field: 'schedule', align: 'left', sortable: true },
-  { name: 'rate', label: 'Monthly rate', field: 'rate', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
-  { name: 'distance', label: 'Miles from HQ', field: 'distance', align: 'right', sortable: true, format: (v: number | null) => (v == null ? '' : String(v)) },
-  { name: 'owed', label: 'Owed', field: 'owed', align: 'right', sortable: true, sum: true, format: (v: number) => (v ? money(v) : ''), exportType: 'money' },
-  { name: 'pays', label: 'Pays by', field: 'pays', align: 'left', sortable: true, hidden: true },
-  { name: 'started', label: 'Started', field: 'started', align: 'left', sortable: true, hidden: true, exportType: 'date' },
-  { name: 'ended', label: 'Ended', field: 'ended', align: 'left', sortable: true, hidden: true, exportType: 'date' },
+  { name: 'name', label: t('Name'), field: 'name', align: 'left', sortable: true, required: true },
+  { name: 'status', label: t('Class'), field: 'status', align: 'left', sortable: true, exportValue: (r) => STATUS_LABEL[r.status] },
+  { name: 'phone', label: t('Phone'), field: 'phone', align: 'left' },
+  { name: 'email', label: t('Email'), field: 'email', align: 'left', sortable: true },
+  { name: 'city', label: t('City'), field: 'city', align: 'left', sortable: true },
+  { name: 'pools', label: t('Pools'), field: 'pools', align: 'right', sortable: true, hidden: true },
+  { name: 'schedule', label: t('Service day'), field: 'schedule', align: 'left', sortable: true },
+  { name: 'rate', label: t('Monthly rate'), field: 'rate', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
+  { name: 'distance', label: t('Miles from HQ'), field: 'distance', align: 'right', sortable: true, format: (v: number | null) => (v == null ? '' : String(v)) },
+  { name: 'owed', label: t('Owed'), field: 'owed', align: 'right', sortable: true, sum: true, format: (v: number) => (v ? money(v) : ''), exportType: 'money' },
+  { name: 'pays', label: t('Pays by'), field: 'pays', align: 'left', sortable: true, hidden: true },
+  { name: 'started', label: t('Started'), field: 'started', align: 'left', sortable: true, hidden: true, exportType: 'date' },
+  { name: 'ended', label: t('Ended'), field: 'ended', align: 'left', sortable: true, hidden: true, exportType: 'date' },
 ];
 
 // ---- side panel
@@ -160,7 +161,7 @@ async function save() {
   try {
     await data.saveCustomer(editingId.value, result.body);
     panel.value = false;
-    $q.notify({ type: 'positive', message: `Saved ${result.body.name}`, timeout: 1500 });
+    $q.notify({ type: 'positive', message: t('Saved {name}', { name: result.body.name }), timeout: 1500 });
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });
   } finally {
@@ -171,7 +172,7 @@ async function save() {
 function remove() {
   const id = editingId.value;
   if (!id) return;
-  $q.dialog({ title: 'Delete customer?', message: 'Their pools are removed from the route too.', cancel: true, ok: { label: 'Delete', color: 'negative', unelevated: true } }).onOk(async () => {
+  $q.dialog({ title: t('Delete customer?'), message: t('Their pools are removed from the route too.'), cancel: true, ok: { label: t('Delete'), color: 'negative', unelevated: true } }).onOk(async () => {
     await data.deleteCustomer(id);
     panel.value = false;
   });
@@ -184,12 +185,12 @@ async function quickAdd() {
   if (!name) return;
   const phone = quick.phone.trim() ? normalizePhone(quick.phone) : null;
   if (quick.phone.trim() && !phone) {
-    $q.notify({ type: 'warning', message: 'Check the phone number.' });
+    $q.notify({ type: 'warning', message: t('Check the phone number.') });
     return;
   }
   try {
     await data.saveCustomer(null, { name, status: quick.status, phones: phone ? [{ label: 'mobile', number: phone }] : [], monthlyRate: numberOrNull(quick.rate) });
-    $q.notify({ type: 'positive', message: `Added ${name}`, timeout: 1500 });
+    $q.notify({ type: 'positive', message: t('Added {name}', { name }), timeout: 1500 });
     quick.name = '';
     quick.phone = '';
     quick.rate = '';

@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { BUSINESS_SETTINGS_ID, DASHBOARD_SETTINGS_ID, customerStatus, type DashboardLayout, invoiceBalance, invoiceState, TASK_KEYS, type IssueStatus } from '@pool/shared';
@@ -384,7 +385,7 @@ export const useDataStore = defineStore('data', () => {
 
   async function patchPhoto(id: string, body: { savedToPool?: boolean; caption?: string }): Promise<Photo> {
     const existing = await db.photos.get(id);
-    if (!existing) throw new Error('Photo not found on this phone');
+    if (!existing) throw new Error(t('Photo not found on this phone'));
     const doc = { ...existing, ...body, updatedAt: nowIso() };
     await db.photos.put(doc);
     await commit({ poolId: doc.poolId, photos: [doc] }, `Photo ${body.savedToPool ? 'saved to pool' : 'updated'} · ${customerName(doc.poolId)}`);
@@ -407,7 +408,7 @@ export const useDataStore = defineStore('data', () => {
    */
   async function saveEquipment(poolId: string, equipment: Equipment[], summary: string) {
     const existing = await db.pools.get(poolId);
-    if (!existing) throw new Error('Pool not found');
+    if (!existing) throw new Error(t('Pool not found'));
     const now = nowIso();
     const doc: Pool = { ...existing, equipment: clone(equipment), updatedAt: now };
     const keep = new Set(equipment.map((e) => e._id));
@@ -494,9 +495,9 @@ export const useDataStore = defineStore('data', () => {
   /** One draft invoice for a customer (their monthly rate, if any). */
   async function createInvoice(customerId: string, period = defaultPeriod()): Promise<Invoice> {
     const c = customerById.value.get(customerId);
-    if (!c) throw new Error('Customer not found');
+    if (!c) throw new Error(t('Customer not found'));
     const doc = draftFor(c, period, nextInvoiceNumber(), localDate(new Date()));
-    await putInvoices([doc], `New invoice #${doc.number} · ${c.name}`);
+    await putInvoices([doc], t('New invoice #{number} · {name}', { number: doc.number, name: c.name }));
     return doc;
   }
 
@@ -518,29 +519,29 @@ export const useDataStore = defineStore('data', () => {
   async function markInvoiceSent(id: string) {
     const i = invoiceById.value.get(id);
     if (!i || i.status === 'void') return;
-    await saveInvoice({ ...i, status: 'sent', sentAt: i.sentAt ?? nowIso() }, `Invoice #${i.number} sent`);
+    await saveInvoice({ ...i, status: 'sent', sentAt: i.sentAt ?? nowIso() }, t('Invoice #{number} sent', { number: i.number }));
   }
   async function recordPayment(id: string, p: Omit<Payment, '_id'>) {
     const i = invoiceById.value.get(id);
     if (!i) return;
-    await saveInvoice({ ...i, payments: [...i.payments, { ...p, _id: newId() }] }, `Payment · invoice #${i.number}`);
+    await saveInvoice({ ...i, payments: [...i.payments, { ...p, _id: newId() }] }, t('Payment · invoice #{number}', { number: i.number }));
   }
   async function removePayment(id: string, paymentId: string) {
     const i = invoiceById.value.get(id);
     if (!i) return;
-    await saveInvoice({ ...i, payments: i.payments.filter((p) => p._id !== paymentId) }, `Payment removed · invoice #${i.number}`);
+    await saveInvoice({ ...i, payments: i.payments.filter((p) => p._id !== paymentId) }, t('Payment removed · invoice #{number}', { number: i.number }));
   }
   async function voidInvoice(id: string) {
     const i = invoiceById.value.get(id);
     if (!i) return;
-    await saveInvoice({ ...i, status: 'void' }, `Invoice #${i.number} void`);
+    await saveInvoice({ ...i, status: 'void' }, t('Invoice #{number} void', { number: i.number }));
   }
   /** Only drafts can be deleted; sent invoices are voided instead (the record stays). */
   async function deleteDraftInvoice(id: string) {
     const i = invoiceById.value.get(id);
     if (!i || i.status !== 'draft') return;
     const now = nowIso();
-    await putInvoices([{ ...i, deletedAt: now, updatedAt: now }], `Draft invoice #${i.number} deleted`);
+    await putInvoices([{ ...i, deletedAt: now, updatedAt: now }], t('Draft invoice #{number} deleted', { number: i.number }));
   }
   // ------------------------------------------------------------ ledger (Phase 7C)
   const suppliesLine = (e: Ledger, amount: number): InvoiceLine => ({

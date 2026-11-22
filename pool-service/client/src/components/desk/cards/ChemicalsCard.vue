@@ -1,11 +1,11 @@
 <template>
   <div class="column no-wrap full-height" data-test="chemicals-card">
-    <div v-if="!report && error" class="text-grey-7">Needs a connection the first time (it uses every visit).</div>
+    <div v-if="!report && error" class="text-grey-7">{{ $t(`Needs a connection the first time (it uses every visit).`) }}</div>
     <template v-else-if="report">
       <div class="row items-end q-gutter-x-lg">
         <div>
           <div class="hero" data-test="chem-month">{{ fmt(thisMonth) }}</div>
-          <div class="hero-sub">chemicals this month</div>
+          <div class="hero-sub">{{ $t(`chemicals this month`) }}</div>
         </div>
         <div class="hero-sub">
           {{ fmt(lastMonth) }} last month · {{ fmt(total) }} in {{ tools.months }} months
@@ -13,12 +13,12 @@
         </div>
         <q-space />
         <span v-if="error && fetchedAt" class="text-caption text-grey-7"><q-icon name="cloud_off" /> as of {{ asOf(fetchedAt) }}</span>
-        <q-btn flat round dense size="sm" icon="refresh" aria-label="Refresh" :loading="loading" @click="reload" />
+        <q-btn flat round dense size="sm" icon="refresh" :aria-label="$t(`Refresh`)" :loading="loading" @click="reload" />
       </div>
 
       <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
         <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-          <EChart :option="option" :label="`Chemical cost by month, last ${tools.months} months`" />
+          <EChart :option="option" :label="$t('Chemical cost by month, last {months} months', { months: tools.months })" />
         </div>
         <CardTable v-if="mode === 'l'" name="chemical-costs" :columns="columns" :rows="tableRows" :class="side ? 'side-table scroll' : 'q-mt-sm'" test-id="chem-table" />
       </div>
@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import EChart from '@/components/desk/EChart.vue';
 import CardTable, { type CardColumn } from '@/components/desk/CardTable.vue';
@@ -82,8 +83,8 @@ const lastMonth = computed(() => costIn(periods.value.at(-2)));
 const total = computed(() => r2((report.value?.months ?? []).reduce((t, m) => t + m.cost, 0)));
 
 const columns = computed<CardColumn[]>(() => [
-  { key: 'chemical', label: 'Chemical', class: 'ellipsis' },
-  { key: 'month', label: 'This month', align: 'right', money: true },
+  { key: 'chemical', label: t('Chemical'), class: 'ellipsis' },
+  { key: 'month', label: t('This month'), align: 'right', money: true },
   { key: 'total', label: `${tools.months} months`, align: 'right', money: true },
 ]);
 const tableRows = computed(() =>
@@ -99,7 +100,7 @@ const option = computed(() => ({
   ...zoomFor(tools.zoom),
   xAxis: categoryAxis((report.value?.months ?? []).map((m) => monthLabel(m.period))),
   yAxis: valueAxis(compactMoney),
-  series: [{ name: 'Chemical cost', type: 'bar', barMaxWidth: 18, data: (report.value?.months ?? []).map((m) => m.cost), itemStyle: { ...barEnd(), color: SERIES[0] } }],
+  series: [{ name: t('Chemical cost'), type: 'bar', barMaxWidth: 18, data: (report.value?.months ?? []).map((m) => m.cost), itemStyle: { ...barEnd(), color: SERIES[0] } }],
 }));
 </script>
 

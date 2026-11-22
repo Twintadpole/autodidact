@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="!photos.length" class="text-grey-6 text-body2">No photos yet. Turn on “Save to pool” on an issue photo to keep it here.</div>
+    <div v-if="!photos.length" class="text-grey-6 text-body2">{{ $t(`No photos yet. Turn on “Save to pool” on an issue photo to keep it here.`) }}</div>
     <PhotoGrid v-else :photos="photos" data-test="pool-gallery" @open="(ph) => (viewing = ph)" />
     <PhotoViewer :photo="viewing" @close="viewing = null" @save-to-pool="setSaved" @delete="remove" />
   </div>

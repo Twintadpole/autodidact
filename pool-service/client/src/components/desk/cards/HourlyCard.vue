@@ -2,14 +2,14 @@
   <div class="column no-wrap full-height" data-test="hourly-card">
     <div class="row items-center q-gutter-x-sm">
       <q-btn-toggle v-model="which" dense no-caps unelevated size="sm" toggle-color="primary" color="grey-3" text-color="grey-9" :options="whichOptions" data-test="hourly-month" />
-      <q-badge v-if="which === 'this'" color="orange-7" label="In progress" />
+      <q-badge v-if="which === 'this'" color="orange-7" :label="$t(`In progress`)" />
       <q-space />
       <span v-if="error && fetchedAt" class="text-caption text-grey-7" data-test="hourly-cached"><q-icon name="cloud_off" /> as of {{ asOf }}</span>
-      <q-btn flat round dense size="sm" icon="refresh" aria-label="Refresh" :loading="loading" @click="reload" />
+      <q-btn flat round dense size="sm" icon="refresh" :aria-label="$t(`Refresh`)" :loading="loading" @click="reload" />
     </div>
 
-    <div v-if="!report && error" class="text-grey-7 q-mt-sm">Needs a connection the first time (it uses every visit).</div>
-    <div v-else-if="report && !rows.length" class="text-grey-7 q-mt-sm">No visits or billing this month yet.</div>
+    <div v-if="!report && error" class="text-grey-7 q-mt-sm">{{ $t(`Needs a connection the first time (it uses every visit).`) }}</div>
+    <div v-else-if="report && !rows.length" class="text-grey-7 q-mt-sm">{{ $t(`No visits or billing this month yet.`) }}</div>
     <template v-else-if="report">
       <div class="row items-end q-gutter-x-lg q-mt-sm">
         <div>
@@ -21,7 +21,7 @@
 
       <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
         <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-          <EChart :option="option" label="What each customer earns per hour, lowest first" />
+          <EChart :option="option" :label="$t(`What each customer earns per hour, lowest first`)" />
         </div>
         <CardTable v-if="mode === 'l'" name="per-hour-by-customer" :columns="columns" :rows="tableRows" :class="side ? 'side-table scroll' : 'q-mt-sm'" test-id="hourly-table" />
       </div>
@@ -30,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, locale } from '@/i18n';
 import { computed, ref } from 'vue';
 import EChart from '@/components/desk/EChart.vue';
 import { api } from '@/stores/api';
@@ -55,15 +56,15 @@ interface Row {
 }
 const which = ref<'this' | 'last'>('this');
 const whichOptions = [
-  { label: 'This month', value: 'this' },
-  { label: 'Last month', value: 'last' },
+  { label: t('This month'), value: 'this' },
+  { label: t('Last month'), value: 'last' },
 ];
 const key = computed(() => `hourly-${which.value}`);
 const { data: report, fetchedAt, loading, error, reload } = useCachedReport<{ rows: Row[] }>(key, () => {
   const r = periodRange(which.value === 'this' ? 'thisMonth' : 'lastMonth');
   return api(`/reports/customer-hours?from=${r.from}&to=${r.to}&tzOffsetMin=${new Date().getTimezoneOffset()}`);
 });
-const asOf = computed(() => (fetchedAt.value ? new Date(fetchedAt.value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''));
+const asOf = computed(() => (fetchedAt.value ? new Date(fetchedAt.value).toLocaleString(locale.value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''));
 
 /** Customers with time on site, lowest $/h first (the server's order). */
 const rows = computed(() => (report.value?.rows ?? []).filter((r) => r.perHour != null));
@@ -76,10 +77,10 @@ const overall = computed(() => (totals.value.hours ? Math.round((totals.value.pr
 const lowest = computed(() => rows.value[0]);
 
 const columns: CardColumn[] = [
-  { key: 'customer', label: 'Customer', class: 'ellipsis' },
-  { key: 'visits', label: 'Visits', align: 'right' },
-  { key: 'hours', label: 'Hours', align: 'right' },
-  { key: 'profit', label: 'Profit', align: 'right', money: true },
+  { key: 'customer', label: t('Customer'), class: 'ellipsis' },
+  { key: 'visits', label: t('Visits'), align: 'right' },
+  { key: 'hours', label: t('Hours'), align: 'right' },
+  { key: 'profit', label: t('Profit'), align: 'right', money: true },
   { key: 'perHour', label: '$/h', align: 'right', money: true, class: 'text-weight-medium' },
 ];
 const tableRows = computed(() => rows.value.map((r) => ({ customer: r.name, visits: r.visitCount, hours: r.hours, profit: r.profit, perHour: r.perHour })));
@@ -96,7 +97,7 @@ const option = computed(() => {
     yAxis: { type: 'category', data: list.map((r) => r.name), axisLabel: { color: INK.secondary, width: 110, overflow: 'truncate' }, axisLine: { lineStyle: { color: INK.axis } }, axisTick: { show: false } },
     series: [
       {
-        name: 'Per hour',
+        name: t('Per hour'),
         type: 'bar',
         barMaxWidth: 14,
         data: list.map((r) => r.perHour),

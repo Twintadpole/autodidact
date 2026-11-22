@@ -110,6 +110,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 | `desktop.cjs` | Desktop view at 1440×900: menu, quick-entry rows, edit panels, totals, payments, Route, Visits, Phone view (10) |
 | `export.cjs` | Table exports (Excel and CSV), Export everything, a card's export, the phone's More → Export (5); needs `exceljs` next to Playwright |
 | `accounts.cjs` | Owner and tech logins on one phone: Team, temporary password, routes, no money for the tech, moving a pool off a route, phone copy cleared between people (8). Test environment only (real logins) |
+| `languages.cjs` | Spanish phone → Spanish login; screens in Spanish; the choice saved to the login and following it; screenshots of 9 screens (5). Test environment only |
 | `branding.cjs` | Product name on a blank business; the business's name and logo on login and the home screen; manifest not precached (5). Test environment only (changes Business details) |
 | `import.cjs` | Customer & pool import: template, column matching, preview with a difference to choose, import, Undo (6) |
 | `dashboard.cjs` | Card dashboard: figures follow the data, sizes, hide/show, move, drag, full screen, layout on another device, the 12 cards, full-screen tools and CSV export (7) |
@@ -117,6 +118,7 @@ Phone-size browser tests (Playwright) live in `e2e/`. Each one creates its own "
 Other checks:
 
 ```bash
+npm run i18n:check  # every text on every screen is in the Spanish dictionary, with the same {placeholders}
 npm run typecheck   # shared, server, client (vue-tsc)
 npm run build       # shared → server → client PWA (client/dist/pwa)
 ```

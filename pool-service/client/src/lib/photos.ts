@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Shrinks a phone photo before upload: longest side ≤ 1600 px, JPEG quality 0.8
  * (typically 200–500 KB instead of 3–8 MB). Keeps upright orientation.
@@ -12,7 +13,7 @@ const DIRECT_UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 export async function compressPhoto(file: File): Promise<{ blob: Blob; width: number; height: number }> {
   if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) {
     throw new Error(
-      'this photo is in HEIC format, which the phone’s browser can’t read. Use the Camera button, or turn off “High efficiency pictures” in your camera settings.',
+      t('this photo is in HEIC format, which the phone’s browser can’t read. Use the Camera button, or turn off “High efficiency pictures” in your camera settings.'),
     );
   }
   try {
@@ -30,7 +31,7 @@ export async function compressPhoto(file: File): Promise<{ blob: Blob; width: nu
   if (DIRECT_UPLOAD_TYPES.includes(file.type) && file.size <= 12 * 1024 * 1024) {
     return { blob: file, ...(await dimensions(file).catch(() => ({ width: 0, height: 0 }))) };
   }
-  throw new Error(`couldn’t read this image (${file.type || 'unknown type'}, ${Math.round(file.size / 1024)} KB)`);
+  throw new Error(t('couldn’t read this image ({type}, {kb} KB)', { type: file.type || t('unknown type'), kb: Math.round(file.size / 1024) }));
 }
 
 async function dimensions(blob: Blob): Promise<{ width: number; height: number }> {

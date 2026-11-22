@@ -2,6 +2,17 @@
 
 ## Unreleased (November 2026)
 
+### Languages (Spanish first)
+
+- **The app speaks the person's language.** My account → Language: English or **Español (beta)** now;
+  Tiếng Việt, 中文, Tagalog and العربية are listed and show English until their translations arrive.
+  The choice is saved to the login and follows the person to any phone or computer; before logging in,
+  the app follows the phone's own language (the login screen has the picker too).
+- Dates, times, numbers and money follow the language. Names, notes, addresses and other things people
+  type are never translated; water tests keep their standard short names (FC, pH, CYA).
+- Invoices and visit recaps stay in English for now (the customer's own language comes later).
+- "Beta" means not yet checked by a native speaker.
+
 ### Great Pool Friend branding
 
 - The app is now **Great Pool Friend** wherever a business hasn't set its own name: login screen, header,

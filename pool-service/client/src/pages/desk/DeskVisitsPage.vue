@@ -3,21 +3,22 @@
     <DeskTable :rows="rows" :columns="columns" storage-key="visits" export-name="visits" sort-by="at" descending :loading="loading" test-id="desk-visits" @row="(r) => router.push(`/pools/${r.poolId}/visits/${r._id}`)">
       <template #filters>
         <q-select v-model="period" dense outlined emit-value map-options :options="PERIOD_OPTIONS" style="width: 150px" data-test="desk-period" />
-        <q-select v-model="customerId" dense outlined emit-value map-options clearable :options="customerOptions" label="Customer" style="width: 200px" data-test="desk-visit-customer" />
+        <q-select v-model="customerId" dense outlined emit-value map-options clearable :options="customerOptions" :label="$t(`Customer`)" style="width: 200px" data-test="desk-visit-customer" />
       </template>
       <template #actions>
-        <q-chip v-if="fromPhone" dense icon="cloud_off" color="grey-3" text-color="grey-8" data-test="desk-visits-local">Only visits on this device (no connection)</q-chip>
-        <q-btn flat dense no-caps icon="refresh" label="Refresh" :loading="loading" @click="load" />
+        <q-chip v-if="fromPhone" dense icon="cloud_off" color="grey-3" text-color="grey-8" data-test="desk-visits-local">{{ $t(`Only visits on this device (no connection)`) }}</q-chip>
+        <q-btn flat dense no-caps icon="refresh" :label="$t(`Refresh`)" :loading="loading" @click="load" />
       </template>
       <template v-for="r in READINGS" :key="r.key" #[`body-cell-r_${r.key}`]="props">
         <q-td :props="props" :class="RATE_CLASS[rateReading(r.key, props.value)]">{{ props.value ?? '' }}</q-td>
       </template>
     </DeskTable>
-    <div class="text-caption text-grey-7 q-mt-sm">Click a visit to open it. Chemical cost is for you only.</div>
+    <div class="text-caption text-grey-7 q-mt-sm">{{ $t(`Click a visit to open it. Chemical cost is for you only.`) }}</div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { locale, t, translated } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { READINGS, rateReading, timeLogSeconds, type ReadingStatus } from '@pool/shared';
@@ -42,7 +43,7 @@ const loading = ref(false);
 const fromPhone = ref(false);
 
 const RATE_CLASS: Record<ReadingStatus, string> = { ok: '', none: '', warn: 'text-orange-9 text-weight-medium', bad: 'text-negative text-weight-bold' };
-const TASKS: Record<string, string> = { brushed: 'Brushed', skimmed: 'Skimmed', vacuumed: 'Vacuumed', skimmerBaskets: 'Skimmer baskets', pumpBasket: 'Pump basket', filterCleaned: 'Filter cleaned', basketsEmptied: 'Baskets' };
+const TASKS: Record<string, string> = translated({ brushed: 'Brushed', skimmed: 'Skimmed', vacuumed: 'Vacuumed', skimmerBaskets: 'Skimmer baskets', pumpBasket: 'Pump basket', filterCleaned: 'Filter cleaned', basketsEmptied: 'Baskets' });
 
 /** Every visit in the period from the server; with no connection, the visits this device has. */
 async function load() {
@@ -105,20 +106,20 @@ const rows = computed<Row[]>(() =>
 );
 
 const customerOptions = computed(() => data.customers.map((c) => ({ label: c.name, value: c._id })));
-const when = (iso: string) => new Date(iso).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const when = (iso: string) => new Date(iso).toLocaleString(locale.value, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 const MAIN_READINGS = new Set(['fc', 'ph', 'ta', 'cya', 'salt']);
 const columns: DeskColumn<Row>[] = [
-  { name: 'at', label: 'Date', field: 'at', align: 'left', sortable: true, required: true, format: when, exportType: 'datetime', exportValue: (r) => localDateTime(r.at) },
-  { name: 'customer', label: 'Customer · pool', field: 'customer', align: 'left', sortable: true },
-  { name: 'minutes', label: 'Minutes', field: 'minutes', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : String(v)) },
+  { name: 'at', label: t('Date'), field: 'at', align: 'left', sortable: true, required: true, format: when, exportType: 'datetime', exportValue: (r) => localDateTime(r.at) },
+  { name: 'customer', label: t('Customer · pool'), field: 'customer', align: 'left', sortable: true },
+  { name: 'minutes', label: t('Minutes'), field: 'minutes', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : String(v)) },
   ...READINGS.map(
     (r): DeskColumn<Row> => ({ name: `r_${r.key}`, label: r.short, field: `r_${r.key}`, align: 'right', sortable: true, hidden: !MAIN_READINGS.has(r.key) }),
   ),
-  { name: 'tasks', label: 'Tasks', field: 'tasks', align: 'left', hidden: true },
-  { name: 'chemicals', label: 'Chemicals added', field: 'chemicals', align: 'left', classes: 'ellipsis wide-cell' },
-  { name: 'cost', label: 'Chemical cost', field: 'cost', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : money(v)), exportType: 'money' },
-  { name: 'notes', label: 'Notes', field: 'notes', align: 'left', classes: 'ellipsis wide-cell', hidden: true },
-  { name: 'recap', label: 'Recap sent', field: 'recap', align: 'left', sortable: true, hidden: true },
+  { name: 'tasks', label: t('Tasks'), field: 'tasks', align: 'left', hidden: true },
+  { name: 'chemicals', label: t('Chemicals added'), field: 'chemicals', align: 'left', classes: 'ellipsis wide-cell' },
+  { name: 'cost', label: t('Chemical cost'), field: 'cost', align: 'right', sortable: true, sum: true, format: (v: number | null) => (v == null ? '' : money(v)), exportType: 'money' },
+  { name: 'notes', label: t('Notes'), field: 'notes', align: 'left', classes: 'ellipsis wide-cell', hidden: true },
+  { name: 'recap', label: t('Recap sent'), field: 'recap', align: 'left', sortable: true, hidden: true },
 ];
 </script>
 

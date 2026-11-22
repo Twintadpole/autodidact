@@ -7,13 +7,13 @@
       </div>
       <div class="hero-sub">
         {{ fmtMiles(total.miles) }} mi in {{ tools.months }} months{{ total.worth != null ? ` · ${fmt(total.worth)}` : '' }}
-        <div v-if="rate == null" class="text-grey-7">Set your rate per mile under Business details to see what it's worth.</div>
+        <div v-if="rate == null" class="text-grey-7">{{ $t(`Set your rate per mile under Business details to see what it's worth.`) }}</div>
       </div>
     </div>
 
     <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
       <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-        <EChart :option="option" :label="`Miles driven by month, last ${tools.months} months`" />
+        <EChart :option="option" :label="$t('Miles driven by month, last {months} months', { months: tools.months })" />
       </div>
       <CardTable v-if="mode === 'l'" name="mileage-by-month" :columns="columns" :rows="tableRows" :class="side ? 'side-table scroll' : 'q-mt-sm'" test-id="mileage-table" />
     </div>
@@ -21,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, locale } from '@/i18n';
 import { computed } from 'vue';
 import EChart from '@/components/desk/EChart.vue';
 import CardTable, { type CardColumn } from '@/components/desk/CardTable.vue';
@@ -34,7 +35,7 @@ const props = defineProps<{ mode: CardMode; width: number }>();
 const data = useDataStore();
 const tools = useDashTools();
 const fmt = (v: number) => formatMoney(v, tools.format);
-const fmtMiles = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 1 });
+const fmtMiles = (v: number) => v.toLocaleString(locale.value, { maximumFractionDigits: 1 });
 const side = computed(() => props.mode === 'l' && props.width >= 760);
 const rate = computed(() => data.settings?.mileageRate ?? null);
 
@@ -52,22 +53,22 @@ const total = computed(() => {
 });
 
 const columns: CardColumn[] = [
-  { key: 'month', label: 'Month' },
-  { key: 'miles', label: 'Miles', align: 'right' },
-  { key: 'worth', label: 'Worth', align: 'right', money: true },
+  { key: 'month', label: t('Month') },
+  { key: 'miles', label: t('Miles'), align: 'right' },
+  { key: 'worth', label: t('Worth'), align: 'right', money: true },
 ];
 const tableRows = computed(() => [...months.value].reverse().map((m) => ({ month: monthLabel(m.p), miles: m.miles, worth: m.worth })));
 
 const option = computed(() => ({
   ...base,
   grid: { top: 18, left: 8, right: 8, bottom: tools.zoom ? 34 : 4, containLabel: true },
-  tooltip: { ...base.tooltip, trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: number) => `${fmtMiles(v)} mi` },
+  tooltip: { ...base.tooltip, trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: number) => t('{v} mi', { v: fmtMiles(v) }) },
   ...zoomFor(tools.zoom),
   xAxis: categoryAxis(months.value.map((m) => monthLabel(m.p))),
   yAxis: valueAxis((v: number) => `${v}`),
   series: [
     {
-      name: 'Miles',
+      name: t('Miles'),
       type: 'bar',
       barMaxWidth: 18,
       data: months.value.map((m) => m.miles),

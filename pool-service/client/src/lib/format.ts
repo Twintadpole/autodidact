@@ -1,8 +1,9 @@
-import { format, isToday, isYesterday, parseISO } from 'date-fns';
+import { locale, t, translated } from '@/i18n';
+import { isToday, isYesterday, parseISO } from 'date-fns';
 import type { ServiceDay } from '@pool/shared';
 import type { Address, Customer, Pool } from './types';
 
-export const DAY_LABELS: Record<ServiceDay, string> = {
+export const DAY_LABELS: Record<ServiceDay, string> = translated({
   mon: 'Monday',
   tue: 'Tuesday',
   wed: 'Wednesday',
@@ -10,7 +11,7 @@ export const DAY_LABELS: Record<ServiceDay, string> = {
   fri: 'Friday',
   sat: 'Saturday',
   sun: 'Sunday',
-};
+});
 
 /** "1 Main St, Dallas, TX 75201", leaving out whatever is blank. */
 export function addressText(a: Address | undefined | null): string {
@@ -56,13 +57,13 @@ export function normalizePhone(input: string): string | null {
 export function shortDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = parseISO(iso);
-  if (isToday(d)) return 'Today';
-  if (isYesterday(d)) return 'Yesterday';
-  return format(d, 'MMM d');
+  if (isToday(d)) return t('Today');
+  if (isYesterday(d)) return t('Yesterday');
+  return d.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' });
 }
 
 export function longDate(iso: string | null | undefined): string {
-  return iso ? format(parseISO(iso), 'EEE, MMM d, yyyy') : '';
+  return iso ? parseISO(iso).toLocaleDateString(locale.value, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '';
 }
 
 export function fmtNumber(v: number | null | undefined): string {

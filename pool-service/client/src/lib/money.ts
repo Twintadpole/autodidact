@@ -1,3 +1,4 @@
+import { locale, translated } from '@/i18n';
 import type { InvoiceTerms } from '@pool/shared';
 import type { Visit } from './types';
 
@@ -17,14 +18,16 @@ export function visitChemicalCost(v: Pick<Visit, 'doses'>): number | null {
   return costs.length ? round2(costs.reduce((s, c) => s + c, 0)) : null;
 }
 
-export const TERMS_LABEL: Record<InvoiceTerms, string> = { receipt: 'Due on receipt', net15: 'Net 15', net30: 'Net 30' };
+/** For the invoice itself (English until customers have a language); TERMS_LABEL is for the screens. */
+export const TERMS_LABEL_EN: Record<InvoiceTerms, string> = { receipt: 'Due on receipt', net15: 'Net 15', net30: 'Net 30' };
+export const TERMS_LABEL: Record<InvoiceTerms, string> = translated({ ...TERMS_LABEL_EN });
 export const TERMS_DAYS: Record<InvoiceTerms, number> = { receipt: 0, net15: 15, net30: 30 };
 
 /** "2026-11" → "November 2026". */
-export function periodLabel(period: string | null | undefined): string {
+export function periodLabel(period: string | null | undefined, loc = locale.value): string {
   if (!period) return '';
   const [y, m] = period.split('-').map(Number);
-  return new Date(y!, m! - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return new Date(y!, m! - 1, 1).toLocaleDateString(loc, { month: 'long', year: 'numeric' });
 }
 
 /** "2026-11" for a date (local). */

@@ -6,13 +6,13 @@
         <div class="hero-sub">owed on {{ open.length }} invoice{{ open.length === 1 ? '' : 's' }}</div>
       </div>
       <div class="hero-sub" :class="{ 'text-negative text-weight-medium': overdue > 0 }" data-test="owed-overdue">
-        <q-icon v-if="overdue > 0" name="warning" /> {{ overdue > 0 ? `${fmt(overdue)} overdue` : 'Nothing overdue' }}
+        <q-icon v-if="overdue > 0" name="warning" /> {{ overdue > 0 ? `${fmt(overdue)} overdue` : $t('Nothing overdue') }}
       </div>
     </div>
 
     <div v-if="mode !== 's' && total > 0" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
       <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-        <EChart :option="option" label="Money owed by how late it is" />
+        <EChart :option="option" :label="$t(`Money owed by how late it is`)" />
       </div>
       <!-- Who owes, oldest first -->
       <CardTable
@@ -26,11 +26,12 @@
         @row="router.push('/desk/invoices')"
       />
     </div>
-    <div v-else-if="mode !== 's'" class="text-grey-7 q-mt-md">Nobody owes you anything right now.</div>
+    <div v-else-if="mode !== 's'" class="text-grey-7 q-mt-md">{{ $t(`Nobody owes you anything right now.`) }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { invoiceBalance, invoiceState } from '@pool/shared';
@@ -64,8 +65,8 @@ const total = computed(() => r2(open.value.reduce((t, x) => t + x.balance, 0)));
 const overdue = computed(() => r2(open.value.filter((x) => invoiceState(x.i) === 'overdue').reduce((t, x) => t + x.balance, 0)));
 
 const BUCKETS = [
-  { label: 'Not late', test: (d: number) => d === 0 },
-  { label: '1–30 days', test: (d: number) => d >= 1 && d <= 30 },
+  { label: t('Not late'), test: (d: number) => d === 0 },
+  { label: t('1–30 days'), test: (d: number) => d >= 1 && d <= 30 },
   { label: '31–60', test: (d: number) => d > 30 && d <= 60 },
   { label: '61–90', test: (d: number) => d > 60 && d <= 90 },
   { label: '90+', test: (d: number) => d > 90 },
@@ -86,12 +87,12 @@ const byCustomer = computed(() => {
 });
 
 const columns: CardColumn[] = [
-  { key: 'customer', label: 'Customer' },
-  { key: 'invoices', label: 'Invoices', align: 'right' },
-  { key: 'late', label: 'Days late', align: 'right' },
-  { key: 'balance', label: 'Owed', align: 'right', money: true },
+  { key: 'customer', label: t('Customer') },
+  { key: 'invoices', label: t('Invoices'), align: 'right' },
+  { key: 'late', label: t('Days late'), align: 'right' },
+  { key: 'balance', label: t('Owed'), align: 'right', money: true },
 ];
-const tableRows = computed(() => byCustomer.value.map((c) => ({ customer: c.name, invoices: c.count, late: c.late > 0 ? c.late : 'not due', balance: c.balance })));
+const tableRows = computed(() => byCustomer.value.map((c) => ({ customer: c.name, invoices: c.count, late: c.late > 0 ? c.late : t('not due'), balance: c.balance })));
 
 const option = computed(() => ({
   ...base,
@@ -101,7 +102,7 @@ const option = computed(() => ({
   yAxis: valueAxis(compactMoney),
   series: [
     {
-      name: 'Owed',
+      name: t('Owed'),
       type: 'bar',
       barMaxWidth: 36,
       // Light = recent, dark = oldest (one hue, ordered).

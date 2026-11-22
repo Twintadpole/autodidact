@@ -2,7 +2,7 @@
   <div class="trend">
     <div class="row items-baseline justify-between">
       <span class="text-caption text-weight-medium">{{ label }}</span>
-      <span class="text-caption text-grey-7">{{ points.length ? `latest ${fmtNumber(points[points.length - 1]!.v)}` : 'no data' }}</span>
+      <span class="text-caption text-grey-7">{{ points.length ? `latest ${fmtNumber(points[points.length - 1]!.v)}` : $t('no data') }}</span>
     </div>
     <svg v-if="points.length > 1" :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="none" class="full-width" :style="{ height: `${H}px` }" role="img" :aria-label="`${label} trend`">
       <rect v-if="band" :x="0" :width="W" :y="y(band.max)" :height="Math.max(0, y(band.min) - y(band.max))" fill="#e8f5e9" />

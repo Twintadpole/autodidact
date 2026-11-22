@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { customerStatus, type CustomerStatus, type PaymentMethod } from '@pool/shared';
 import { formatPhone, normalizePhone } from './format';
 import { cleanAddress, dateInput, looksLikeEmail, numberOrNull } from './customer';
@@ -58,8 +59,8 @@ export function customerFromForm(form: CustomerForm): { body: Partial<Customer> 
   const phones = form.phones
     .filter((p) => p.number.trim())
     .map((p) => ({ label: p.label.trim() || 'phone', number: normalizePhone(p.number) }));
-  if (phones.some((p) => !p.number)) return { error: 'Check the phone numbers.' };
-  if ([form.email, form.billingEmail].some((e) => e.trim() && !looksLikeEmail(e))) return { error: 'Check the email address.' };
+  if (phones.some((p) => !p.number)) return { error: t('Check the phone numbers.') };
+  if ([form.email, form.billingEmail].some((e) => e.trim() && !looksLikeEmail(e))) return { error: t('Check the email address.') };
   const address = cleanAddress(form.address);
   // Cleared Phase 7 fields are sent as null so the server clears them too.
   return {

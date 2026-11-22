@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useDataStore } from '@/stores/data';
@@ -18,14 +19,14 @@ export function useAppShell() {
   const chip = computed(() => {
     switch (sync.state) {
       case 'failed':
-        return { label: `${sync.failed} failed`, color: 'negative', icon: 'sync_problem' };
+        return { label: t('{n} failed', { n: sync.failed }), color: 'negative', icon: 'sync_problem' };
       case 'offline':
-        return { label: sync.pending ? `Offline · ${sync.pending}` : 'Offline', color: 'grey-7', icon: 'cloud_off' };
+        return { label: sync.pending ? `${t('Offline')} · ${sync.pending}` : t('Offline'), color: 'grey-7', icon: 'cloud_off' };
       case 'syncing':
       case 'waiting':
-        return { label: `${sync.pending} waiting`, color: 'orange-8', icon: 'cloud_upload' };
+        return { label: t('{n} waiting', { n: sync.pending }), color: 'orange-8', icon: 'cloud_upload' };
       default:
-        return { label: 'Synced', color: 'positive', icon: 'cloud_done' };
+        return { label: t('Synced'), color: 'positive', icon: 'cloud_done' };
     }
   });
 
@@ -41,14 +42,14 @@ export function useAppShell() {
   // A new version was deployed: offer a one-tap refresh (unsaved visit typing is kept as a draft).
   function onUpdateReady() {
     $q.notify({
-      message: 'New version available',
+      message: t('New version available'),
       icon: 'system_update',
       color: 'primary',
       timeout: 0,
       position: 'top',
       actions: [
-        { label: 'Refresh', color: 'white', handler: () => window.location.reload() },
-        { label: 'Later', color: 'white' },
+        { label: t('Refresh'), color: 'white', handler: () => window.location.reload() },
+        { label: t('Later'), color: 'white' },
       ],
     });
   }

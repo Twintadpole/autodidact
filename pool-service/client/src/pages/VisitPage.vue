@@ -2,17 +2,17 @@
   <q-page class="q-pa-md column q-gutter-md" style="padding-bottom: 96px">
     <div v-if="!pool" class="flex flex-center q-pa-xl">
       <q-spinner v-if="data.loading || !data.loaded" size="40px" color="primary" />
-      <div v-else class="text-grey-7">Pool not found.</div>
+      <div v-else class="text-grey-7">{{ $t(`Pool not found.`) }}</div>
     </div>
 
     <template v-else>
       <!-- Header: quick links, access notes, pinned notes -->
       <div class="row q-col-gutter-sm">
         <div class="col-6">
-          <q-btn class="full-width" outline color="primary" icon="info" label="Overview" no-caps :to="`/pools/${pool._id}/overview`" data-test="open-overview" />
+          <q-btn class="full-width" outline color="primary" icon="info" :label="$t(`Overview`)" no-caps :to="`/pools/${pool._id}/overview`" data-test="open-overview" />
         </div>
         <div class="col-6">
-          <q-btn class="full-width" outline color="orange-9" icon="report_problem" no-caps :label="`Issues (${openIssues.length})`" :to="`/pools/${pool._id}/issues`" data-test="open-issues" />
+          <q-btn class="full-width" outline color="orange-9" icon="report_problem" no-caps :label="$t('Issues ({n})', { n: openIssues.length })" :to="`/pools/${pool._id}/issues`" data-test="open-issues" />
         </div>
       </div>
 
@@ -36,7 +36,7 @@
           <q-separator />
           <q-item tag="label" dense class="q-py-sm">
             <q-item-section>
-              <q-item-label class="text-weight-medium">Done this week</q-item-label>
+              <q-item-label class="text-weight-medium">{{ $t(`Done this week`) }}</q-item-label>
             </q-item-section>
             <q-item-section side>
               <q-toggle :model-value="pool.week.done" color="positive" data-test="done-toggle" @update:model-value="toggleDone" />
@@ -45,10 +45,10 @@
         </VisitTimer>
 
         <!-- Current visit (editable) -->
-        <VisitCard :visit="draft" :title="editingExisting ? 'Today’s visit (saved)' : 'This visit'" />
+        <VisitCard :visit="draft" :title="editingExisting ? $t('Today’s visit (saved)') : $t('This visit')" />
 
         <!-- Previous visit (read-only) -->
-        <VisitCard v-if="previous" :visit="previous" readonly title="Previous visit">
+        <VisitCard v-if="previous" :visit="previous" readonly :title="$t(`Previous visit`)">
           <template #dose-actions>
             <q-btn
               v-if="previous.doses.length"
@@ -57,39 +57,40 @@
               no-caps
               color="primary"
               icon="content_copy"
-              label="Same as last time"
+              :label="$t(`Same as last time`)"
               data-test="same-as-last"
               @click="copyDoses"
             />
           </template>
         </VisitCard>
-        <q-card v-else flat bordered class="q-pa-md text-grey-7 text-center" data-test="no-previous">No previous visit yet.</q-card>
+        <q-card v-else flat bordered class="q-pa-md text-grey-7 text-center" data-test="no-previous">{{ $t(`No previous visit yet.`) }}</q-card>
       </template>
 
-      <q-btn outline color="orange-9" icon="add_alert" label="Add issue" no-caps data-test="add-issue" @click="issueOpen = true" />
+      <q-btn outline color="orange-9" icon="add_alert" :label="$t(`Add issue`)" no-caps data-test="add-issue" @click="issueOpen = true" />
 
       <!-- Sticky save -->
       <!-- Save: a full button only when there is something to save -->
       <q-page-sticky v-if="dirty && hasContent" position="bottom" expand class="save-bar">
         <div class="full-width q-pa-sm bg-white save-bar-inner">
-          <q-btn color="primary" unelevated size="lg" class="full-width" icon="save" label="Save visit" :loading="saving" data-test="save-visit" @click="save('manual')" />
+          <q-btn color="primary" unelevated size="lg" class="full-width" icon="save" :label="$t(`Save visit`)" :loading="saving" data-test="save-visit" @click="save('manual')" />
         </div>
       </q-page-sticky>
       <q-page-sticky v-else-if="editingExisting" position="bottom" expand class="save-bar">
         <div class="full-width q-py-xs text-center text-caption text-positive bg-white save-bar-inner row items-center justify-center q-gutter-x-md" data-test="save-visit">
-          <span><q-icon name="check_circle" /> Saved</span>
-          <q-btn v-if="draft" flat dense no-caps color="primary" icon="forward_to_inbox" label="Send recap" :to="`/pools/${pool!._id}/visits/${draft._id}/recap`" data-test="visit-send-recap" />
+          <span><q-icon name="check_circle" /> {{ $t(`Saved`) }}</span>
+          <q-btn v-if="draft" flat dense no-caps color="primary" icon="forward_to_inbox" :label="$t(`Send recap`)" :to="`/pools/${pool!._id}/visits/${draft._id}/recap`" data-test="visit-send-recap" />
         </div>
       </q-page-sticky>
 
       <IssueSheet v-model="issueOpen" :pool-id="pool._id" @saved="onIssueSaved" />
       <TimeEditDialog v-if="draft" v-model="timeEditOpen" :time-log="draft.timeLog!" @save="onTimesEdited" />
-      <HistoryDialog v-if="draft" v-model="historyOpen" collection="visits" :doc-id="draft._id" title="Visit history" />
+      <HistoryDialog v-if="draft" v-model="historyOpen" collection="visits" :doc-id="draft._id" :title="$t(`Visit history`)" />
     </template>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -194,7 +195,7 @@ async function load() {
     if (kept && isToday(parseISO(kept.visit.visitedAt)) && (!editingExisting.value || kept.visit._id === draft.value._id)) {
       draft.value = normalizeVisit(kept.visit);
       draft.value.notes ??= '';
-      $q.notify({ message: 'Restored your unsaved changes', color: 'grey-8', timeout: 1500 });
+      $q.notify({ message: t('Restored your unsaved changes'), color: 'grey-8', timeout: 1500 });
     } else if (kept) {
       await db.drafts.delete(poolId.value);
     }
@@ -208,7 +209,7 @@ async function load() {
 function copyDoses() {
   if (!draft.value || !previous.value) return;
   draft.value.doses = previous.value.doses.map((d) => ({ ...d }));
-  $q.notify({ message: 'Copied last visit’s doses', color: 'grey-8', timeout: 1500 });
+  $q.notify({ message: t('Copied last visit’s doses'), color: 'grey-8', timeout: 1500 });
 }
 
 /** Pause any timer running at another pool (one timer at a time). Returns false if the user cancels. */
@@ -223,7 +224,7 @@ async function pauseOtherTimers(): Promise<boolean> {
     .join(', ');
   const go = await new Promise<boolean>((resolve) =>
     $q
-      .dialog({ title: 'Timer running elsewhere', message: `The timer at ${names} is still running. Pause it and start here?`, cancel: true, ok: { label: 'Pause it', unelevated: true } })
+      .dialog({ title: t('Timer running elsewhere'), message: t('The timer at {names} is still running. Pause it and start here?', { names }), cancel: true, ok: { label: t('Pause it'), unelevated: true } })
       .onOk(() => resolve(true))
       .onCancel(() => resolve(false))
       .onDismiss(() => resolve(false)),
@@ -270,7 +271,7 @@ async function save(reason: 'manual' | 'auto' | TimerAction | 'times' = 'manual'
   if (!v) return true;
   const invalidDose = v.doses.find((d) => !d.chemicalId || !(d.amount > 0));
   if (invalidDose) {
-    $q.notify({ type: 'warning', message: 'Each dose needs a chemical and an amount above 0.' });
+    $q.notify({ type: 'warning', message: t('Each dose needs a chemical and an amount above 0.') });
     return false;
   }
   saving.value = true;
@@ -284,15 +285,15 @@ async function save(reason: 'manual' | 'auto' | TimerAction | 'times' = 'manual'
     editingExisting.value = true;
     const offline = !sync.online || !sync.reachable;
     const messages: Record<string, string> = {
-      manual: offline ? 'Saved on phone · uploads when there’s signal' : 'Visit saved',
-      auto: offline ? 'Visit saved on phone' : 'Visit saved',
-      start: 'Timer started',
-      resume: 'Timer resumed',
-      pause: 'Timer paused',
-      stop: 'Timer stopped',
-      times: 'Times updated',
+      manual: offline ? t('Saved on phone · uploads when there’s signal') : t('Visit saved'),
+      auto: offline ? t('Visit saved on phone') : t('Visit saved'),
+      start: t('Timer started'),
+      resume: t('Timer resumed'),
+      pause: t('Timer paused'),
+      stop: t('Timer stopped'),
+      times: t('Times updated'),
     };
-    $q.notify({ type: 'positive', message: messages[reason] ?? 'Saved', timeout: 1200 });
+    $q.notify({ type: 'positive', message: messages[reason] ?? t('Saved'), timeout: 1200 });
     return true;
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });
@@ -311,7 +312,7 @@ async function toggleDone(done: boolean) {
 }
 
 function onIssueSaved() {
-  $q.notify({ type: 'positive', message: 'Issue added', timeout: 1500 });
+  $q.notify({ type: 'positive', message: t('Issue added'), timeout: 1500 });
 }
 
 // Leaving the screen saves the visit (on the phone first; it uploads when there's signal).

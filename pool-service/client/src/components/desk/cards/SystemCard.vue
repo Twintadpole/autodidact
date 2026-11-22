@@ -3,12 +3,12 @@
     <div class="row items-center q-gutter-x-sm">
       <q-icon :name="problems.length ? 'error' : 'check_circle'" size="28px" :style="{ color: problems.length ? STATUS.critical : STATUS.good }" />
       <div>
-        <div class="hero hero-2" data-test="system-summary">{{ problems.length ? `${problems.length} problem${problems.length === 1 ? '' : 's'}` : 'All OK' }}</div>
-        <div class="hero-sub">{{ problems.length ? problems.map((p) => p.label).join(' · ') : 'Backups, alerts, disk and sync' }}</div>
+        <div class="hero hero-2" data-test="system-summary">{{ problems.length ? `${problems.length} problem${problems.length === 1 ? '' : 's'}` : $t('All OK') }}</div>
+        <div class="hero-sub">{{ problems.length ? problems.map((p) => p.label).join(' · ') : $t('Backups, alerts, disk and sync') }}</div>
       </div>
       <q-space />
       <span v-if="error && fetchedAt" class="text-caption text-grey-7"><q-icon name="cloud_off" /> as of {{ asOf(fetchedAt) }}</span>
-      <q-btn flat round dense size="sm" icon="refresh" aria-label="Refresh" :loading="loading" @click="reload" />
+      <q-btn flat round dense size="sm" icon="refresh" :aria-label="$t(`Refresh`)" :loading="loading" @click="reload" />
     </div>
 
     <!-- Each check, with an icon and words (never colour alone) -->
@@ -27,8 +27,9 @@
 </template>
 
 <script setup lang="ts">
+import { t, timeAgo, tn, translated } from '@/i18n';
 import { computed, ref } from 'vue';
-import { formatDistanceToNowStrict, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { api } from '@/stores/api';
 import { useSyncStore } from '@/stores/sync';
 import { useCachedReport } from '@/composables/useCachedReport';
@@ -51,10 +52,10 @@ const { data: status, fetchedAt, loading, error, reload } = useCachedReport<Stat
 type State = 'ok' | 'warn' | 'bad' | 'unknown';
 const ICON: Record<State, string> = { ok: 'check_circle', warn: 'warning', bad: 'error', unknown: 'help' };
 const COLOR: Record<State, string> = { ok: STATUS.good, warn: '#c98500', bad: STATUS.critical, unknown: '#898781' };
-const ALERT_LABEL: Record<string, string> = { app: 'App unreachable', disk: 'Disk full', backups: 'Backups' };
+const ALERT_LABEL: Record<string, string> = translated({ app: 'App unreachable', disk: 'Disk full', backups: 'Backups' });
 
 const hoursSince = (iso: string | null | undefined) => (iso ? (Date.now() - parseISO(iso).getTime()) / 3_600_000 : null);
-const ago = (iso: string | null | undefined) => (iso ? `${formatDistanceToNowStrict(parseISO(iso))} ago` : 'never');
+const ago = (iso: string | null | undefined) => (iso ? timeAgo(parseISO(iso)) : t('never'));
 /** Fresh enough within `max` hours; a missing time counts as a problem. */
 const age = (iso: string | null | undefined, max: number): State => {
   const h = hoursSince(iso);
@@ -65,21 +66,21 @@ const checks = computed(() => {
   const s = status.value;
   const list: { label: string; state: State; detail: string }[] = [];
   if (s) {
-    list.push({ label: 'Nightly backup', state: age(s.lastBackupAt, 26), detail: ago(s.lastBackupAt) });
-    if (s.lastOffsiteAt !== undefined) list.push({ label: 'Offsite copy (R2)', state: age(s.lastOffsiteAt, 26), detail: ago(s.lastOffsiteAt) });
-    if (s.lastRestoreCheckAt !== undefined) list.push({ label: 'Weekly restore check', state: age(s.lastRestoreCheckAt, 8 * 24), detail: ago(s.lastRestoreCheckAt) });
-    if (s.disk) list.push({ label: 'Server disk', state: s.disk.usedPct > 80 ? 'bad' : s.disk.usedPct > 70 ? 'warn' : 'ok', detail: `${s.disk.usedPct}% full · ${s.disk.freeGb} GB free` });
+    list.push({ label: t('Nightly backup'), state: age(s.lastBackupAt, 26), detail: ago(s.lastBackupAt) });
+    if (s.lastOffsiteAt !== undefined) list.push({ label: t('Offsite copy (R2)'), state: age(s.lastOffsiteAt, 26), detail: ago(s.lastOffsiteAt) });
+    if (s.lastRestoreCheckAt !== undefined) list.push({ label: t('Weekly restore check'), state: age(s.lastRestoreCheckAt, 8 * 24), detail: ago(s.lastRestoreCheckAt) });
+    if (s.disk) list.push({ label: t('Server disk'), state: s.disk.usedPct > 80 ? 'bad' : s.disk.usedPct > 70 ? 'warn' : 'ok', detail: t('{usedPct}% full · {freeGb} GB free', { usedPct: s.disk.usedPct, freeGb: s.disk.freeGb }) });
     const alerts = s.openAlerts ?? [];
     list.push({
-      label: 'Phone alerts',
+      label: t('Phone alerts'),
       state: s.monitorCheckedAt === undefined ? 'unknown' : alerts.length ? 'bad' : age(s.monitorCheckedAt, 2) === 'ok' ? 'ok' : 'warn',
-      detail: alerts.length ? alerts.map((a) => `${ALERT_LABEL[a.name] ?? a.name} since ${ago(a.since).replace(' ago', '')}`).join(', ') : s.monitorCheckedAt ? `none open · checked ${ago(s.monitorCheckedAt)}` : 'not reported yet',
+      detail: alerts.length ? alerts.map((a) => t('{alert}, {since}', { alert: ALERT_LABEL[a.name] ?? a.name, since: ago(a.since) })).join(', ') : s.monitorCheckedAt ? t('none open · checked {ago}', { ago: ago(s.monitorCheckedAt) }) : t('not reported yet'),
     });
   }
   list.push({
-    label: 'This device',
+    label: t('This device'),
     state: sync.failed ? 'bad' : sync.pending ? 'warn' : 'ok',
-    detail: sync.failed ? `${sync.failed} change(s) failed` : sync.pending ? `${sync.pending} waiting to upload` : 'everything uploaded',
+    detail: sync.failed ? tn(sync.failed, '{n} change failed', '{n} changes failed') : sync.pending ? tn(sync.pending, '{n} change waiting to upload', '{n} changes waiting to upload') : t('everything uploaded'),
   });
   return list;
 });

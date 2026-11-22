@@ -1,3 +1,4 @@
+import { locale } from '@/i18n';
 import { api } from '@/stores/api';
 import { localDate, periodOf } from './money';
 import type { Visit } from './types';
@@ -8,7 +9,7 @@ export function lastMonths(n: number, today = new Date()): string[] {
 }
 
 /** "2026-11" → "Nov 26". */
-export const monthLabel = (p: string) => new Date(Number(p.slice(0, 4)), Number(p.slice(5)) - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+export const monthLabel = (p: string) => new Date(Number(p.slice(0, 4)), Number(p.slice(5)) - 1, 1).toLocaleDateString(locale.value, { month: 'short', year: '2-digit' });
 
 const recent = new Map<string, { at: number; p: Promise<Visit[]> }>();
 /**

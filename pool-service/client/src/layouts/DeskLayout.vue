@@ -2,16 +2,16 @@
   <q-layout view="hHh Lpr fFf" class="desk">
     <q-header elevated>
       <q-toolbar class="q-px-sm">
-        <q-btn flat round icon="menu" aria-label="Menu" data-test="desk-menu-toggle" @click="menuOpen = !menuOpen" />
+        <q-btn flat round icon="menu" :aria-label="$t(`Menu`)" data-test="desk-menu-toggle" @click="menuOpen = !menuOpen" />
         <q-toolbar-title class="ellipsis q-pl-sm">
-          <span data-test="page-title">{{ ui.title || route.meta.title || appName }}</span>
+          <span data-test="page-title">{{ ui.title || (route.meta.title ? $t(route.meta.title) : appName) }}</span>
           <span v-if="ui.subtitle" class="text-caption q-ml-sm header-sub">{{ ui.subtitle }}</span>
         </q-toolbar-title>
         <div id="header-actions" class="row no-wrap items-center q-mr-sm" />
         <q-chip clickable dense :color="chip.color" text-color="white" :icon="chip.icon" class="q-mr-sm" data-test="sync-chip" @click="router.push('/more/sync')">
           {{ chip.label }}
         </q-chip>
-        <q-btn flat no-caps icon="smartphone" :label="$q.screen.gt.xs ? 'Phone view' : undefined" aria-label="Phone view" data-test="phone-view" @click="toPhone" />
+        <q-btn flat no-caps icon="smartphone" :label="$q.screen.gt.xs ? $t('Phone view') : undefined" :aria-label="$t(`Phone view`)" data-test="phone-view" @click="toPhone" />
       </q-toolbar>
     </q-header>
 
@@ -31,8 +31,8 @@
         <q-item clickable :disable="exportingAll" data-test="desk-export-all" @click="exportAll">
           <q-item-section avatar><q-icon name="download" /></q-item-section>
           <q-item-section>
-            <q-item-label>Export everything</q-item-label>
-            <q-item-label caption>One Excel file</q-item-label>
+            <q-item-label>{{ $t(`Export everything`) }}</q-item-label>
+            <q-item-label caption>{{ $t(`One Excel file`) }}</q-item-label>
           </q-item-section>
           <q-item-section v-if="exportingAll" side><q-spinner size="18px" /></q-item-section>
         </q-item>
@@ -44,7 +44,7 @@
       <q-banner v-if="loadError" class="bg-red-1 text-negative" dense>
         <template #avatar><q-icon name="cloud_off" /></template>
         {{ loadError }}
-        <template #action><q-btn flat label="Retry" @click="load(true)" /></template>
+        <template #action><q-btn flat :label="$t(`Retry`)" @click="load(true)" /></template>
       </q-banner>
       <!-- Keyed: Expenses & income and Mileage share one screen component. -->
       <router-view :key="route.path" />
@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { appName, refreshBranding } from '@/lib/branding';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -68,17 +69,17 @@ defineOptions({ name: 'DeskLayout' });
 void refreshBranding();
 
 const MENU = [
-  { key: 'home', to: '/desk', icon: 'dashboard', label: 'Dashboard' },
-  { key: 'route', to: '/desk/route', icon: 'checklist', label: 'Route', gap: true },
-  { key: 'customers', to: '/desk/customers', icon: 'people', label: 'Customers' },
-  { key: 'visits', to: '/desk/visits', icon: 'event_note', label: 'Visits' },
-  { key: 'invoices', to: '/desk/invoices', icon: 'request_quote', label: 'Invoices', gap: true },
-  { key: 'payments', to: '/desk/payments', icon: 'payments', label: 'Payments' },
-  { key: 'money', to: '/desk/money', icon: 'account_balance_wallet', label: 'Expenses & income' },
-  { key: 'mileage', to: '/desk/mileage', icon: 'directions_car', label: 'Mileage' },
-  { key: 'chemicals', to: '/desk/chemicals', icon: 'science', label: 'Chemicals', gap: true },
-  { key: 'team', to: '/desk/team', icon: 'groups', label: 'Team' },
-  { key: 'business', to: '/desk/business', icon: 'storefront', label: 'Business details' },
+  { key: 'home', to: '/desk', icon: 'dashboard', label: t('Dashboard') },
+  { key: 'route', to: '/desk/route', icon: 'checklist', label: t('Route'), gap: true },
+  { key: 'customers', to: '/desk/customers', icon: 'people', label: t('Customers') },
+  { key: 'visits', to: '/desk/visits', icon: 'event_note', label: t('Visits') },
+  { key: 'invoices', to: '/desk/invoices', icon: 'request_quote', label: t('Invoices'), gap: true },
+  { key: 'payments', to: '/desk/payments', icon: 'payments', label: t('Payments') },
+  { key: 'money', to: '/desk/money', icon: 'account_balance_wallet', label: t('Expenses & income') },
+  { key: 'mileage', to: '/desk/mileage', icon: 'directions_car', label: t('Mileage') },
+  { key: 'chemicals', to: '/desk/chemicals', icon: 'science', label: t('Chemicals'), gap: true },
+  { key: 'team', to: '/desk/team', icon: 'groups', label: t('Team') },
+  { key: 'business', to: '/desk/business', icon: 'storefront', label: t('Business details') },
 ];
 
 const route = useRoute();

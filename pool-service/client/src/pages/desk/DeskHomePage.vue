@@ -1,26 +1,26 @@
 <template>
   <q-page class="q-pa-md">
     <Teleport defer to="#header-actions">
-      <q-btn flat no-caps icon="dashboard_customize" :label="$q.screen.gt.xs ? 'Cards' : undefined" aria-label="Cards" data-test="dash-cards">
+      <q-btn flat no-caps icon="dashboard_customize" :label="$q.screen.gt.xs ? $t('Cards') : undefined" :aria-label="$t(`Cards`)" data-test="dash-cards">
         <q-menu>
           <q-list dense style="min-width: 240px">
-            <q-item-label header>Show on the dashboard</q-item-label>
+            <q-item-label header>{{ $t(`Show on the dashboard`) }}</q-item-label>
             <q-item v-for="c in CARDS" :key="c.id" tag="label" clickable :data-test="`dash-show-${c.id}`">
               <q-item-section side><q-checkbox :model-value="!isHidden(c.id)" dense @update:model-value="(v: boolean) => setHidden(c.id, !v)" /></q-item-section>
               <q-item-section avatar style="min-width: 28px"><q-icon :name="c.icon" color="grey-7" size="xs" /></q-item-section>
-              <q-item-section>{{ c.title }}</q-item-section>
+              <q-item-section>{{ $t(c.title) }}</q-item-section>
             </q-item>
             <q-separator />
             <q-item v-close-popup clickable data-test="dash-reset" @click="resetLayout">
               <q-item-section avatar style="min-width: 28px"><q-icon name="restart_alt" size="xs" /></q-item-section>
-              <q-item-section>Reset to the usual layout</q-item-section>
+              <q-item-section>{{ $t(`Reset to the usual layout`) }}</q-item-section>
             </q-item>
           </q-list>
         </q-menu>
       </q-btn>
     </Teleport>
 
-    <div v-if="!shown.length" class="text-center text-grey-7 q-pa-xl">All cards are hidden. Use <b>Cards</b> at the top to show some.</div>
+    <div v-if="!shown.length" class="text-center text-grey-7 q-pa-xl">{{ $t(`All cards are hidden. Use`) }} <b>{{ $t(`Cards`) }}</b> {{ $t(`at the top to show some.`) }}</div>
 
     <div ref="grid" class="dash-grid" :style="{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }" data-test="dash-grid">
       <div
@@ -36,7 +36,7 @@
       >
         <DashCard
           :id="c.id"
-          :title="CARD_BY_ID.get(c.id)!.title"
+          :title="$t(CARD_BY_ID.get(c.id)!.title)"
           :icon="CARD_BY_ID.get(c.id)!.icon"
           :size="c.size"
           @dragstart="dragId = c.id"
@@ -56,7 +56,7 @@
     <q-dialog :model-value="!!full" maximized transition-show="fade" transition-hide="fade" @update:model-value="(v: boolean) => !v && (full = null)">
       <q-card v-if="full" class="column no-wrap bg-grey-1" data-test="dash-fullscreen">
         <div class="row items-center q-gutter-sm q-px-md q-pt-md" data-test="dash-tools">
-          <q-select v-if="fullCard?.range" v-model="tools.months" dense outlined emit-value map-options :options="RANGE_OPTIONS" label="Period" style="width: 160px" data-test="tool-range" />
+          <q-select v-if="fullCard?.range" v-model="tools.months" dense outlined emit-value map-options :options="RANGE_OPTIONS" :label="$t(`Period`)" style="width: 160px" data-test="tool-range" />
           <q-select
             v-if="fullCard?.customer"
             v-model="tools.customerId"
@@ -68,18 +68,18 @@
             use-input
             input-debounce="0"
             :options="customerOptions"
-            label="Customer"
+            :label="$t(`Customer`)"
             style="width: 220px"
             data-test="tool-customer"
             @filter="filterCustomers"
           />
           <q-btn-toggle v-model="tools.format" dense no-caps unelevated toggle-color="primary" color="white" text-color="grey-9" :options="FORMAT_OPTIONS" data-test="tool-format" />
-          <q-toggle v-model="tools.zoom" dense label="Zoom" data-test="tool-zoom">
-            <q-tooltip>Scroll on a chart, or drag the slider under it, to look at part of it</q-tooltip>
+          <q-toggle v-model="tools.zoom" dense :label="$t(`Zoom`)" data-test="tool-zoom">
+            <q-tooltip>{{ $t(`Scroll on a chart, or drag the slider under it, to look at part of it`) }}</q-tooltip>
           </q-toggle>
           <q-space />
           <template v-if="tools.table">
-            <q-btn flat dense no-caps icon="view_column" label="Columns" data-test="tool-columns">
+            <q-btn flat dense no-caps icon="view_column" :label="$t(`Columns`)" data-test="tool-columns">
               <q-menu>
                 <q-list dense style="min-width: 180px">
                   <q-item v-for="c in tools.table.columns" :key="c.key" tag="label" clickable>
@@ -89,11 +89,11 @@
                 </q-list>
               </q-menu>
             </q-btn>
-            <q-btn flat dense no-caps icon="download" label="Export" :loading="exporting" data-test="tool-export">
+            <q-btn flat dense no-caps icon="download" :label="$t(`Export`)" :loading="exporting" data-test="tool-export">
               <q-menu auto-close>
                 <q-list dense style="min-width: 180px">
-                  <q-item clickable data-test="tool-export-xlsx" @click="exportCard('xlsx')"><q-item-section>Excel (.xlsx)</q-item-section></q-item>
-                  <q-item clickable data-test="tool-export-csv" @click="exportCard('csv')"><q-item-section>CSV (works offline)</q-item-section></q-item>
+                  <q-item clickable data-test="tool-export-xlsx" @click="exportCard('xlsx')"><q-item-section>{{ $t(`Excel (.xlsx)`) }}</q-item-section></q-item>
+                  <q-item clickable data-test="tool-export-csv" @click="exportCard('csv')"><q-item-section>{{ $t(`CSV (works offline)`) }}</q-item-section></q-item>
                 </q-list>
               </q-menu>
             </q-btn>
@@ -101,9 +101,9 @@
         </div>
         <div class="col q-pa-md">
           <DashToolsScope :tools="tools">
-            <DashCard :id="full" :title="fullCard!.title" :icon="fullCard!.icon" size="xl" fullscreen :draggable="false">
+            <DashCard :id="full" :title="$t(fullCard!.title)" :icon="fullCard!.icon" size="xl" fullscreen :draggable="false">
               <template #head>
-                <q-btn flat round dense icon="close_fullscreen" aria-label="Close full screen" data-test="dash-fullscreen-close" @click="full = null" />
+                <q-btn flat round dense icon="close_fullscreen" :aria-label="$t(`Close full screen`)" data-test="dash-fullscreen-close" @click="full = null" />
               </template>
               <template #default="{ width }">
                 <component :is="COMPONENTS[full as CardId]" mode="l" :width="width" />
@@ -117,6 +117,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
 import { useQuasar } from 'quasar';
 import type { CardSize, DashboardLayout } from '@pool/shared';
@@ -185,7 +186,7 @@ async function save() {
   try {
     await data.saveDashboard(layout.value);
   } catch (err) {
-    $q.notify({ type: 'negative', message: `Couldn't save the layout: ${errorMessage(err)}` });
+    $q.notify({ type: 'negative', message: t('Couldn’t save the layout: {error}', { error: errorMessage(err) }) });
   } finally {
     pending = false;
   }
@@ -255,7 +256,7 @@ const tools = ref(newDashTools());
 watch(full, (id) => {
   if (id) tools.value = Object.assign(newDashTools(), { zoom: true });
 });
-const RANGE_OPTIONS = [3, 6, 12, 24].map((n) => ({ label: `Last ${n} months`, value: n }));
+const RANGE_OPTIONS = computed(() => [3, 6, 12, 24].map((n) => ({ label: t('Last {n} months', { n }), value: n })));
 const FORMAT_OPTIONS = [
   { label: '$1,234.56', value: 'exact' },
   { label: '$1,235', value: 'whole' },

@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <Teleport defer to="#header-actions">
-      <q-btn v-if="poolId" flat round icon="add" aria-label="New issue" data-test="new-issue" @click="openNew" />
+      <q-btn v-if="poolId" flat round icon="add" :aria-label="$t(`New issue`)" data-test="new-issue" @click="openNew" />
     </Teleport>
 
     <q-btn-toggle
@@ -14,8 +14,8 @@
       text-color="grey-9"
       data-test="issues-view"
       :options="[
-        { label: 'Grid', value: 'grid', icon: 'grid_view' },
-        { label: 'List', value: 'list', icon: 'list' },
+        { label: $t('Grid'), value: 'grid', icon: 'grid_view' },
+        { label: $t('List'), value: 'list', icon: 'list' },
       ]"
     />
 
@@ -24,7 +24,7 @@
     <template v-else>
       <div v-if="!active.length" class="text-center text-grey-7 q-pa-md" data-test="no-issues">
         <q-icon name="task_alt" size="40px" color="positive" />
-        <div>No open issues{{ poolId ? ' for this pool' : '' }}.</div>
+        <div>{{ poolId ? $t('No open issues for this pool.') : $t('No open issues.') }}</div>
       </div>
 
       <!-- Eisenhower grid -->
@@ -46,7 +46,7 @@
           <q-item-section>
             <q-item-label>{{ i.title }}</q-item-label>
             <q-item-label caption>
-              {{ quadLabel(i) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span><span v-if="i.status === 'in_progress'"> · in progress</span>
+              {{ quadLabel(i) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span><span v-if="i.status === 'in_progress'"> {{ $t(`· in progress`) }}</span>
             </q-item-label>
             <PhotoGrid v-if="photosOf(i).length" size="sm" class="q-mt-xs" :photos="photosOf(i).slice(0, 3)" :more="Math.max(0, photosOf(i).length - 3)" data-test="issue-strip" @open="openIssue(i)" />
           </q-item-section>
@@ -60,7 +60,7 @@
           <q-item v-for="i in postponed" :key="i._id" clickable :data-test="`issue-${i._id}`" @click="openIssue(i)">
             <q-item-section>
               <q-item-label>{{ i.title }}</q-item-label>
-              <q-item-label caption>Postponed {{ shortDate(i.postponedAt) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span></q-item-label>
+              <q-item-label caption>{{ $t('Postponed {date}', { date: shortDate(i.postponedAt) }) }}<span v-if="!poolId"> · {{ poolName(i.poolId) }}</span></q-item-label>
               <PhotoGrid v-if="photosOf(i).length" size="sm" class="q-mt-xs" :photos="photosOf(i).slice(0, 3)" :more="Math.max(0, photosOf(i).length - 3)" data-test="issue-strip" @open="openIssue(i)" />
             </q-item-section>
           </q-item>
@@ -73,13 +73,13 @@
           <q-item v-for="i in completed" :key="i._id" clickable @click="openIssue(i)">
             <q-item-section>
               <q-item-label class="text-strike text-grey-7">{{ i.title }}</q-item-label>
-              <q-item-label caption>Completed {{ shortDate(i.resolvedAt) }}</q-item-label>
+              <q-item-label caption>{{ $t('Completed {date}', { date: shortDate(i.resolvedAt) }) }}</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
       </q-expansion-item>
 
-      <q-btn v-if="poolId" outline color="orange-9" icon="add_alert" label="New issue" no-caps @click="openNew" />
+      <q-btn v-if="poolId" outline color="orange-9" icon="add_alert" :label="$t(`New issue`)" no-caps @click="openNew" />
     </template>
 
     <IssueSheet v-model="sheetOpen" :issue="selected" :pool-id="selected?.poolId ?? poolId ?? ''" />
@@ -87,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { deriveQuadrant, QUADRANTS, type QuadrantKey } from '@pool/shared';
@@ -157,7 +158,7 @@ watch(
   () => {
     if (poolId.value) {
       const p = data.poolById.get(poolId.value);
-      ui.setTitle('Issues', p ? poolName(p._id) : '');
+      ui.setTitle(t('Issues'), p ? poolName(p._id) : '');
     }
   },
   { immediate: true },

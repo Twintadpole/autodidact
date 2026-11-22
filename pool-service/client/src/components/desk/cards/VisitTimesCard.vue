@@ -1,6 +1,6 @@
 <template>
   <div class="column no-wrap full-height" data-test="visit-times-card">
-    <div v-if="!report && error" class="text-grey-7">Needs a connection the first time (it uses every visit).</div>
+    <div v-if="!report && error" class="text-grey-7">{{ $t(`Needs a connection the first time (it uses every visit).`) }}</div>
     <template v-else-if="report">
       <div class="row items-end q-gutter-x-lg">
         <div>
@@ -10,12 +10,12 @@
         <div class="hero-sub">{{ report.timed }} of {{ report.total }} visits timed · {{ report.hours }} h on site</div>
         <q-space />
         <span v-if="error && fetchedAt" class="text-caption text-grey-7"><q-icon name="cloud_off" /> as of {{ asOf(fetchedAt) }}</span>
-        <q-btn flat round dense size="sm" icon="refresh" aria-label="Refresh" :loading="loading" @click="reload" />
+        <q-btn flat round dense size="sm" icon="refresh" :aria-label="$t(`Refresh`)" :loading="loading" @click="reload" />
       </div>
 
       <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
         <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-          <EChart :option="option" :label="`Average minutes per timed visit by month, last ${tools.months} months`" />
+          <EChart :option="option" :label="$t('Average minutes per timed visit by month, last {months} months', { months: tools.months })" />
         </div>
         <CardTable v-if="mode === 'l'" name="visit-times-by-customer" :columns="columns" :rows="report.byCustomer" :class="side ? 'side-table scroll' : 'q-mt-sm'" test-id="visit-times-table" />
       </div>
@@ -24,6 +24,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { timeLogSeconds } from '@pool/shared';
 import EChart from '@/components/desk/EChart.vue';
@@ -84,23 +85,23 @@ const { data: report, fetchedAt, loading, error, reload } = useCachedReport<Time
 });
 
 const columns: CardColumn[] = [
-  { key: 'customer', label: 'Customer', class: 'ellipsis' },
-  { key: 'visits', label: 'Visits', align: 'right' },
-  { key: 'timed', label: 'Timed', align: 'right' },
-  { key: 'avgMin', label: 'Avg min', align: 'right' },
-  { key: 'hours', label: 'Hours', align: 'right' },
+  { key: 'customer', label: t('Customer'), class: 'ellipsis' },
+  { key: 'visits', label: t('Visits'), align: 'right' },
+  { key: 'timed', label: t('Timed'), align: 'right' },
+  { key: 'avgMin', label: t('Avg min'), align: 'right' },
+  { key: 'hours', label: t('Hours'), align: 'right' },
 ];
 
 const option = computed(() => ({
   ...base,
   grid: { top: 8, left: 8, right: 8, bottom: tools.zoom ? 34 : 4, containLabel: true },
-  tooltip: { ...base.tooltip, trigger: 'axis', valueFormatter: (v: number | null) => (v == null ? 'no timed visits' : `${v} min`) },
+  tooltip: { ...base.tooltip, trigger: 'axis', valueFormatter: (v: number | null) => (v == null ? t('no timed visits') : `${v} min`) },
   ...zoomFor(tools.zoom),
   xAxis: categoryAxis((report.value?.months ?? []).map((m) => monthLabel(m.period))),
   yAxis: valueAxis((v: number) => `${v} min`),
   series: [
     {
-      name: 'Average visit',
+      name: t('Average visit'),
       type: 'line',
       connectNulls: true,
       data: (report.value?.months ?? []).map((m) => m.avgMin),

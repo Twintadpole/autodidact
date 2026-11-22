@@ -1,7 +1,7 @@
 import { invoiceBalance, invoicePaid, invoiceState, invoiceTotal } from '@pool/shared';
 import { addressText } from './format';
 import { money } from './customer';
-import { periodLabel, TERMS_LABEL } from './money';
+import { periodLabel, TERMS_LABEL_EN } from './money';
 import type { Customer, Invoice, Settings } from './types';
 
 /**
@@ -50,8 +50,8 @@ export async function invoicePdf(inv: Invoice, customer: Pick<Customer, 'name' |
   const right: [string, string][] = [
     ['Invoice #', String(inv.number)],
     ['Date', dateText(inv.issueDate)],
-    ['Due', inv.dueDate ? dateText(inv.dueDate) : TERMS_LABEL[biz?.terms ?? 'receipt']],
-    ...(inv.period ? ([['Service month', periodLabel(inv.period)]] as [string, string][]) : []),
+    ['Due', inv.dueDate ? dateText(inv.dueDate) : TERMS_LABEL_EN[biz?.terms ?? 'receipt']],
+    ...(inv.period ? ([['Service month', periodLabel(inv.period, 'en-US')]] as [string, string][]) : []),
   ];
   right.forEach(([k, v], i) => {
     doc.setTextColor(110, 110, 110).text(k, W - M - 110, y + 40 + i * 14, { align: 'right' });

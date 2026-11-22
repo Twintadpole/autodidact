@@ -24,7 +24,7 @@
       :columns="columns"
       :rows="tableRows"
       clickable
-      empty="No open issues."
+      :empty="$t('No open issues.')"
       class="q-mt-sm col scroll"
       test-id="issues-list"
       @row="(r) => router.push(`/pools/${r.poolId}/issues`)"
@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { formatDistanceToNowStrict, parseISO } from 'date-fns';
@@ -60,10 +61,10 @@ const rank = (k: QuadrantKey) => QUADRANTS.findIndex((q) => q.key === k);
 const sorted = computed(() => [...active.value].sort((a, b) => rank(deriveQuadrant(a)) - rank(deriveQuadrant(b)) || a.createdAt.localeCompare(b.createdAt)));
 const age = (iso: string) => `${formatDistanceToNowStrict(parseISO(iso))} old`;
 const columns: CardColumn[] = [
-  { key: 'title', label: 'Issue' },
-  { key: 'pool', label: 'Customer · pool' },
-  { key: 'priority', label: 'Priority' },
-  { key: 'age', label: 'Age' },
+  { key: 'title', label: t('Issue') },
+  { key: 'pool', label: t('Customer · pool') },
+  { key: 'priority', label: t('Priority') },
+  { key: 'age', label: t('Age') },
 ];
 const tableRows = computed(() =>
   sorted.value.map((i) => ({ poolId: i.poolId, title: i.title, pool: data.poolLabel(i.poolId), priority: QUADRANTS.find((q) => q.key === deriveQuadrant(i))!.label, age: age(i.createdAt) })),

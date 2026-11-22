@@ -1,16 +1,16 @@
 <template>
   <q-page class="q-pb-lg">
     <Teleport defer to="#header-actions">
-      <q-btn flat round icon="more_vert" aria-label="Route menu" data-test="route-menu">
+      <q-btn flat round icon="more_vert" :aria-label="$t(`Route menu`)" data-test="route-menu">
         <q-menu auto-close>
           <q-list style="min-width: 180px">
             <q-item clickable data-test="reset-week" @click="confirmReset">
               <q-item-section avatar><q-icon name="restart_alt" /></q-item-section>
-              <q-item-section>Reset week</q-item-section>
+              <q-item-section>{{ $t(`Reset week`) }}</q-item-section>
             </q-item>
             <q-item clickable @click="data.loadAll(true)">
               <q-item-section avatar><q-icon name="refresh" /></q-item-section>
-              <q-item-section>Refresh</q-item-section>
+              <q-item-section>{{ $t(`Refresh`) }}</q-item-section>
             </q-item>
           </q-list>
         </q-menu>
@@ -21,7 +21,7 @@
     <div class="q-px-md q-pt-md q-pb-sm">
       <div class="row items-baseline justify-between">
         <div class="text-h6" data-test="done-count">{{ doneCount }} / {{ scheduledPools.length }} done</div>
-        <div class="text-caption text-grey-7">Week of {{ weekLabel }}</div>
+        <div class="text-caption text-grey-7">{{ $t('Week of {date}', { date: weekLabel }) }}</div>
       </div>
       <q-linear-progress :value="scheduledPools.length ? doneCount / scheduledPools.length : 0" rounded size="8px" color="positive" class="q-mt-xs" />
       <q-btn-toggle
@@ -35,9 +35,9 @@
         class="q-mt-md"
         data-test="route-filter"
         :options="[
-          { label: 'All', value: 'all' },
-          { label: 'Remaining', value: 'remaining' },
-          { label: 'Done', value: 'done' },
+          { label: $t('All'), value: 'all' },
+          { label: $t('Remaining'), value: 'remaining' },
+          { label: $t('Done'), value: 'done' },
         ]"
       />
       <!-- GPF item 3: the owner sees every route; pick one tech's -->
@@ -50,7 +50,7 @@
         map-options
         options-dense
         :options="techOptions"
-        label="Route"
+        :label="$t(`Route`)"
         class="q-mt-sm"
         data-test="route-tech"
       />
@@ -60,14 +60,14 @@
 
     <div v-else-if="!activePools.length" class="q-pa-lg text-center text-grey-7">
       <q-icon name="pool" size="48px" />
-      <div class="q-mt-sm">No pools yet. Add a customer and their pool under Customers.</div>
-      <q-btn class="q-mt-md" color="primary" unelevated label="Add customer" to="/customers/new" />
+      <div class="q-mt-sm">{{ $t(`No pools yet. Add a customer and their pool under Customers.`) }}</div>
+      <q-btn class="q-mt-md" color="primary" unelevated :label="$t(`Add customer`)" to="/customers/new" />
     </div>
 
     <template v-for="group in groups" :key="group.day">
       <q-item-label header class="row items-center justify-between q-pb-xs" :data-test="`route-group-${group.day}`">
         <span :class="group.isToday ? 'text-primary text-weight-bold' : ''">
-          {{ group.label }}<span v-if="group.isToday"> · Today</span>
+          {{ group.label }}<span v-if="group.isToday"> {{ $t(`· Today`) }}</span>
         </span>
         <span v-if="!(group.day in EXTRA_GROUPS)" class="text-caption">{{ group.done }}/{{ group.total }}</span>
       </q-item-label>
@@ -78,7 +78,7 @@
               :model-value="p.week.done"
               size="lg"
               color="positive"
-              :aria-label="`Done this week: ${customerName(p)}`"
+              :aria-label="$t('Done this week: {name}', { name: customerName(p) })"
               :data-test="`done-${p._id}`"
               @update:model-value="(v: boolean) => toggle(p._id, v)"
             />
@@ -93,8 +93,8 @@
             </q-item-label>
           </q-item-section>
           <q-item-section side class="row no-wrap items-center">
-            <q-badge v-if="data.openIssueCount.get(p._id)" color="orange-8" class="q-mr-sm" :label="`${data.openIssueCount.get(p._id)} issue${data.openIssueCount.get(p._id)! > 1 ? 's' : ''}`" />
-            <q-btn v-if="hasAddress(poolAddress(p, data.customerById.get(p.customerId)))" flat round color="primary" icon="directions" :href="mapsUrl(poolAddress(p, data.customerById.get(p.customerId)))" target="_blank" aria-label="Navigate" @click.stop />
+            <q-badge v-if="data.openIssueCount.get(p._id)" color="orange-8" class="q-mr-sm" :label="$tn(data.openIssueCount.get(p._id)!, '{n} issue', '{n} issues')" />
+            <q-btn v-if="hasAddress(poolAddress(p, data.customerById.get(p.customerId)))" flat round color="primary" icon="directions" :href="mapsUrl(poolAddress(p, data.customerById.get(p.customerId)))" target="_blank" :aria-label="$t(`Navigate`)" @click.stop />
           </q-item-section>
         </q-item>
       </q-list>
@@ -103,10 +103,11 @@
 </template>
 
 <script setup lang="ts">
+import { locale, t, translated } from '@/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
-import { format, startOfISOWeek } from 'date-fns';
+import { startOfISOWeek } from 'date-fns';
 import { routeSlot, serviceDaysFrom, timeLogSeconds, type RouteSlot, type ServiceDay } from '@pool/shared';
 import { scheduleText } from '@/lib/customer';
 import { hms } from '@/lib/time';
@@ -129,9 +130,9 @@ const TECH_KEY = 'pool.routeTech';
 const techFilter = ref<string>(localStorage.getItem(TECH_KEY) ?? 'all');
 const techList = computed(() => auth.team.filter((m) => m.role === 'tech'));
 const techOptions = computed(() => [
-  { label: 'Everyone’s', value: 'all' },
-  { label: 'Not on a tech’s route', value: 'none' },
-  ...techList.value.map((m) => ({ label: `${m.name}’s${m.active ? '' : ' (login off)'}`, value: m._id })),
+  { label: t('Everyone’s'), value: 'all' },
+  { label: t('Not on a tech’s route'), value: 'none' },
+  ...techList.value.map((m) => ({ label: m.active ? t('{name}’s', { name: m.name }) : t('{name}’s (login off)', { name: m.name }), value: m._id })),
 ]);
 watch(techFilter, (v) => localStorage.setItem(TECH_KEY, v));
 
@@ -162,9 +163,9 @@ onMounted(() => {
 onBeforeUnmount(() => clearInterval(tick));
 const runningAt = computed(() => new Map(data.activeTimers.map((v) => [v.poolId, hms(timeLogSeconds(v.timeLog, now.value))])));
 const doneCount = computed(() => scheduledPools.value.filter((p) => p.week.done).length);
-const weekLabel = format(startOfISOWeek(new Date()), 'MMM d');
+const weekLabel = computed(() => startOfISOWeek(new Date()).toLocaleDateString(locale.value, { month: 'short', day: 'numeric' }));
 
-const EXTRA_GROUPS = { upcoming: 'Coming up (one-time)', pastOnce: 'Past one-time', none: 'Not scheduled' } as const;
+const EXTRA_GROUPS = translated({ upcoming: 'Coming up (one-time)', pastOnce: 'Past one-time', none: 'Not scheduled' } as const);
 type GroupKey = ServiceDay | keyof typeof EXTRA_GROUPS;
 function inGroup(p: Pool, key: GroupKey): boolean {
   const s = slotOf(p);
@@ -221,14 +222,14 @@ async function toggle(id: string, done: boolean) {
 
 function confirmReset() {
   $q.dialog({
-    title: 'Reset week?',
-    message: 'This clears the checkmark on every pool.',
+    title: t('Reset week?'),
+    message: t('This clears the checkmark on every pool.'),
     cancel: true,
-    ok: { label: 'Reset', color: 'negative', unelevated: true },
+    ok: { label: t('Reset'), color: 'negative', unelevated: true },
   }).onOk(async () => {
     try {
       await data.resetWeek();
-      $q.notify({ message: 'Week reset', color: 'grey-8' });
+      $q.notify({ message: t('Week reset'), color: 'grey-8' });
     } catch (err) {
       $q.notify({ type: 'negative', message: errorMessage(err) });
     }

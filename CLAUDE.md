@@ -236,6 +236,17 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   Measured idle: GPF containers ~565 MB (per tenant ~230 MB: api ~80, mongo ~150; edge ~110 MB), live
   stack ~280 MB, server used ~1.6 of 3.3 GB, ~1.8 GB available; disk 7 MB. Stop it: `docker compose -p
   gpf-t-<name> stop` per tenant, `docker compose -p gpf-edge stop`.
+  **GPF item 5, languages** (owner Nov 22: US top 6 = en, es, vi, zh, tl, ar; translations by Claude marked
+  "beta"; customer-language invoices/recaps later; the owner wants the app ready for testing and a bigger
+  audience next). Design: own small translator `client/src/i18n/index.ts` (no vue-i18n): English text is
+  the key (`t('…')`, `$t('…')`, `tn(n, one, other)`, `translated({...})`/`translatedOptions([...])` for label
+  maps), dictionaries `client/src/i18n/<code>.json`, missing → English. Per-user `users.language`
+  (PATCH /auth/me), device default from the phone, `LanguagePicker` on login + My account. Invoices,
+  recaps, exports stay English (customer docs). **Rule: every new on-screen text goes through t()/$t()**;
+  `npm run i18n:check` (client/scripts/i18n-keys.mjs; data-driven keys in i18n/extra-keys.json).
+  - ✅ Segment 1 built Nov 22 (not deployed): all screens converted (~905 texts), es.json complete,
+    `e2e/languages.cjs` 5/5, every English e2e still passes.
+  - Next: segment 2 = vi, zh, tl, ar dictionaries + right-to-left for Arabic (Quasar `rtl` build option).
   Next GPF item: Mongo health check 5s → 30s on the owner's stack (tenants already 30s); then the plan doc's
   phase list (beta, paid launch, warm standby) — ask the owner.
     Before any deploy of this to the owner's app: set OWNER_EMAIL? (owner decides; else their login is "owner").

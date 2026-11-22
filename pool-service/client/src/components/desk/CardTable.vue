@@ -20,6 +20,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, watchEffect } from 'vue';
 import { formatMoney, useDashTools } from '@/composables/useDashTools';
 
@@ -33,7 +34,7 @@ export interface CardColumn {
 }
 
 const props = withDefaults(defineProps<{ name: string; columns: CardColumn[]; rows: Record<string, unknown>[]; empty?: string; clickable?: boolean; testId?: string }>(), {
-  empty: 'Nothing here.',
+  empty: t('Nothing here.'),
   clickable: false,
   testId: 'card-table',
 });

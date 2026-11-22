@@ -1,3 +1,4 @@
+import { locale, translated } from '@/i18n';
 import type { CardSize, DashboardLayout } from '@pool/shared';
 
 /**
@@ -21,7 +22,7 @@ export const CARDS = [
 export type CardId = (typeof CARDS)[number]['id'];
 export const CARD_BY_ID = new Map<string, (typeof CARDS)[number]>(CARDS.map((c) => [c.id, c]));
 
-export const SIZE_LABEL: Record<CardSize, string> = { s: 'Small', m: 'Medium', l: 'Large', xl: 'Full width' };
+export const SIZE_LABEL: Record<CardSize, string> = translated({ s: 'Small', m: 'Medium', l: 'Large', xl: 'Full width' });
 
 export const defaultLayout = (): DashboardLayout => ({ cards: CARDS.map((c) => ({ id: c.id, size: c.size })) });
 
@@ -49,4 +50,4 @@ export function cardMode(width: number, height: number): CardMode {
 }
 
 /** "Nov 18, 3:05 PM": when remembered figures were loaded. */
-export const asOf = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
+export const asOf = (iso: string | null) => (iso ? new Date(iso).toLocaleString(locale.value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');

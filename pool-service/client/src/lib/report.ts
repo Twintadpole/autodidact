@@ -1,10 +1,11 @@
+import { translated } from '@/i18n';
 import { categoryLabel, invoiceBalance, invoiceState, isCapitalCategory } from '@pool/shared';
 import { localDate } from './money';
 import type { Invoice, Ledger } from './types';
 
 /** Money report for a period, worked out on the phone (works offline). Phase 7C. */
 export type PeriodKey = 'thisMonth' | 'lastMonth' | 'thisYear' | 'lastYear';
-export const PERIOD_LABEL: Record<PeriodKey, string> = { thisMonth: 'This month', lastMonth: 'Last month', thisYear: 'This year', lastYear: 'Last year' };
+export const PERIOD_LABEL: Record<PeriodKey, string> = translated({ thisMonth: 'This month', lastMonth: 'Last month', thisYear: 'This year', lastYear: 'Last year' });
 
 export function periodRange(key: PeriodKey, today = new Date()): { from: string; to: string } {
   const y = today.getFullYear();

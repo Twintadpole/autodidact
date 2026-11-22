@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
-    <div v-else-if="!visits.length" class="text-center text-grey-7 q-pa-lg">No visits logged for this pool yet.</div>
+    <div v-else-if="!visits.length" class="text-center text-grey-7 q-pa-lg">{{ $t(`No visits logged for this pool yet.`) }}</div>
 
     <template v-for="m in months" :key="m.key">
       <q-item-label header class="q-pb-xs q-px-none">{{ m.label }}</q-item-label>
@@ -10,7 +10,7 @@
           <q-item-section>
             <q-item-label class="text-weight-medium">{{ dayLabel(v.visitedAt) }}</q-item-label>
             <q-item-label caption>
-              <span v-if="onSite(v)">{{ onSite(v) }} on site · </span>{{ v.doses.length }} dose{{ v.doses.length === 1 ? '' : 's' }}<span v-if="v.notes"> · note</span>
+              <span v-if="onSite(v)">{{ onSite(v) }} on site · </span>{{ v.doses.length }} dose{{ v.doses.length === 1 ? '' : 's' }}<span v-if="v.notes"> {{ $t(`· note`) }}</span>
             </q-item-label>
             <div class="row q-gutter-xs q-mt-xs">
               <template v-for="k in KEYS" :key="k">

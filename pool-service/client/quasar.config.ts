@@ -6,7 +6,7 @@ import { defineConfig } from '#q-app';
 const appVersion = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
 export default defineConfig(() => ({
-  boot: [],
+  boot: ['i18n'],
   css: [],
   extras: ['material-icons', 'roboto-font'],
 

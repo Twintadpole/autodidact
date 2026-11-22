@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md column q-gutter-md">
     <Teleport defer to="#header-actions">
-      <q-btn v-if="pool" flat round icon="edit" aria-label="Edit pool" :to="`/pools/${pool._id}/edit`" data-test="edit-pool" />
+      <q-btn v-if="pool" flat round icon="edit" :aria-label="$t(`Edit pool`)" :to="`/pools/${pool._id}/edit`" data-test="edit-pool" />
     </Teleport>
 
     <div v-if="!pool" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
@@ -9,15 +9,15 @@
       <!-- Details -->
       <q-card flat bordered>
         <q-card-section class="row q-col-gutter-sm text-body2">
-          <div class="col-6"><span class="text-grey-7">Type</span><br />{{ pool.type === 'salt' ? 'Salt' : pool.type === 'chlorine' ? 'Chlorine' : '–' }}</div>
-          <div class="col-6"><span class="text-grey-7">Volume</span><br />{{ pool.volumeGal ? `${pool.volumeGal.toLocaleString()} gal` : '–' }}</div>
-          <div class="col-6"><span class="text-grey-7">Service day</span><br />{{ pool.serviceDay ? `${DAY_LABELS[pool.serviceDay]} · stop ${pool.routeOrder}` : scheduleText(pool, DAY_LABELS) }}</div>
-          <div class="col-6"><span class="text-grey-7">Surface</span><br />{{ pool.surface || '–' }}</div>
-          <div v-if="pool.accessNotes" class="col-12"><span class="text-grey-7">Access</span><br />{{ pool.accessNotes }}</div>
+          <div class="col-6"><span class="text-grey-7">{{ $t(`Type`) }}</span><br />{{ pool.type === 'salt' ? $t('Salt') : pool.type === 'chlorine' ? $t('Chlorine') : '–' }}</div>
+          <div class="col-6"><span class="text-grey-7">{{ $t(`Volume`) }}</span><br />{{ pool.volumeGal ? `${pool.volumeGal.toLocaleString()} gal` : '–' }}</div>
+          <div class="col-6"><span class="text-grey-7">{{ $t(`Service day`) }}</span><br />{{ pool.serviceDay ? $t('{day} · stop {n}', { day: DAY_LABELS[pool.serviceDay], n: pool.routeOrder }) : scheduleText(pool, DAY_LABELS) }}</div>
+          <div class="col-6"><span class="text-grey-7">{{ $t(`Surface`) }}</span><br />{{ pool.surface || '–' }}</div>
+          <div v-if="pool.accessNotes" class="col-12"><span class="text-grey-7">{{ $t(`Access`) }}</span><br />{{ pool.accessNotes }}</div>
         </q-card-section>
         <q-card-actions>
-          <q-btn flat color="primary" icon="assignment" label="Log visit" no-caps :to="`/pools/${pool._id}`" />
-          <q-btn v-if="customer" flat color="primary" icon="person" label="Customer" no-caps :to="`/customers/${customer._id}`" />
+          <q-btn flat color="primary" icon="assignment" :label="$t(`Log visit`)" no-caps :to="`/pools/${pool._id}`" />
+          <q-btn v-if="customer" flat color="primary" icon="person" :label="$t(`Customer`)" no-caps :to="`/customers/${customer._id}`" />
         </q-card-actions>
       </q-card>
 
@@ -28,20 +28,20 @@
       <!-- History -->
       <div>
         <div class="row items-center justify-between q-mb-xs">
-          <div class="text-subtitle1">Recent visits</div>
-          <q-btn flat dense no-caps color="primary" label="All visits" :to="`/pools/${pool._id}/visits`" data-test="all-visits" />
+          <div class="text-subtitle1">{{ $t(`Recent visits`) }}</div>
+          <q-btn flat dense no-caps color="primary" :label="$t(`All visits`)" :to="`/pools/${pool._id}/visits`" data-test="all-visits" />
         </div>
         <q-card flat bordered class="q-pa-sm">
           <div class="row q-col-gutter-md q-mb-sm">
-            <TrendChart class="col-6" label="FC (ppm)" :points="trend('fc')" :band="{ min: 2, max: 5 }" />
-            <TrendChart class="col-6" label="pH" :points="trend('ph')" :band="{ min: 7.4, max: 7.6 }" />
+            <TrendChart class="col-6" :label="$t(`FC (ppm)`)" :points="trend('fc')" :band="{ min: 2, max: 5 }" />
+            <TrendChart class="col-6" :label="$t(`pH`)" :points="trend('ph')" :band="{ min: 7.4, max: 7.6 }" />
           </div>
           <q-markup-table v-if="visits.length" flat dense separator="horizontal" class="history" data-test="history">
             <thead>
               <tr>
-                <th class="text-left">Date</th>
+                <th class="text-left">{{ $t(`Date`) }}</th>
                 <th v-for="k in HISTORY_KEYS" :key="k">{{ readingLabel(k) }}</th>
-                <th>Time</th>
+                <th>{{ $t(`Time`) }}</th>
               </tr>
             </thead>
             <tbody>
@@ -52,22 +52,22 @@
               </tr>
             </tbody>
           </q-markup-table>
-          <div v-else class="text-grey-6 q-pa-sm">No visits logged yet.</div>
+          <div v-else class="text-grey-6 q-pa-sm">{{ $t(`No visits logged yet.`) }}</div>
         </q-card>
       </div>
 
       <!-- Issues -->
       <div>
         <div class="row items-center justify-between q-mb-xs">
-          <div class="text-subtitle1">Open issues</div>
-          <q-btn flat dense no-caps color="primary" label="All issues" :to="`/pools/${pool._id}/issues`" />
+          <div class="text-subtitle1">{{ $t(`Open issues`) }}</div>
+          <q-btn flat dense no-caps color="primary" :label="$t(`All issues`)" :to="`/pools/${pool._id}/issues`" />
         </div>
         <q-list v-if="openIssues.length" bordered separator class="bg-white rounded-borders">
           <q-item v-for="i in openIssues" :key="i._id" clickable @click="openIssue(i)">
             <q-item-section avatar><q-icon :name="i.urgent ? 'priority_high' : 'report_problem'" :color="i.urgent ? 'negative' : 'orange-8'" /></q-item-section>
             <q-item-section>
               <q-item-label>{{ i.title }}</q-item-label>
-              <q-item-label caption>{{ quadrantLabel(i) }}<span v-if="i.status === 'postponed'"> · postponed</span></q-item-label>
+              <q-item-label caption>{{ quadrantLabel(i) }}<span v-if="i.status === 'postponed'"> {{ $t(`· postponed`) }}</span></q-item-label>
               <PhotoGrid
                 v-if="issuePhotos.get(i._id)?.length"
                 size="sm"
@@ -79,13 +79,13 @@
             </q-item-section>
           </q-item>
         </q-list>
-        <div v-else class="text-grey-6 text-body2">None.</div>
+        <div v-else class="text-grey-6 text-body2">{{ $t(`None.`) }}</div>
       </div>
 
       <!-- Photos -->
       <q-card flat bordered data-test="photos-card">
         <q-card-section class="q-pb-sm">
-          <div class="text-subtitle1">Photos<span v-if="photoCount" class="text-grey-7"> ({{ photoCount }})</span></div>
+          <div class="text-subtitle1">{{ $t(`Photos`) }}<span v-if="photoCount" class="text-grey-7"> ({{ photoCount }})</span></div>
         </q-card-section>
         <q-card-section class="q-pt-none">
           <PoolGallery ref="gallery" :pool-id="pool._id" @count="(n) => (photoCount = n)" />
@@ -94,7 +94,7 @@
 
       <!-- Notes -->
       <div>
-        <div class="text-subtitle1 q-mb-xs">Notes</div>
+        <div class="text-subtitle1 q-mb-xs">{{ $t(`Notes`) }}</div>
         <NotesList parent-type="pool" :parent-id="pool._id" />
       </div>
 
@@ -104,6 +104,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deriveQuadrant, QUADRANTS, rateReading, READINGS, timeLogSeconds, type ReadingKey } from '@pool/shared';
@@ -174,7 +175,7 @@ function openIssue(i: Issue) {
 watch(
   [pool, customer],
   () => {
-    if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', data.poolName(pool.value) ? `${data.poolName(pool.value)} · overview` : 'Pool overview');
+    if (pool.value) ui.setTitle(customer.value?.name ?? t('Pool'), data.poolName(pool.value) ? t('{pool} · overview', { pool: data.poolName(pool.value) }) : t('Pool overview'));
   },
   { immediate: true },
 );

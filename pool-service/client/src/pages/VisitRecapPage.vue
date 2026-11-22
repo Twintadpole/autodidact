@@ -3,19 +3,19 @@
     <div v-if="!visit" class="flex flex-center q-pa-xl"><q-spinner size="40px" color="primary" /></div>
     <template v-else>
       <div class="text-body2 text-grey-8">
-        To: <b data-test="recap-to">{{ toEmail || 'no email on file' }}</b>
-        <span v-if="!toEmail" class="text-caption"> · add one on the customer, or pick a recipient after Share</span>
+        {{ $t(`To:`) }} <b data-test="recap-to">{{ toEmail || $t('no email on file') }}</b>
+        <span v-if="!toEmail" class="text-caption"> {{ $t(`· add one on the customer, or pick a recipient after Share`) }}</span>
       </div>
 
       <div class="row q-gutter-md">
-        <q-toggle v-model="options.readings" label="Water test" data-test="recap-readings" />
-        <q-toggle v-model="options.chemicals" label="Chemicals added" data-test="recap-chemicals" />
+        <q-toggle v-model="options.readings" :label="$t(`Water test`)" data-test="recap-readings" />
+        <q-toggle v-model="options.chemicals" :label="$t(`Chemicals added`)" data-test="recap-chemicals" />
       </div>
 
-      <q-input v-model="customerNote" outlined autogrow type="textarea" label="Note for the customer" hint="Your private visit notes are never included" data-test="recap-note" />
+      <q-input v-model="customerNote" outlined autogrow type="textarea" :label="$t(`Note for the customer`)" :hint="$t(`Your private visit notes are never included`)" data-test="recap-note" />
 
       <div v-if="dayPhotos.length">
-        <div class="text-subtitle2 q-mb-xs">Photos to share (tap to include)</div>
+        <div class="text-subtitle2 q-mb-xs">{{ $t(`Photos to share (tap to include)`) }}</div>
         <div class="photo-pick">
           <button v-for="p in dayPhotos" :key="p._id" type="button" class="pick" :class="{ on: picked.has(p._id) }" :data-test="`recap-photo-${p._id}`" @click="toggle(p._id)">
             <PhotoImg :photo-id="p._id" thumb />
@@ -31,19 +31,20 @@
 
       <div class="row q-col-gutter-sm">
         <div class="col-6">
-          <q-btn class="full-width" color="primary" unelevated icon="email" label="Email" no-caps :href="mailto" data-test="recap-email" @click="afterSend" />
+          <q-btn class="full-width" color="primary" unelevated icon="email" :label="$t(`Email`)" no-caps :href="mailto" data-test="recap-email" @click="afterSend" />
         </div>
         <div class="col-6">
-          <q-btn class="full-width" color="primary" outline icon="share" :label="picked.size ? `Share + ${picked.size} photo${picked.size > 1 ? 's' : ''}` : 'Share'" no-caps :loading="sharing" data-test="recap-share" @click="share" />
+          <q-btn class="full-width" color="primary" outline icon="share" :label="picked.size ? `Share + ${picked.size} photo${picked.size > 1 ? 's' : ''}` : $t('Share')" no-caps :loading="sharing" data-test="recap-share" @click="share" />
         </div>
       </div>
-      <div class="text-caption text-grey-7">Email opens your email app with everything filled in (email links can't attach photos). Share lets you pick Gmail or Messages and includes photos.</div>
+      <div class="text-caption text-grey-7">{{ $t(`Email opens your email app with everything filled in (email links can't attach photos). Share lets you pick Gmail or Messages and includes photos.`) }}</div>
       <div v-if="visit.recapSentAt" class="text-caption text-positive" data-test="recap-sent">Recap sent {{ sentLabel }}</div>
     </template>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { locale, t } from '@/i18n';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -87,7 +88,7 @@ const recap = computed(() =>
     : { subject: '', body: '' },
 );
 const mailto = computed(() => `mailto:${encodeURIComponent(toEmail.value)}?subject=${encodeURIComponent(recap.value.subject)}&body=${encodeURIComponent(recap.value.body)}`);
-const sentLabel = computed(() => (visit.value?.recapSentAt ? new Date(visit.value.recapSentAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''));
+const sentLabel = computed(() => (visit.value?.recapSentAt ? new Date(visit.value.recapSentAt).toLocaleString(locale.value, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''));
 
 async function load() {
   visit.value = await data.getVisit(visitId.value);
@@ -99,7 +100,7 @@ async function load() {
   dayPhotos.value = all.filter((p) => new Date(p.takenAt).toDateString() === day);
 }
 watch(visitId, () => void load(), { immediate: true });
-watch(customer, (c) => ui.setTitle('Visit recap', c?.name ?? ''), { immediate: true });
+watch(customer, (c) => ui.setTitle(t('Visit recap'), c?.name ?? ''), { immediate: true });
 
 function toggle(id: string) {
   const next = new Set(picked.value);
@@ -122,7 +123,7 @@ async function saveVisit(sent: boolean) {
 function afterSend() {
   // Give the email/share app a moment, then ask.
   setTimeout(() => {
-    $q.dialog({ title: 'Recap sent?', message: 'Mark this visit’s recap as sent.', cancel: { label: 'Not yet', flat: true }, ok: { label: 'Mark sent', unelevated: true, color: 'primary' } })
+    $q.dialog({ title: t('Recap sent?'), message: t('Mark this visit’s recap as sent.'), cancel: { label: t('Not yet'), flat: true }, ok: { label: t('Mark sent'), unelevated: true, color: 'primary' } })
       .onOk(() => void saveVisit(true))
       .onCancel(() => void saveVisit(false));
   }, 600);
@@ -142,17 +143,17 @@ async function share() {
   sharing.value = true;
   try {
     const files = (await Promise.all(dayPhotos.value.filter((p) => picked.value.has(p._id)).map(photoFile))).filter((f): f is File => !!f);
-    if (files.length < picked.value.size) $q.notify({ type: 'warning', message: 'Some photos need a connection to share; sending without them.' });
+    if (files.length < picked.value.size) $q.notify({ type: 'warning', message: t('Some photos need a connection to share; sending without them.') });
     const payload: ShareData = { title: recap.value.subject, text: recap.value.body, ...(files.length && navigator.canShare?.({ files }) ? { files } : {}) };
     if (!navigator.share) {
       await navigator.clipboard?.writeText(recap.value.body);
-      $q.notify({ message: 'Sharing isn’t available here; the recap was copied instead.', color: 'grey-8' });
+      $q.notify({ message: t('Sharing isn’t available here; the recap was copied instead.'), color: 'grey-8' });
     } else {
       await navigator.share(payload);
     }
     afterSend();
   } catch (err) {
-    if ((err as Error)?.name !== 'AbortError') $q.notify({ type: 'negative', message: `Couldn't share: ${(err as Error).message}` });
+    if ((err as Error)?.name !== 'AbortError') $q.notify({ type: 'negative', message: t('Couldn’t share: {error}', { error: (err as Error).message }) });
   } finally {
     sharing.value = false;
   }

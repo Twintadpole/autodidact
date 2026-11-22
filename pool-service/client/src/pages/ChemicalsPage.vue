@@ -4,32 +4,32 @@
       <q-item v-for="c in sorted" :key="c._id" :class="{ 'text-grey-6': !c.active }">
         <q-item-section>
           <q-item-label>{{ c.name }}</q-item-label>
-          <q-item-label caption>Default unit: {{ c.defaultUnit }}{{ c.price != null && c.priceUnit ? ` · ${money(c.price)} per ${c.priceUnit}` : '' }}{{ c.active ? '' : ' · inactive' }}</q-item-label>
+          <q-item-label caption>{{ $t('Default unit: {unit}', { unit: c.defaultUnit }) }}{{ c.price != null && c.priceUnit ? ` · ${$t('{money} per {unit}', { money: money(c.price), unit: c.priceUnit })}` : '' }}{{ c.active ? '' : ` · ${$t('inactive')}` }}</q-item-label>
         </q-item-section>
         <q-item-section side class="row no-wrap">
-          <q-btn flat round dense icon="edit" aria-label="Edit" @click="edit(c)" />
-          <q-toggle :model-value="c.active" dense :aria-label="c.active ? 'Deactivate' : 'Activate'" @update:model-value="(v: boolean) => setActive(c, v)" />
+          <q-btn flat round dense icon="edit" :aria-label="$t(`Edit`)" @click="edit(c)" />
+          <q-toggle :model-value="c.active" dense :aria-label="c.active ? $t('Deactivate') : $t('Activate')" @update:model-value="(v: boolean) => setActive(c, v)" />
         </q-item-section>
       </q-item>
     </q-list>
-    <q-btn outline color="primary" icon="add" label="Add chemical" no-caps data-test="add-chemical" @click="edit(null)" />
+    <q-btn outline color="primary" icon="add" :label="$t(`Add chemical`)" no-caps data-test="add-chemical" @click="edit(null)" />
 
     <q-dialog v-model="dialog">
       <q-card style="min-width: 300px">
         <q-form @submit.prevent="save">
-          <q-card-section class="text-h6">{{ editing ? 'Edit chemical' : 'New chemical' }}</q-card-section>
+          <q-card-section class="text-h6">{{ editing ? $t('Edit chemical') : $t('New chemical') }}</q-card-section>
           <q-card-section class="q-gutter-md">
-            <q-input v-model="form.name" outlined label="Name" autofocus :rules="[(v) => !!v?.trim() || 'Required']" data-test="chemical-name" />
-            <q-select v-model="form.defaultUnit" outlined label="Default unit" :options="units" data-test="chemical-unit" />
+            <q-input v-model="form.name" outlined :label="$t(`Name`)" autofocus :rules="[(v) => !!v?.trim() || $t('Required')]" data-test="chemical-name" />
+            <q-select v-model="form.defaultUnit" outlined :label="$t(`Default unit`)" :options="units" data-test="chemical-unit" />
             <div class="row q-col-gutter-sm">
-              <q-input v-model="form.price" outlined label="Your cost" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" class="col-7" data-test="chemical-price" />
-              <q-select v-model="form.priceUnit" outlined label="per" :options="units" class="col-5" data-test="chemical-price-unit" />
+              <q-input v-model="form.price" outlined :label="$t(`Your cost`)" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" class="col-7" data-test="chemical-price" />
+              <q-select v-model="form.priceUnit" outlined :label="$t(`per`)" :options="units" class="col-5" data-test="chemical-price-unit" />
             </div>
-            <div class="text-caption text-grey-7">Only you see costs. They're never on invoices or recaps.</div>
+            <div class="text-caption text-grey-7">{{ $t(`Only you see costs. They're never on invoices or recaps.`) }}</div>
           </q-card-section>
           <q-card-actions align="right">
-            <q-btn flat label="Cancel" v-close-popup />
-            <q-btn type="submit" color="primary" unelevated label="Save" data-test="chemical-save" />
+            <q-btn flat :label="$t(`Cancel`)" v-close-popup />
+            <q-btn type="submit" color="primary" unelevated :label="$t(`Save`)" data-test="chemical-save" />
           </q-card-actions>
         </q-form>
       </q-card>

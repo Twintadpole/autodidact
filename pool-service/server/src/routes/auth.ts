@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import argon2 from 'argon2';
 import { z } from 'zod';
 import type { FastifyPluginAsyncZod, ZodTypeProvider } from 'fastify-type-provider-zod';
-import { changePasswordSchema, loginBodySchema, type Device } from '@pool/shared';
+import { changePasswordSchema, loginBodySchema, mePatchSchema, type Device } from '@pool/shared';
 import type { AppConfig } from '../config.js';
 import { SessionDoc, User } from '../models/index.js';
 import { deviceName, REMEMBER_ME_MS, requireAuth } from '../plugins/auth.js';
@@ -55,6 +55,12 @@ export const authRoutes: FastifyPluginAsyncZod<{ config: AppConfig }> = async (a
       const user = await User.findById(request.actor!.userId).lean();
       const team = (await User.find({}).sort({ role: 1, name: 1 }).lean()).map(toMember);
       return { authenticated: true, me: toMe(user!), team };
+    });
+
+    /** My account: language and display name. */
+    secured.patch('/auth/me', { schema: { body: mePatchSchema } }, async (request) => {
+      await User.updateOne({ _id: request.actor!.userId }, { $set: { ...request.body, updatedAt: new Date() } });
+      return toMe((await User.findById(request.actor!.userId).lean())!);
     });
 
     secured.post('/auth/password', { schema: { body: changePasswordSchema } }, async (request, reply) => {

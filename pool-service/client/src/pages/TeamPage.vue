@@ -2,9 +2,9 @@
   <q-page class="q-pa-md column q-gutter-md" data-test="team-page">
     <div class="row items-center">
       <div class="text-caption text-grey-8 col">
-        Techs see their own route (the pools assigned to them) without any money. Owners see everything.
+        {{ $t(`Techs see their own route (the pools assigned to them) without any money. Owners see everything.`) }}
       </div>
-      <q-btn color="primary" unelevated no-caps icon="person_add" label="Add a login" data-test="team-add" @click="addOpen = true" />
+      <q-btn color="primary" unelevated no-caps icon="person_add" :label="$t(`Add a login`)" data-test="team-add" @click="addOpen = true" />
     </div>
 
     <q-list bordered separator class="bg-white rounded-borders" data-test="team-list">
@@ -12,28 +12,28 @@
         <q-item-section>
           <q-item-label>
             {{ m.name }}
-            <q-badge :color="m.role === 'owner' ? 'primary' : 'teal'" :label="m.role === 'owner' ? 'Owner' : 'Tech'" class="q-ml-xs" />
-            <q-badge v-if="!m.active" color="grey-6" label="Off" class="q-ml-xs" />
-            <q-badge v-else-if="m.mustChangePassword" outline color="orange-9" label="Temporary password" class="q-ml-xs" />
+            <q-badge :color="m.role === 'owner' ? 'primary' : 'teal'" :label="m.role === 'owner' ? $t('Owner') : $t('Tech')" class="q-ml-xs" />
+            <q-badge v-if="!m.active" color="grey-6" :label="$t(`Off`)" class="q-ml-xs" />
+            <q-badge v-else-if="m.mustChangePassword" outline color="orange-9" :label="$t(`Temporary password`)" class="q-ml-xs" />
           </q-item-label>
           <q-item-label caption>{{ m.email }}</q-item-label>
           <q-item-label caption>
-            <template v-if="m.role === 'tech'">{{ routeCount(m._id) }} pool{{ routeCount(m._id) === 1 ? '' : 's' }} on the route · </template>
-            Last login {{ m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleDateString() : 'never' }}<template v-if="m.activeMonths.includes(thisMonth)"> · active this month</template>
+            <template v-if="m.role === 'tech'">{{ $tn(routeCount(m._id), '{n} pool on the route', '{n} pools on the route') }} · </template>
+            {{ $t('Last login {date}', { date: m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleDateString(locale) : $t('never') }) }}<template v-if="m.activeMonths.includes(thisMonth)"> {{ $t(`· active this month`) }}</template>
           </q-item-label>
         </q-item-section>
         <q-item-section side>
           <div class="row q-gutter-xs">
-            <q-btn v-if="m.role === 'tech' && m.active" flat dense no-caps icon="route" label="Route" :data-test="`team-route-${m.email}`" @click="openRoute(m)" />
+            <q-btn v-if="m.role === 'tech' && m.active" flat dense no-caps icon="route" :label="$t(`Route`)" :data-test="`team-route-${m.email}`" @click="openRoute(m)" />
             <q-btn flat dense round icon="more_vert" :data-test="`team-menu-${m.email}`">
               <q-menu auto-close>
                 <q-list dense style="min-width: 200px">
-                  <q-item clickable :data-test="`team-reset-${m.email}`" @click="resetPassword(m)"><q-item-section>New temporary password</q-item-section></q-item>
+                  <q-item clickable :data-test="`team-reset-${m.email}`" @click="resetPassword(m)"><q-item-section>{{ $t(`New temporary password`) }}</q-item-section></q-item>
                   <q-item v-if="m.active" clickable @click="patch(m, { role: m.role === 'owner' ? 'tech' : 'owner' })">
-                    <q-item-section>Make {{ m.role === 'owner' ? 'a tech' : 'an owner' }}</q-item-section>
+                    <q-item-section>{{ m.role === 'owner' ? $t('Make a tech') : $t('Make an owner') }}</q-item-section>
                   </q-item>
                   <q-item clickable :data-test="`team-active-${m.email}`" @click="toggleActive(m)">
-                    <q-item-section :class="m.active ? 'text-negative' : ''">{{ m.active ? 'Turn this login off' : 'Turn this login on' }}</q-item-section>
+                    <q-item-section :class="m.active ? 'text-negative' : ''">{{ m.active ? $t('Turn this login off') : $t('Turn this login on') }}</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
@@ -47,15 +47,15 @@
     <q-dialog v-model="addOpen">
       <q-card style="width: 420px; max-width: 95vw">
         <q-form @submit.prevent="add">
-          <q-card-section class="text-h6">Add a login</q-card-section>
+          <q-card-section class="text-h6">{{ $t(`Add a login`) }}</q-card-section>
           <q-card-section class="q-gutter-sm">
-            <q-input v-model="draft.name" outlined dense label="Name" data-test="team-new-name" />
-            <q-input v-model="draft.email" outlined dense type="email" label="Email (their login)" autocapitalize="off" data-test="team-new-email" />
-            <q-btn-toggle v-model="draft.role" no-caps unelevated toggle-color="primary" :options="[{ label: 'Tech', value: 'tech' }, { label: 'Owner', value: 'owner' }]" />
+            <q-input v-model="draft.name" outlined dense :label="$t(`Name`)" data-test="team-new-name" />
+            <q-input v-model="draft.email" outlined dense type="email" :label="$t(`Email (their login)`)" autocapitalize="off" data-test="team-new-email" />
+            <q-btn-toggle v-model="draft.role" no-caps unelevated toggle-color="primary" :options="[{ label: $t('Tech'), value: 'tech' }, { label: $t('Owner'), value: 'owner' }]" />
           </q-card-section>
           <q-card-actions align="right">
-            <q-btn flat no-caps label="Cancel" v-close-popup />
-            <q-btn type="submit" color="primary" unelevated no-caps label="Add" :disable="!draft.name.trim() || !draft.email.trim()" :loading="busy" data-test="team-new-save" />
+            <q-btn flat no-caps :label="$t(`Cancel`)" v-close-popup />
+            <q-btn type="submit" color="primary" unelevated no-caps :label="$t(`Add`)" :disable="!draft.name.trim() || !draft.email.trim()" :loading="busy" data-test="team-new-save" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -67,11 +67,11 @@
         <q-card-section class="text-h6">Temporary password for {{ pwFor }}</q-card-section>
         <q-card-section>
           <div class="text-h5 text-weight-bold q-pa-sm bg-grey-2 rounded-borders text-center" style="letter-spacing: 1px; font-family: monospace" data-test="team-temp-value">{{ pw }}</div>
-          <div class="text-caption text-grey-8 q-mt-sm">Give it to them in person or by text. It's shown only now; they choose their own password when they first log in.</div>
+          <div class="text-caption text-grey-8 q-mt-sm">{{ $t(`Give it to them in person or by text. It's shown only now; they choose their own password when they first log in.`) }}</div>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat no-caps icon="content_copy" label="Copy" @click="copy" />
-          <q-btn color="primary" unelevated no-caps label="Done" data-test="team-temp-done" @click="closePassword" />
+          <q-btn flat no-caps icon="content_copy" :label="$t(`Copy`)" @click="copy" />
+          <q-btn color="primary" unelevated no-caps :label="$t(`Done`)" data-test="team-temp-done" @click="closePassword" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -81,9 +81,9 @@
       <q-card style="width: 560px; max-width: 95vw" data-test="team-route-dialog">
         <q-card-section class="row items-center">
           <div class="text-h6 col">{{ routeFor?.name }}'s route</div>
-          <q-input v-model="routeSearch" dense outlined clearable placeholder="Search" style="width: 180px" />
+          <q-input v-model="routeSearch" dense outlined clearable :placeholder="$t(`Search`)" style="width: 180px" />
         </q-card-section>
-        <q-card-section class="q-pt-none text-caption text-grey-8">Tick the pools this tech services. A pool is on one route at a time; ticking one moves it here.</q-card-section>
+        <q-card-section class="q-pt-none text-caption text-grey-8">{{ $t(`Tick the pools this tech services. A pool is on one route at a time; ticking one moves it here.`) }}</q-card-section>
         <q-card-section class="q-pt-none" style="max-height: 55vh; overflow: auto">
           <div v-for="g in routeGroups" :key="g.label" class="q-mb-sm">
             <div class="text-subtitle2 text-grey-8">{{ g.label }}</div>
@@ -97,8 +97,8 @@
           </div>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat no-caps label="Cancel" v-close-popup />
-          <q-btn color="primary" unelevated no-caps label="Save route" :loading="busy" data-test="team-route-save" @click="saveRoute" />
+          <q-btn flat no-caps :label="$t(`Cancel`)" v-close-popup />
+          <q-btn color="primary" unelevated no-caps :label="$t(`Save route`)" :loading="busy" data-test="team-route-save" @click="saveRoute" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -106,6 +106,7 @@
 </template>
 
 <script setup lang="ts">
+import { locale, t, tn } from '@/i18n';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useQuasar, copyToClipboard } from 'quasar';
 import type { Role, TeamMemberFull } from '@pool/shared';
@@ -168,10 +169,10 @@ function closePassword() {
   pw.value = '';
 }
 function copy() {
-  void copyToClipboard(pw.value).then(() => $q.notify({ message: 'Copied', timeout: 1200 }));
+  void copyToClipboard(pw.value).then(() => $q.notify({ message: t('Copied'), timeout: 1200 }));
 }
 function resetPassword(m: TeamMemberFull) {
-  $q.dialog({ title: `New temporary password for ${m.name}?`, message: 'Their devices are signed out; they log in with the new one and choose their own.', cancel: true, ok: { label: 'Make one', unelevated: true, noCaps: true } }).onOk(async () => {
+  $q.dialog({ title: t('New temporary password for {name}?', { name: m.name }), message: t('Their devices are signed out; they log in with the new one and choose their own.'), cancel: true, ok: { label: t('Make one'), unelevated: true, noCaps: true } }).onOk(async () => {
     try {
       const r = await api<{ password: string }>(`/team/${m._id}/reset-password`, { method: 'POST' });
       showPassword(m.name, r.password);
@@ -191,7 +192,7 @@ async function patch(m: TeamMemberFull, body: Partial<Pick<TeamMemberFull, 'role
 }
 function toggleActive(m: TeamMemberFull) {
   if (!m.active) return void patch(m, { active: true });
-  $q.dialog({ title: `Turn off ${m.name}'s login?`, message: 'They are signed out everywhere and can’t log in. Their pools stay on their route until you move them. You can turn it on again.', cancel: true, ok: { label: 'Turn off', color: 'negative', unelevated: true, noCaps: true } }).onOk(() => void patch(m, { active: false }));
+  $q.dialog({ title: t('Turn off {name}’s login?', { name: m.name }), message: t('They are signed out everywhere and can’t log in. Their pools stay on their route until you move them. You can turn it on again.'), cancel: true, ok: { label: t('Turn off'), color: 'negative', unelevated: true, noCaps: true } }).onOk(() => void patch(m, { active: false }));
 }
 
 // ---------------------------------------------------------------- route
@@ -204,7 +205,7 @@ const routeGroups = computed(() => {
     .map((p) => ({ ...p, customer: byCustomer.get(p.customerId)! }))
     .filter((p) => !q || `${p.customer} ${p.name}`.toLowerCase().includes(q));
   const groups = DAY_ORDER.map((d) => ({ label: DAY_LABELS[d], pools: pools.filter((p) => p.serviceDay === d) }));
-  groups.push({ label: 'One-time or not scheduled', pools: pools.filter((p) => !p.serviceDay) });
+  groups.push({ label: t('One-time or not scheduled'), pools: pools.filter((p) => !p.serviceDay) });
   for (const g of groups) g.pools.sort((a, b) => (a.routeOrder ?? 0) - (b.routeOrder ?? 0) || a.customer.localeCompare(b.customer));
   return groups.filter((g) => g.pools.length);
 });
@@ -226,7 +227,7 @@ async function saveRoute() {
     if (remove.length) await api('/pools/assign', { method: 'POST', body: { poolIds: remove, techId: null } });
     routeOpen.value = false;
     await useSyncStore().kick({ force: true });
-    $q.notify({ type: 'positive', message: `${tech.name}'s route: ${after.size} pool${after.size === 1 ? '' : 's'}` });
+    $q.notify({ type: 'positive', message: tn(after.size, '{name}’s route: {n} pool', '{name}’s route: {n} pools', { name: tech.name }) });
   } catch (err) {
     fail(err);
   } finally {

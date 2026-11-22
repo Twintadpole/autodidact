@@ -9,10 +9,10 @@
       <q-card-section>
         <div v-if="loading" class="flex flex-center q-pa-md"><q-spinner color="primary" /></div>
         <div v-else-if="error" class="text-grey-7" data-test="history-offline">{{ error }}</div>
-        <div v-else-if="!entries.length" class="text-grey-7">No changes recorded yet.</div>
+        <div v-else-if="!entries.length" class="text-grey-7">{{ $t(`No changes recorded yet.`) }}</div>
         <q-timeline v-else color="primary" layout="dense">
           <q-timeline-entry v-for="e in entries" :key="e._id" :subtitle="when(e.at)" :icon="ICON[e.action]" data-test="history-entry">
-            <div class="text-weight-medium">{{ ACTION[e.action] }} <span class="text-caption text-grey-7">· {{ e.source === 'sync' ? 'from the phone' : 'in the app' }}</span></div>
+            <div class="text-weight-medium">{{ ACTION[e.action] }} <span class="text-caption text-grey-7">· {{ e.source === 'sync' ? $t('from the phone') : $t('in the app') }}</span></div>
             <div v-if="e.note" class="text-body2">{{ e.note }}</div>
             <div v-for="(c, i) in e.changes" :key="i" class="text-body2">
               <span class="text-grey-8">{{ label(c.path) }}:</span> {{ show(c.path, c.from) }} → <b>{{ show(c.path, c.to) }}</b>
@@ -25,6 +25,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, translated } from '@/i18n';
 import { ref, watch } from 'vue';
 import { format, parseISO } from 'date-fns';
 import { READINGS } from '@pool/shared';
@@ -40,9 +41,9 @@ const entries = ref<AuditEntry[]>([]);
 const loading = ref(false);
 const error = ref('');
 
-const ACTION = { create: 'Created', update: 'Changed', delete: 'Deleted', bulk: 'Bulk change' } as const;
+const ACTION = translated({ create: 'Created', update: 'Changed', delete: 'Deleted', bulk: 'Bulk change' });
 const ICON = { create: 'add', update: 'edit', delete: 'delete', bulk: 'done_all' } as const;
-const LABELS: Record<string, string> = {
+const LABELS: Record<string, string> = translated({
   'timeLog.segments': 'Times',
   'timeLog.finished': 'Timer stopped',
   notes: 'Note',
@@ -53,7 +54,7 @@ const LABELS: Record<string, string> = {
   'tasks.basketsEmptied': 'Baskets emptied',
   'tasks.filterCleaned': 'Filter cleaned',
   ...Object.fromEntries(READINGS.map((r) => [`readings.${r.key}`, r.label])),
-};
+});
 
 const when = (iso: string) => format(parseISO(iso), 'MMM d, h:mm:ss a');
 const label = (path: string) => LABELS[path] ?? path.replace(/^tasks\./, '').replace(/\./g, ' › ');
@@ -83,7 +84,7 @@ watch(
     try {
       entries.value = await data.history(props.collection, props.docId);
     } catch {
-      error.value = 'The change history is kept on the server. It will show here once there’s a connection and this visit has uploaded.';
+      error.value = t('The change history is kept on the server. It will show here once there’s a connection and this visit has uploaded.');
     } finally {
       loading.value = false;
     }

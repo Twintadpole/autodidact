@@ -1,14 +1,15 @@
+import { locale, t, translated, translatedOptions } from '@/i18n';
 import type { CustomerStatus, EquipmentKind, PaymentMethod } from '@pool/shared';
 
-export const STATUS_LABEL: Record<CustomerStatus, string> = { current: 'Current', prospect: 'Prospect', past: 'Past' };
+export const STATUS_LABEL: Record<CustomerStatus, string> = translated({ current: 'Current', prospect: 'Prospect', past: 'Past' });
 export const STATUS_COLOR: Record<CustomerStatus, string> = { current: 'positive', prospect: 'blue-7', past: 'grey-7' };
-export const STATUS_OPTIONS = (['current', 'prospect', 'past'] as const).map((value) => ({ label: STATUS_LABEL[value], value }));
+export const STATUS_OPTIONS = translatedOptions((['current', 'prospect', 'past'] as const).map((value) => ({ label: { current: 'Current', prospect: 'Prospect', past: 'Past' }[value], value })));
 
-export const PAYMENT_LABEL: Record<PaymentMethod, string> = { check: 'Check', cash: 'Cash', electronic: 'Electronic', other: 'Other' };
-export const PAYMENT_OPTIONS = (['check', 'cash', 'electronic', 'other'] as const).map((value) => ({ label: PAYMENT_LABEL[value], value }));
+export const PAYMENT_LABEL: Record<PaymentMethod, string> = translated({ check: 'Check', cash: 'Cash', electronic: 'Electronic', other: 'Other' });
+export const PAYMENT_OPTIONS = translatedOptions((['check', 'cash', 'electronic', 'other'] as const).map((value) => ({ label: ({ check: 'Check', cash: 'Cash', electronic: 'Electronic', other: 'Other' } as const)[value], value })));
 
 /** Ready-made equipment slots, in the order the pool screen lists them. "other" is the custom "+ Add equipment". */
-export const EQUIPMENT_LABEL: Record<EquipmentKind, string> = {
+export const EQUIPMENT_LABEL: Record<EquipmentKind, string> = translated({
   pump: 'Pump',
   filter: 'Filter',
   heater: 'Heater',
@@ -18,7 +19,7 @@ export const EQUIPMENT_LABEL: Record<EquipmentKind, string> = {
   lights: 'Lights',
   timer: 'Timer',
   other: 'Other equipment',
-};
+});
 export const EQUIPMENT_ICON: Record<EquipmentKind, string> = {
   pump: 'settings_input_component',
   filter: 'filter_alt',
@@ -33,7 +34,7 @@ export const EQUIPMENT_ICON: Record<EquipmentKind, string> = {
 export const EQUIPMENT_SLOTS = ['pump', 'filter', 'heater', 'saltCell', 'cleaner', 'automation', 'lights', 'timer'] as const;
 
 /** "$150.00" */
-export const money = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+export const money = (n: number) => n.toLocaleString(locale.value, { style: 'currency', currency: 'USD' });
 
 /** Address form fields → stored address with only the filled parts; undefined when nothing but the default state is filled. */
 export function cleanAddress(a: { line1: string; line2: string; city: string; state: string; zip: string }) {
@@ -62,7 +63,7 @@ export function scheduleText(p: { serviceDay?: import('@pool/shared').ServiceDay
   if (p.serviceDay) return dayLabels[p.serviceDay]!;
   if (p.oneTimeDate) {
     const [y, m, d] = p.oneTimeDate.slice(0, 10).split('-').map(Number);
-    return `One-time · ${new Date(y!, m! - 1, d!).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
+    return t('One-time · {date}', { date: new Date(y!, m! - 1, d!).toLocaleDateString(locale.value, { weekday: 'short', month: 'short', day: 'numeric' }) });
   }
-  return 'Not scheduled';
+  return t('Not scheduled');
 }

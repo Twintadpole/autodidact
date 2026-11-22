@@ -6,10 +6,10 @@
         <q-btn-toggle v-model="filter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="filterOptions" data-test="desk-invoice-filter" />
       </template>
       <template #actions>
-        <q-btn color="primary" unelevated no-caps icon="post_add" label="Create monthly invoices" data-test="desk-create-monthly">
+        <q-btn color="primary" unelevated no-caps icon="post_add" :label="$t(`Create monthly invoices`)" data-test="desk-create-monthly">
           <q-menu>
             <q-list style="min-width: 260px">
-              <q-item-label header>Drafts for current customers with a monthly rate</q-item-label>
+              <q-item-label header>{{ $t(`Drafts for current customers with a monthly rate`) }}</q-item-label>
               <q-item v-for="o in monthOptions" :key="o.value" v-close-popup clickable :data-test="`create-${o.value}`" @click="createMonthly(o.value)">
                 <q-item-section>{{ o.label }}</q-item-section>
                 <q-item-section side>{{ dueCount(o.value) }} to make</q-item-section>
@@ -21,8 +21,8 @@
       <template #quick>
         <q-form class="row items-center q-gutter-sm quick-row" data-test="desk-invoice-quick" @submit.prevent="quickNew">
           <q-icon name="bolt" color="grey-6" />
-          <q-select v-model="quick.customerId" dense outlined emit-value map-options use-input input-debounce="0" :options="customerOptions" label="New draft invoice for…" style="width: 280px" data-test="quick-customer" @filter="filterCustomers" />
-          <q-btn type="submit" color="primary" outline no-caps icon="add" label="Create" :disable="!quick.customerId" data-test="quick-add" />
+          <q-select v-model="quick.customerId" dense outlined emit-value map-options use-input input-debounce="0" :options="customerOptions" :label="$t(`New draft invoice for…`)" style="width: 280px" data-test="quick-customer" @filter="filterCustomers" />
+          <q-btn type="submit" color="primary" outline no-caps icon="add" :label="$t(`Create`)" :disable="!quick.customerId" data-test="quick-add" />
         </q-form>
       </template>
       <template #body-cell-state="props">
@@ -32,7 +32,7 @@
 
     <SidePanel v-model="panel" :title="panelTitle">
       <template #head>
-        <q-btn v-if="openId" flat dense no-caps icon="open_in_new" label="Phone screen" :to="`/invoices/${openId}`" />
+        <q-btn v-if="openId" flat dense no-caps icon="open_in_new" :label="$t(`Phone screen`)" :to="`/invoices/${openId}`" />
       </template>
       <InvoiceEditor v-if="openId" :id="openId" :key="openId" @deleted="panel = false" />
     </SidePanel>
@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+import { locale, t, tn } from '@/i18n';
 import { computed, reactive, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { customerStatus, invoiceBalance, invoicePaid, invoiceState, invoiceTotal } from '@pool/shared';
@@ -107,21 +108,21 @@ const filterOptions = computed(() =>
       ['paid', 'Paid'],
       ['void', 'Void'],
     ] as const
-  ).map(([value, label]) => ({ value, label: `${label} ${all.value.filter((r) => matches(r.state, value)).length}` })),
+  ).map(([value, label]) => ({ value, label: `${t(label)} ${all.value.filter((r) => matches(r.state, value)).length}` })),
 );
 
-const day = (d: string) => (d ? new Date(d + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
+const day = (d: string) => (d ? new Date(d + 'T12:00').toLocaleDateString(locale.value, { month: 'short', day: 'numeric', year: 'numeric' }) : '');
 const columns: DeskColumn<Row>[] = [
   { name: 'number', label: '#', field: 'number', align: 'left', sortable: true, required: true },
-  { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
-  { name: 'month', label: 'Month', field: 'month', align: 'left', sortable: true, sort: (_a, _b, x: Row, y: Row) => x.issued.localeCompare(y.issued) },
-  { name: 'issued', label: 'Date', field: 'issued', align: 'left', sortable: true, format: day, exportType: 'date' },
-  { name: 'due', label: 'Due', field: 'due', align: 'left', sortable: true, format: day, exportType: 'date' },
-  { name: 'total', label: 'Total', field: 'total', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
-  { name: 'paid', label: 'Paid', field: 'paid', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
-  { name: 'balance', label: 'Balance', field: 'balance', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
-  { name: 'state', label: 'Status', field: 'state', align: 'left', sortable: true, exportValue: (r) => STATE_LABEL[r.state] },
-  { name: 'sent', label: 'Sent', field: 'sent', align: 'left', sortable: true, format: day, hidden: true, exportType: 'date' },
+  { name: 'customer', label: t('Customer'), field: 'customer', align: 'left', sortable: true },
+  { name: 'month', label: t('Month'), field: 'month', align: 'left', sortable: true, sort: (_a, _b, x: Row, y: Row) => x.issued.localeCompare(y.issued) },
+  { name: 'issued', label: t('Date'), field: 'issued', align: 'left', sortable: true, format: day, exportType: 'date' },
+  { name: 'due', label: t('Due'), field: 'due', align: 'left', sortable: true, format: day, exportType: 'date' },
+  { name: 'total', label: t('Total'), field: 'total', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'paid', label: t('Paid'), field: 'paid', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'balance', label: t('Balance'), field: 'balance', align: 'right', sortable: true, sum: true, format: money, exportType: 'money' },
+  { name: 'state', label: t('Status'), field: 'state', align: 'left', sortable: true, exportValue: (r) => STATE_LABEL[r.state] },
+  { name: 'sent', label: t('Sent'), field: 'sent', align: 'left', sortable: true, format: day, hidden: true, exportType: 'date' },
 ];
 
 // ---- panel
@@ -148,12 +149,12 @@ function dueCount(p: string) {
 }
 async function createMonthly(p: string) {
   if (!dueCount(p)) {
-    $q.notify({ message: `Everyone with a monthly rate already has a ${periodLabel(p)} invoice.`, color: 'grey-8' });
+    $q.notify({ message: t('Everyone with a monthly rate already has a {month} invoice.', { month: periodLabel(p) }), color: 'grey-8' });
     return;
   }
   try {
     const made = await data.createMonthlyInvoices(p);
-    $q.notify({ type: 'positive', message: `${made.length} draft invoice${made.length === 1 ? '' : 's'} for ${periodLabel(p)}` });
+    $q.notify({ type: 'positive', message: tn(made.length, '{n} draft invoice for {month}', '{n} draft invoices for {month}', { month: periodLabel(p) }) });
     filter.value = 'draft';
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

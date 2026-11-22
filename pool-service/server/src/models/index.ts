@@ -318,6 +318,8 @@ const userSchema = new Schema(
     active: { type: Boolean, default: true },
     /** Set by an owner's password reset: the app asks for a new password. */
     mustChangePassword: { type: Boolean, default: false },
+    /** The app's language (GPF item 5); null = the device's. */
+    language: { type: String, default: null },
     failedLogins: { type: Number, default: 0 },
     lockedUntil: { type: Date, default: null },
     lastLoginAt: { type: Date, default: null },

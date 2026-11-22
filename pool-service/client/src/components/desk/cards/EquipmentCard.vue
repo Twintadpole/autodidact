@@ -3,7 +3,7 @@
     <div class="row items-end q-gutter-x-lg">
       <div>
         <div class="hero" data-test="equipment-count">{{ items.length }}</div>
-        <div class="hero-sub">pieces of equipment</div>
+        <div class="hero-sub">{{ $t(`pieces of equipment`) }}</div>
       </div>
       <div class="hero-sub">
         {{ dated.length }} with an install date{{ oldest ? ` · oldest ${oldest.age} yr (${oldest.what})` : '' }}
@@ -13,7 +13,7 @@
 
     <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
       <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-        <EChart :option="option" label="Equipment by age" />
+        <EChart :option="option" :label="$t(`Equipment by age`)" />
       </div>
       <CardTable
         v-if="mode === 'l'"
@@ -21,7 +21,7 @@
         :columns="columns"
         :rows="tableRows"
         clickable
-        empty="No equipment recorded yet."
+        :empty="$t('No equipment recorded yet.')"
         :class="side ? 'side-table scroll' : 'q-mt-sm'"
         test-id="equipment-table"
         @row="(r) => router.push(`/pools/${r.poolId}/overview`)"
@@ -31,6 +31,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import EChart from '@/components/desk/EChart.vue';
@@ -66,7 +67,7 @@ const oldest = computed(() => dated.value[0]);
 const old = computed(() => dated.value.filter((i) => i.age! >= OLD));
 
 const BUCKETS = [
-  { label: '0–2 yr', test: (a: number) => a < 3 },
+  { label: t('0–2 yr'), test: (a: number) => a < 3 },
   { label: '3–5', test: (a: number) => a >= 3 && a < 6 },
   { label: '6–8', test: (a: number) => a >= 6 && a < 9 },
   { label: '9–11', test: (a: number) => a >= 9 && a < 12 },
@@ -74,11 +75,11 @@ const BUCKETS = [
 ];
 
 const columns: CardColumn[] = [
-  { key: 'pool', label: 'Customer · pool', class: 'ellipsis' },
-  { key: 'what', label: 'Equipment' },
-  { key: 'model', label: 'Model' },
-  { key: 'installed', label: 'Installed' },
-  { key: 'age', label: 'Years', align: 'right' },
+  { key: 'pool', label: t('Customer · pool'), class: 'ellipsis' },
+  { key: 'what', label: t('Equipment') },
+  { key: 'model', label: t('Model') },
+  { key: 'installed', label: t('Installed') },
+  { key: 'age', label: t('Years'), align: 'right' },
 ];
 /** Oldest first; equipment without a date at the end. */
 const tableRows = computed(() => [...dated.value, ...items.value.filter((i) => i.age == null)]);
@@ -87,11 +88,11 @@ const option = computed(() => ({
   ...base,
   grid: { top: 18, left: 8, right: 8, bottom: 4, containLabel: true },
   tooltip: { ...base.tooltip, trigger: 'item', valueFormatter: (v: number) => `${v} piece${v === 1 ? '' : 's'}` },
-  xAxis: categoryAxis([...BUCKETS.map((b) => b.label), 'No date']),
+  xAxis: categoryAxis([...BUCKETS.map((b) => b.label), t('No date')]),
   yAxis: valueAxis((v: number) => String(v)),
   series: [
     {
-      name: 'Equipment',
+      name: t('Equipment'),
       type: 'bar',
       barMaxWidth: 36,
       // One hue, light = newer, dark = older; "No date" in grey.

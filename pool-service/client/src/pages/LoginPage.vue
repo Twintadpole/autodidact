@@ -15,7 +15,7 @@
                 v-model="email"
                 type="text"
                 inputmode="email"
-                label="Email"
+                :label="$t(`Email`)"
                 outlined
                 :autofocus="!email"
                 autocomplete="username"
@@ -25,7 +25,7 @@
               <q-input
                 v-model="password"
                 type="password"
-                label="Password"
+                :label="$t(`Password`)"
                 outlined
                 :autofocus="!!email"
                 autocomplete="current-password"
@@ -33,10 +33,11 @@
                 :error="!!error"
                 :error-message="error"
               />
-              <q-toggle v-model="remember" label="Remember this device (90 days)" />
+              <LanguagePicker />
+              <q-toggle v-model="remember" :label="$t(`Remember this device (90 days)`)" />
             </q-card-section>
             <q-card-actions class="q-px-md q-pb-md">
-              <q-btn type="submit" color="primary" unelevated size="lg" class="full-width" label="Log in" :loading="busy" data-test="login" />
+              <q-btn type="submit" color="primary" unelevated size="lg" class="full-width" :label="$t(`Log in`)" :loading="busy" data-test="login" />
             </q-card-actions>
           </q-form>
         </q-card>
@@ -46,11 +47,13 @@
 </template>
 
 <script setup lang="ts">
+import { t, tn } from '@/i18n';
 import { onMounted, ref } from 'vue';
 import { appName, brand, refreshBranding } from '@/lib/branding';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from '@/stores/auth';
+import LanguagePicker from '@/components/LanguagePicker.vue';
 import { useDataStore } from '@/stores/data';
 import { ApiError } from '@/stores/api';
 import { clearLocalData, mustClearFor, setDataOwner, unsentCount } from '@/lib/session';
@@ -73,10 +76,14 @@ const error = ref('');
 function confirmDiscard(n: number): Promise<boolean> {
   return new Promise((resolve) => {
     $q.dialog({
-      title: 'Unsent changes on this phone',
-      message: `This phone has ${n} change${n === 1 ? '' : 's'} from the previous login that ${n === 1 ? 'hasn’t' : 'haven’t'} reached the server. Logging in as someone else deletes ${n === 1 ? 'it' : 'them'}. To keep ${n === 1 ? 'it' : 'them'}, cancel, log in as the previous person and let the phone sync first.`,
-      cancel: { label: 'Cancel', flat: true, noCaps: true },
-      ok: { label: 'Delete and continue', color: 'negative', unelevated: true, noCaps: true },
+      title: t('Unsent changes on this phone'),
+      message: tn(
+        n,
+        'This phone has {n} change from the previous login that hasn’t reached the server. Logging in as someone else deletes it. To keep it, cancel, log in as the previous person and let the phone sync first.',
+        'This phone has {n} changes from the previous login that haven’t reached the server. Logging in as someone else deletes them. To keep them, cancel, log in as the previous person and let the phone sync first.',
+      ),
+      cancel: { label: t('Cancel'), flat: true, noCaps: true },
+      ok: { label: t('Delete and continue'), color: 'negative', unelevated: true, noCaps: true },
       persistent: true,
     })
       .onOk(() => resolve(true))
@@ -104,10 +111,10 @@ async function submit() {
     const next = typeof route.query.next === 'string' && route.query.next.startsWith('/') ? route.query.next : '/';
     await router.replace(me.mustChangePassword ? '/more/account?change=1' : next);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 429) error.value = err.message.includes('this login') ? err.message : 'Too many attempts. Wait 15 minutes.';
-    else if (err instanceof ApiError && err.status === 401) error.value = 'Wrong email or password';
-    else if (err instanceof ApiError && err.status === 400) error.value = 'Check the email address';
-    else error.value = err instanceof Error ? err.message : 'Login failed';
+    if (err instanceof ApiError && err.status === 429) error.value = err.message.includes('this login') ? t(err.message) : t('Too many attempts. Wait 15 minutes.');
+    else if (err instanceof ApiError && err.status === 401) error.value = t('Wrong email or password');
+    else if (err instanceof ApiError && err.status === 400) error.value = t('Check the email address');
+    else error.value = err instanceof Error ? t(err.message) : t('Login failed');
   } finally {
     busy.value = false;
   }

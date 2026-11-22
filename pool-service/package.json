@@ -19,6 +19,7 @@
     "dev:client": "npm run dev -w client",
     "test": "npm run test -w shared && npm run test -w server",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
-    "hash-password": "npm run hash-password -w server --"
+    "hash-password": "npm run hash-password -w server --",
+    "i18n:check": "node client/scripts/i18n-keys.mjs --check es"
   }
 }

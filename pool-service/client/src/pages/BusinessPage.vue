@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <q-form class="column q-gutter-md" @submit.prevent="save">
-      <div class="text-caption text-grey-7">Shown on invoices and recaps. Everything is optional.</div>
+      <div class="text-caption text-grey-7">{{ $t(`Shown on invoices and recaps. Everything is optional.`) }}</div>
 
       <div class="row items-center q-gutter-md">
         <div class="logo-box" data-test="business-logo">
@@ -9,38 +9,39 @@
           <q-icon v-else name="image" size="40px" color="grey-5" />
         </div>
         <div class="column q-gutter-xs">
-          <q-btn outline dense no-caps color="primary" icon="upload" :label="form.logoDataUrl ? 'Change logo' : 'Add logo'" @click="logoInput?.click()" />
-          <q-btn v-if="form.logoDataUrl" flat dense no-caps color="grey-8" icon="close" label="Remove" @click="form.logoDataUrl = ''" />
+          <q-btn outline dense no-caps color="primary" icon="upload" :label="form.logoDataUrl ? $t('Change logo') : $t('Add logo')" @click="logoInput?.click()" />
+          <q-btn v-if="form.logoDataUrl" flat dense no-caps color="grey-8" icon="close" :label="$t(`Remove`)" @click="form.logoDataUrl = ''" />
         </div>
         <input ref="logoInput" type="file" accept="image/*" class="hidden" data-test="business-logo-input" @change="onLogo" />
       </div>
 
-      <q-input v-model="form.businessName" outlined label="Business name" data-test="business-name" />
+      <q-input v-model="form.businessName" outlined :label="$t(`Business name`)" data-test="business-name" />
       <div class="row q-col-gutter-sm">
-        <q-input v-model="form.phone" outlined dense label="Phone" type="tel" class="col-6" data-test="business-phone" />
-        <q-input v-model="form.email" outlined dense label="Email" type="email" class="col-6" data-test="business-email" />
+        <q-input v-model="form.phone" outlined dense :label="$t(`Phone`)" type="tel" class="col-6" data-test="business-phone" />
+        <q-input v-model="form.email" outlined dense :label="$t(`Email`)" type="email" class="col-6" data-test="business-email" />
       </div>
       <div>
-        <div class="text-subtitle2 q-mb-xs">Address</div>
+        <div class="text-subtitle2 q-mb-xs">{{ $t(`Address`) }}</div>
         <AddressFields v-model="form.address" />
       </div>
-      <q-input v-model="form.paymentInstructions" outlined autogrow type="textarea" label="Payment instructions (on every invoice)" hint="e.g. Checks payable to … · Zelle: …" data-test="business-payment" />
+      <q-input v-model="form.paymentInstructions" outlined autogrow type="textarea" :label="$t(`Payment instructions (on every invoice)`)" :hint="$t(`e.g. Checks payable to … · Zelle: …`)" data-test="business-payment" />
 
-      <div class="text-subtitle2">Invoices</div>
+      <div class="text-subtitle2">{{ $t(`Invoices`) }}</div>
       <div class="row q-col-gutter-sm">
-        <q-select v-model="form.terms" outlined dense label="Payment terms" emit-value map-options :options="termOptions" class="col-6" data-test="business-terms" />
-        <q-input v-model="form.firstInvoiceNumber" outlined dense label="First invoice number" type="number" inputmode="numeric" min="1" class="col-6" data-test="business-first-number" />
+        <q-select v-model="form.terms" outlined dense :label="$t(`Payment terms`)" emit-value map-options :options="termOptions" class="col-6" data-test="business-terms" />
+        <q-input v-model="form.firstInvoiceNumber" outlined dense :label="$t(`First invoice number`)" type="number" inputmode="numeric" min="1" class="col-6" data-test="business-first-number" />
       </div>
-      <q-input v-model="form.mileageRate" outlined dense label="Rate per mile" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" hint="For mileage totals and each customer's mileage cost (e.g. the IRS standard rate)" data-test="business-mileage-rate" />
+      <q-input v-model="form.mileageRate" outlined dense :label="$t(`Rate per mile`)" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" :hint="$t(`For mileage totals and each customer's mileage cost (e.g. the IRS standard rate)`)" data-test="business-mileage-rate" />
       <q-btn-toggle v-model="form.billingTiming" spread no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="timingOptions" data-test="business-timing" />
-      <div class="text-caption text-grey-7">{{ form.billingTiming === 'end' ? 'Invoices made in December bill November.' : 'Invoices made in November bill November.' }}</div>
+      <div class="text-caption text-grey-7">{{ form.billingTiming === 'end' ? $t('Invoices made in December bill November.') : $t('Invoices made in November bill November.') }}</div>
 
-      <q-btn type="submit" color="primary" unelevated size="lg" label="Save" :loading="busy" data-test="business-save" />
+      <q-btn type="submit" color="primary" unelevated size="lg" :label="$t(`Save`)" :loading="busy" data-test="business-save" />
     </q-form>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -61,8 +62,8 @@ const logoInput = ref<HTMLInputElement | null>(null);
 
 const termOptions = (['receipt', 'net15', 'net30'] as const).map((value) => ({ label: TERMS_LABEL[value], value }));
 const timingOptions = [
-  { label: 'Bill at the start of the month', value: 'start' },
-  { label: 'Bill at the end', value: 'end' },
+  { label: t('Bill at the start of the month'), value: 'start' },
+  { label: t('Bill at the end'), value: 'end' },
 ];
 
 const form = reactive({
@@ -111,7 +112,7 @@ async function onLogo(ev: Event) {
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     form.logoDataUrl = canvas.toDataURL('image/png');
   } catch (err) {
-    $q.notify({ type: 'negative', message: `Couldn't read that image: ${errorMessage(err)}` });
+    $q.notify({ type: 'negative', message: t("Couldn't read that image: {err}", { err: errorMessage(err) }) });
   }
 }
 
@@ -131,7 +132,7 @@ async function save() {
       firstInvoiceNumber: first && first >= 1 ? Math.round(first) : null,
       mileageRate: numberOrNull(form.mileageRate),
     });
-    $q.notify({ message: 'Saved', color: 'grey-8' });
+    $q.notify({ message: t('Saved'), color: 'grey-8' });
     router.back();
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

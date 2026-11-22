@@ -3,7 +3,7 @@
     <div class="row items-end q-gutter-x-lg">
       <div>
         <div class="hero" :class="{ 'text-negative': current.profit < 0 }" data-test="money-card-profit">{{ fmt(current.profit) }}</div>
-        <div class="hero-sub">profit this month</div>
+        <div class="hero-sub">{{ $t(`profit this month`) }}</div>
       </div>
       <div class="hero-sub">
         {{ fmt(current.income) }} in · {{ fmt(current.costs) }} running costs
@@ -16,7 +16,7 @@
 
     <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
       <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-        <EChart :option="option" :label="`Income, running costs and profit by month, last ${tools.months} months`" />
+        <EChart :option="option" :label="$t('Income, running costs and profit by month, last {months} months', { months: tools.months })" />
       </div>
       <!-- Table view of the same figures -->
       <CardTable
@@ -32,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed } from 'vue';
 import EChart from '@/components/desk/EChart.vue';
 import CardTable, { type CardColumn } from '@/components/desk/CardTable.vue';
@@ -64,10 +65,10 @@ const previous = computed(() => months.value[months.value.length - 2]);
 const delta = computed(() => Math.round((current.value.profit - (previous.value?.profit ?? 0)) * 100) / 100);
 
 const columns: CardColumn[] = [
-  { key: 'month', label: 'Month' },
-  { key: 'income', label: 'Income', align: 'right', money: true },
-  { key: 'costs', label: 'Running costs', align: 'right', money: true },
-  { key: 'profit', label: 'Profit', align: 'right', money: true },
+  { key: 'month', label: t('Month') },
+  { key: 'income', label: t('Income'), align: 'right', money: true },
+  { key: 'costs', label: t('Running costs'), align: 'right', money: true },
+  { key: 'profit', label: t('Profit'), align: 'right', money: true },
 ];
 const tableRows = computed(() => [...months.value].reverse().map((m) => ({ month: m.label, income: m.income, costs: m.costs, profit: m.profit })));
 
@@ -83,9 +84,9 @@ const option = computed(() => {
     xAxis: categoryAxis(months.value.map((m) => m.label)),
     yAxis: valueAxis(compactMoney),
     series: [
-      { name: 'Income', type: 'bar', data: months.value.map((m) => m.income), itemStyle: barEnd(), barGap: '8%', barMaxWidth: compact ? 12 : 18 },
-      { name: 'Running costs', type: 'bar', data: months.value.map((m) => m.costs), itemStyle: barEnd(), barMaxWidth: compact ? 12 : 18 },
-      { name: 'Profit', type: 'line', data: months.value.map((m) => m.profit), lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 8, itemStyle: { borderColor: '#fcfcfb', borderWidth: 2 } },
+      { name: t('Income'), type: 'bar', data: months.value.map((m) => m.income), itemStyle: barEnd(), barGap: '8%', barMaxWidth: compact ? 12 : 18 },
+      { name: t('Running costs'), type: 'bar', data: months.value.map((m) => m.costs), itemStyle: barEnd(), barMaxWidth: compact ? 12 : 18 },
+      { name: t('Profit'), type: 'line', data: months.value.map((m) => m.profit), lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 8, itemStyle: { borderColor: '#fcfcfb', borderWidth: 2 } },
     ],
   };
 });

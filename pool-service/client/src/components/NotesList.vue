@@ -3,29 +3,30 @@
     <q-list v-if="notes.length" bordered separator class="bg-white rounded-borders q-mb-sm">
       <q-item v-for="n in notes" :key="n._id" data-test="note-row">
         <q-item-section avatar>
-          <q-btn flat round dense :icon="'push_pin'" :color="n.pinned ? 'amber-9' : 'grey-6'" :aria-label="n.pinned ? 'Unpin' : 'Pin'" @click="togglePin(n)" />
+          <q-btn flat round dense :icon="'push_pin'" :color="n.pinned ? 'amber-9' : 'grey-6'" :aria-label="n.pinned ? $t('Unpin') : $t('Pin')" @click="togglePin(n)" />
         </q-item-section>
         <q-item-section>
           <q-item-label class="pre-wrap">{{ n.body }}</q-item-label>
           <q-item-label caption>{{ shortDate(n.createdAt) }}</q-item-label>
         </q-item-section>
         <q-item-section side>
-          <q-btn flat round dense icon="delete" color="grey-6" aria-label="Delete note" @click="remove(n)" />
+          <q-btn flat round dense icon="delete" color="grey-6" :aria-label="$t(`Delete note`)" @click="remove(n)" />
         </q-item-section>
       </q-item>
     </q-list>
-    <div v-else class="text-grey-6 text-body2 q-mb-sm">No notes yet.</div>
+    <div v-else class="text-grey-6 text-body2 q-mb-sm">{{ $t(`No notes yet.`) }}</div>
     <div v-if="parentType !== 'visit'" class="text-caption text-grey-7 q-mb-sm" data-test="pin-hint">
-      <q-icon name="push_pin" color="amber-9" /> Tap the pin to show a note on the visit screen.
+      <q-icon name="push_pin" color="amber-9" /> {{ $t(`Tap the pin to show a note on the visit screen.`) }}
     </div>
     <div class="row no-wrap items-start q-gutter-x-sm">
-      <q-input v-model="draft" dense outlined autogrow placeholder="Add a note…" class="col" data-test="note-input" @keydown.enter.exact.prevent="add" />
-      <q-btn unelevated color="primary" icon="add" :disable="!draft.trim()" aria-label="Add note" data-test="note-add" @click="add" />
+      <q-input v-model="draft" dense outlined autogrow :placeholder="$t(`Add a note…`)" class="col" data-test="note-input" @keydown.enter.exact.prevent="add" />
+      <q-btn unelevated color="primary" icon="add" :disable="!draft.trim()" :aria-label="$t(`Add note`)" data-test="note-add" @click="add" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useDataStore } from '@/stores/data';
@@ -66,7 +67,7 @@ async function togglePin(n: Note) {
 }
 
 function remove(n: Note) {
-  $q.dialog({ title: 'Delete note?', message: n.body, cancel: true, ok: { label: 'Delete', color: 'negative', unelevated: true } }).onOk(async () => {
+  $q.dialog({ title: t('Delete note?'), message: n.body, cancel: true, ok: { label: t('Delete'), color: 'negative', unelevated: true } }).onOk(async () => {
     await data.deleteNote(n._id);
     await load();
   });

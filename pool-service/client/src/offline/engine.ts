@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 /**
  * Outbox + pull engine, shared by the app and the service worker (which runs it
  * in the background after the app is closed, via Background Sync).
@@ -120,7 +121,7 @@ async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, '
     try {
       res = await send(row);
     } catch (err) {
-      await backoff(row, (err as { name?: string } | null)?.name === 'TimeoutError' ? 'Timed out' : 'No connection');
+      await backoff(row, (err as { name?: string } | null)?.name === 'TimeoutError' ? t('Timed out') : t('No connection'));
       return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: true, needsLogin: false, needsAccess: false };
     }
     if (isAccessBlocked(res)) {
@@ -138,7 +139,7 @@ async function processOutboxUnlocked(force: boolean): Promise<Omit<SyncResult, '
       return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: true, needsAccess: false };
     }
     if (res.status >= 500 || res.status === 408 || res.status === 429) {
-      await backoff(row, `Server error ${res.status}`);
+      await backoff(row, t('Server error {status}', { status: res.status }));
       return { sent, failed: await failedCount(), remaining: await pendingCount(), offline: false, needsLogin: false, needsAccess: false };
     }
     // 4xx: the server will never accept this package as it is. Park it for the Sync screen.

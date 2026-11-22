@@ -1,3 +1,4 @@
+import { setLanguage, t } from '@/i18n';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Me, TeamMember } from '@pool/shared';
@@ -38,16 +39,18 @@ export const useAuthStore = defineStore('auth', () => {
   /** Owner unless known otherwise (an app from before accounts was the owner's). */
   const isOwner = computed(() => (me.value?.role ?? 'owner') === 'owner');
   const techs = computed(() => team.value.filter((m) => m.active));
-  const memberName = (id: string | null | undefined) => (id ? (team.value.find((m) => m._id === id)?.name ?? 'Someone') : '');
+  const memberName = (id: string | null | undefined) => (id ? (team.value.find((m) => m._id === id)?.name ?? t('Someone')) : '');
 
   function setMe(m: Me | null) {
     me.value = m;
     store.set(ME_KEY, m);
+    // GPF item 5: the person's language follows them to any device.
+    if (m?.language) void setLanguage(m.language);
   }
-  function setTeam(t: TeamMember[] | undefined) {
-    if (!t) return;
-    team.value = t;
-    store.set(TEAM_KEY, t);
+  function setTeam(list: TeamMember[] | undefined) {
+    if (!list) return;
+    team.value = list;
+    store.set(TEAM_KEY, list);
   }
   const remember = (v: boolean) => store.set(KEY, v ? 1 : null);
   const remembered = () => store.get<number>(KEY) === 1;
@@ -106,5 +109,5 @@ export const useAuthStore = defineStore('auth', () => {
     if (me.value) setMe({ ...me.value, mustChangePassword: false });
   }
 
-  return { loggedIn, checked, me, team, isOwner, techs, memberName, setTeam, ensureChecked, login, logout, expired, passwordChanged };
+  return { loggedIn, checked, me, team, isOwner, techs, memberName, setMe, setTeam, ensureChecked, login, logout, expired, passwordChanged };
 });

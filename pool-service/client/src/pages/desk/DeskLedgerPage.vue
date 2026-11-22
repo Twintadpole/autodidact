@@ -7,11 +7,11 @@
       </template>
       <template #actions>
         <template v-if="mileage">
-          <q-btn color="primary" unelevated no-caps icon="add" label="Miles" data-test="desk-new-mileage" @click="openNew('mileage')" />
+          <q-btn color="primary" unelevated no-caps icon="add" :label="$t(`Miles`)" data-test="desk-new-mileage" @click="openNew('mileage')" />
         </template>
         <template v-else>
-          <q-btn color="primary" unelevated no-caps icon="add" label="Expense" data-test="desk-new-expense" @click="openNew('expense')" />
-          <q-btn color="primary" outline no-caps icon="add" label="Income" data-test="desk-new-income" @click="openNew('income')" />
+          <q-btn color="primary" unelevated no-caps icon="add" :label="$t(`Expense`)" data-test="desk-new-expense" @click="openNew('expense')" />
+          <q-btn color="primary" outline no-caps icon="add" :label="$t(`Income`)" data-test="desk-new-income" @click="openNew('income')" />
         </template>
       </template>
 
@@ -20,17 +20,17 @@
           <q-icon name="bolt" color="grey-6" />
           <q-input v-model="quick.date" dense outlined type="date" style="width: 150px" data-test="quick-date" />
           <template v-if="mileage">
-            <q-input v-model="quick.miles" dense outlined label="Miles" type="number" min="0" step="0.1" style="width: 110px" data-test="quick-miles" />
+            <q-input v-model="quick.miles" dense outlined :label="$t(`Miles`)" type="number" min="0" step="0.1" style="width: 110px" data-test="quick-miles" />
           </template>
           <template v-else>
-            <q-btn-toggle v-model="quickKind" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="[{ label: 'Expense', value: 'expense' }, { label: 'Income', value: 'income' }]" data-test="quick-kind" />
-            <q-select v-if="quickKind === 'expense'" v-model="quick.category" dense outlined emit-value map-options clearable :options="categoryOptions" label="Category" style="width: 190px" data-test="quick-category" />
-            <q-input v-if="quickKind === 'expense'" v-model="quick.vendor" dense outlined label="Vendor" style="width: 140px" data-test="quick-vendor" />
-            <q-input v-model="quick.amount" dense outlined label="Amount" prefix="$" type="number" min="0" step="0.01" style="width: 120px" data-test="quick-amount" />
-            <q-select v-model="quick.customerId" dense outlined emit-value map-options clearable :options="customerOptions" label="Customer" style="width: 180px" data-test="quick-customer" />
+            <q-btn-toggle v-model="quickKind" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="[{ label: $t('Expense'), value: 'expense' }, { label: $t('Income'), value: 'income' }]" data-test="quick-kind" />
+            <q-select v-if="quickKind === 'expense'" v-model="quick.category" dense outlined emit-value map-options clearable :options="categoryOptions" :label="$t(`Category`)" style="width: 190px" data-test="quick-category" />
+            <q-input v-if="quickKind === 'expense'" v-model="quick.vendor" dense outlined :label="$t(`Vendor`)" style="width: 140px" data-test="quick-vendor" />
+            <q-input v-model="quick.amount" dense outlined :label="$t(`Amount`)" prefix="$" type="number" min="0" step="0.01" style="width: 120px" data-test="quick-amount" />
+            <q-select v-model="quick.customerId" dense outlined emit-value map-options clearable :options="customerOptions" :label="$t(`Customer`)" style="width: 180px" data-test="quick-customer" />
           </template>
-          <q-input v-model="quick.note" dense outlined label="Note" class="col" data-test="quick-note" />
-          <q-btn type="submit" color="primary" outline no-caps icon="add" label="Add" :disable="!quickReady" data-test="quick-add" />
+          <q-input v-model="quick.note" dense outlined :label="$t(`Note`)" class="col" data-test="quick-note" />
+          <q-btn type="submit" color="primary" outline no-caps icon="add" :label="$t(`Add`)" :disable="!quickReady" data-test="quick-add" />
         </q-form>
       </template>
 
@@ -39,7 +39,7 @@
       </template>
     </DeskTable>
     <div v-if="mileage" class="text-caption text-grey-7 q-mt-sm">
-      {{ rate != null ? `At your rate of ${money(rate)} a mile (Business details).` : 'Set your rate per mile under Business details to see what the miles are worth.' }}
+      {{ rate != null ? $t('At your rate of {money} a mile (Business details).', { money: money(rate) }) : $t('Set your rate per mile under Business details to see what the miles are worth.') }}
     </div>
 
     <SidePanel v-model="panel" :title="panelTitle">
@@ -47,16 +47,17 @@
         <LedgerFields :key="editing?._id ?? `new-${panelKind}`" :form="form" :kind="panelKind" :existing="editing" />
       </q-form>
       <template #actions>
-        <q-btn v-if="editing" flat color="negative" icon="delete" label="Delete" no-caps data-test="panel-delete" @click="remove" />
+        <q-btn v-if="editing" flat color="negative" icon="delete" :label="$t(`Delete`)" no-caps data-test="panel-delete" @click="remove" />
         <q-space />
-        <q-btn flat label="Cancel" no-caps v-close-popup />
-        <q-btn type="submit" form="desk-ledger-form" color="primary" unelevated no-caps label="Save" :loading="busy" data-test="panel-save" />
+        <q-btn flat :label="$t(`Cancel`)" no-caps v-close-popup />
+        <q-btn type="submit" form="desk-ledger-form" color="primary" unelevated no-caps :label="$t(`Save`)" :loading="busy" data-test="panel-save" />
       </template>
     </SidePanel>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { locale, t, translated } from '@/i18n';
 import { computed, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { categoryLabel, EXPENSE_CATEGORIES, type LedgerKind } from '@pool/shared';
@@ -108,8 +109,8 @@ const rows = computed<Row[]>(() =>
     .map((e) => ({
       _id: e._id,
       date: e.date,
-      kind: e.kind === 'income' ? 'Income' : e.kind === 'expense' ? 'Expense' : 'Miles',
-      category: e.kind === 'expense' ? categoryLabel(e.category) : '',
+      kind: e.kind === 'income' ? t('Income') : e.kind === 'expense' ? t('Expense') : t('Miles'),
+      category: e.kind === 'expense' ? t(categoryLabel(e.category)) : '',
       vendor: e.vendor ?? '',
       customer: e.customerId ? (data.customerById.get(e.customerId)?.name ?? '') : '',
       note: e.note ?? '',
@@ -128,49 +129,51 @@ const rows = computed<Row[]>(() =>
 const kindOptions = computed(() => {
   const list = inRange.value.filter((e) => e.kind !== 'mileage');
   return [
-    { label: `All ${list.length}`, value: 'all' },
-    { label: `Expenses ${list.filter((e) => e.kind === 'expense').length}`, value: 'expense' },
-    { label: `Income ${list.filter((e) => e.kind === 'income').length}`, value: 'income' },
+    { label: t('All {n}', { n: list.length }), value: 'all' },
+    { label: t('Expenses {n}', { n: list.filter((e) => e.kind === 'expense').length }), value: 'expense' },
+    { label: t('Income {n}', { n: list.filter((e) => e.kind === 'income').length }), value: 'income' },
   ];
 });
 
 const dollars = (v: number | null) => (v == null ? '' : money(v));
 const num = (v: number | null) => (v == null ? '' : String(v));
-const dateCol: DeskColumn<Row> = { name: 'date', label: 'Date', field: 'date', align: 'left', sortable: true, required: true, format: (v: string) => shortDay(v), exportType: 'date' };
+const dateCol: DeskColumn<Row> = { name: 'date', label: t('Date'), field: 'date', align: 'left', sortable: true, required: true, format: (v: string) => shortDay(v), exportType: 'date' };
 const columns = computed<DeskColumn<Row>[]>(() =>
   props.mileage
     ? [
         dateCol,
-        { name: 'miles', label: 'Miles', field: 'miles', align: 'right', sortable: true, sum: true, format: num },
-        { name: 'odoStart', label: 'Odometer start', field: 'odoStart', align: 'right', format: num },
-        { name: 'odoEnd', label: 'Odometer end', field: 'odoEnd', align: 'right', format: num },
-        { name: 'value', label: 'Worth', field: 'value', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
-        { name: 'note', label: 'Note', field: 'note', align: 'left' },
+        { name: 'miles', label: t('Miles'), field: 'miles', align: 'right', sortable: true, sum: true, format: num },
+        { name: 'odoStart', label: t('Odometer start'), field: 'odoStart', align: 'right', format: num },
+        { name: 'odoEnd', label: t('Odometer end'), field: 'odoEnd', align: 'right', format: num },
+        { name: 'value', label: t('Worth'), field: 'value', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
+        { name: 'note', label: t('Note'), field: 'note', align: 'left' },
       ]
     : [
         dateCol,
-        { name: 'kind', label: 'Type', field: 'kind', align: 'left', sortable: true },
-        { name: 'category', label: 'Category', field: 'category', align: 'left', sortable: true },
-        { name: 'vendor', label: 'Vendor', field: 'vendor', align: 'left', sortable: true },
-        { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
-        { name: 'note', label: 'Note', field: 'note', align: 'left', classes: 'ellipsis note-cell' },
-        { name: 'expense', label: 'Expense', field: 'expense', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
-        { name: 'income', label: 'Income', field: 'income', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
-        { name: 'billed', label: 'Billed to customer', field: 'billed', align: 'right', sortable: true, sum: true, format: dollars, hidden: true, exportType: 'money' },
-        { name: 'receipt', label: 'Receipt', field: 'receipt', align: 'center', hidden: true },
+        { name: 'kind', label: t('Type'), field: 'kind', align: 'left', sortable: true },
+        { name: 'category', label: t('Category'), field: 'category', align: 'left', sortable: true },
+        { name: 'vendor', label: t('Vendor'), field: 'vendor', align: 'left', sortable: true },
+        { name: 'customer', label: t('Customer'), field: 'customer', align: 'left', sortable: true },
+        { name: 'note', label: t('Note'), field: 'note', align: 'left', classes: 'ellipsis note-cell' },
+        { name: 'expense', label: t('Expense'), field: 'expense', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
+        { name: 'income', label: t('Income'), field: 'income', align: 'right', sortable: true, sum: true, format: dollars, exportType: 'money' },
+        { name: 'billed', label: t('Billed to customer'), field: 'billed', align: 'right', sortable: true, sum: true, format: dollars, hidden: true, exportType: 'money' },
+        { name: 'receipt', label: t('Receipt'), field: 'receipt', align: 'center', hidden: true },
       ],
 );
 
-const shortDay = (d: string) => new Date(d.slice(0, 10) + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const shortDay = (d: string) => new Date(d.slice(0, 10) + 'T12:00').toLocaleDateString(locale.value, { month: 'short', day: 'numeric', year: 'numeric' });
 
 // ---- side panel
-const TITLES: Record<LedgerKind, string> = { expense: 'expense', income: 'other income', mileage: 'miles' };
+const NEW_TITLE: Record<LedgerKind, string> = translated({ expense: 'New expense', income: 'New other income', mileage: 'New miles' });
+const EDIT_TITLE: Record<LedgerKind, string> = translated({ expense: 'Edit expense', income: 'Edit other income', mileage: 'Edit miles' });
+const DELETE_TITLE: Record<LedgerKind, string> = translated({ expense: 'Delete this expense?', income: 'Delete this other income?', mileage: 'Delete these miles?' });
 const panel = ref(false);
 const busy = ref(false);
 const editing = ref<Ledger | undefined>(undefined);
 const panelKind = ref<LedgerKind>('expense');
 const form = reactive(blankLedgerForm());
-const panelTitle = computed(() => `${editing.value ? 'Edit' : 'New'} ${TITLES[panelKind.value]}`);
+const panelTitle = computed(() => (editing.value ? EDIT_TITLE : NEW_TITLE)[panelKind.value]);
 
 function openRow(r: Row) {
   editing.value = r.entry;
@@ -192,7 +195,7 @@ async function save() {
     const saved = await data.saveLedger(ledgerFromForm(form, panelKind.value, before));
     if (saved.billToCustomer && saved.invoiceId && (!before || before.invoiceId !== saved.invoiceId)) {
       const inv = data.invoiceById.get(saved.invoiceId);
-      $q.notify({ type: 'positive', message: inv ? `Added to draft invoice #${inv.number}` : 'Added to their invoice' });
+      $q.notify({ type: 'positive', message: inv ? t('Added to draft invoice #{number}', { number: inv.number }) : t('Added to their invoice') });
     }
     panel.value = false;
   } catch (err) {
@@ -205,7 +208,7 @@ async function save() {
 function remove() {
   const e = editing.value;
   if (!e) return;
-  $q.dialog({ title: `Delete this ${TITLES[e.kind]}?`, cancel: true, ok: { label: 'Delete', color: 'negative', unelevated: true } }).onOk(async () => {
+  $q.dialog({ title: DELETE_TITLE[e.kind], cancel: true, ok: { label: t('Delete'), color: 'negative', unelevated: true } }).onOk(async () => {
     await data.deleteLedger(e._id);
     panel.value = false;
   });
@@ -230,7 +233,7 @@ async function quickAdd() {
   try {
     const saved = await data.saveLedger(ledgerFromForm(f, kind, undefined));
     const inv = saved.billToCustomer && saved.invoiceId ? data.invoiceById.get(saved.invoiceId) : undefined;
-    $q.notify({ type: 'positive', message: inv ? `Added, and put on draft invoice #${inv.number}` : 'Added', timeout: 1500 });
+    $q.notify({ type: 'positive', message: inv ? t('Added, and put on draft invoice #{number}', { number: inv.number }) : t('Added'), timeout: 1500 });
     Object.assign(quick, { amount: '', vendor: '', note: '', miles: '' });
   } catch (err) {
     $q.notify({ type: 'negative', message: errorMessage(err) });

@@ -1,6 +1,6 @@
 <template>
   <div data-test="equipment">
-    <div class="text-subtitle1 q-mb-xs">Equipment</div>
+    <div class="text-subtitle1 q-mb-xs">{{ $t(`Equipment`) }}</div>
 
     <q-list v-if="items.length" bordered separator class="bg-white rounded-borders q-mb-sm">
       <q-item v-for="e in items" :key="e._id" clickable :data-test="`equipment-${e.kind}`" @click="edit(e)">
@@ -28,7 +28,7 @@
         :data-test="`add-equipment-${k}`"
         @click="add(k)"
       />
-      <q-chip clickable outline color="primary" icon="add" label="Other equipment" data-test="add-equipment-other" @click="add('other')" />
+      <q-chip clickable outline color="primary" icon="add" :label="$t(`Other equipment`)" data-test="add-equipment-other" @click="add('other')" />
     </div>
 
     <!-- Edit one item -->
@@ -38,23 +38,23 @@
           <q-icon :name="EQUIPMENT_ICON[draft.kind]" color="primary" size="24px" class="q-mr-sm" />
           <div class="text-h6">{{ EQUIPMENT_LABEL[draft.kind] }}</div>
           <q-space />
-          <q-btn flat round dense icon="close" aria-label="Close" @click="open = false" />
+          <q-btn flat round dense icon="close" :aria-label="$t(`Close`)" @click="open = false" />
         </q-card-section>
         <q-card-section class="column q-gutter-sm">
-          <q-input v-model="draft.name" outlined dense :label="draft.kind === 'other' ? 'What is it? (e.g. Booster pump)' : 'Label (e.g. Spa heater)'" data-test="equipment-name" />
-          <q-input v-model="draft.model" outlined dense label="Brand and model" data-test="equipment-model" />
+          <q-input v-model="draft.name" outlined dense :label="draft.kind === 'other' ? $t('What is it? (e.g. Booster pump)') : $t('Label (e.g. Spa heater)')" data-test="equipment-name" />
+          <q-input v-model="draft.model" outlined dense :label="$t(`Brand and model`)" data-test="equipment-model" />
           <div class="row q-col-gutter-sm">
-            <q-input v-model="draft.serial" outlined dense label="Serial number" class="col-7" data-test="equipment-serial" />
-            <q-input v-model="draft.installedOn" outlined dense stack-label label="Installed" type="date" class="col-5" data-test="equipment-installed" />
+            <q-input v-model="draft.serial" outlined dense :label="$t(`Serial number`)" class="col-7" data-test="equipment-serial" />
+            <q-input v-model="draft.installedOn" outlined dense stack-label :label="$t(`Installed`)" type="date" class="col-5" data-test="equipment-installed" />
           </div>
-          <q-input v-model="draft.notes" outlined dense autogrow type="textarea" label="Notes" data-test="equipment-notes" />
+          <q-input v-model="draft.notes" outlined dense autogrow type="textarea" :label="$t(`Notes`)" data-test="equipment-notes" />
 
           <div>
             <div class="row items-center q-gutter-sm q-mb-sm">
-              <div class="text-subtitle2">Photos</div>
+              <div class="text-subtitle2">{{ $t(`Photos`) }}</div>
               <q-space />
-              <q-btn outline dense no-caps color="primary" icon="photo_camera" label="Camera" @click="cameraInput?.click()" />
-              <q-btn outline dense no-caps color="primary" icon="photo_library" label="Gallery" @click="galleryInput?.click()" />
+              <q-btn outline dense no-caps color="primary" icon="photo_camera" :label="$t(`Camera`)" @click="cameraInput?.click()" />
+              <q-btn outline dense no-caps color="primary" icon="photo_library" :label="$t(`Gallery`)" @click="galleryInput?.click()" />
             </div>
             <input ref="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" @change="onFiles" />
             <input ref="galleryInput" type="file" accept="image/*" multiple class="hidden" data-test="equipment-photo-input" @change="onFiles" />
@@ -62,9 +62,9 @@
           </div>
         </q-card-section>
         <q-card-actions class="q-px-md q-pb-md">
-          <q-btn v-if="!isNew" flat color="negative" icon="delete" label="Remove" no-caps data-test="equipment-remove" @click="remove" />
+          <q-btn v-if="!isNew" flat color="negative" icon="delete" :label="$t(`Remove`)" no-caps data-test="equipment-remove" @click="remove" />
           <q-space />
-          <q-btn color="primary" unelevated label="Save" :loading="busy" :disable="uploading > 0" data-test="equipment-save" @click="save" />
+          <q-btn color="primary" unelevated :label="$t(`Save`)" :loading="busy" :disable="uploading > 0" data-test="equipment-save" @click="save" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -74,6 +74,7 @@
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { format, parseISO } from 'date-fns';
@@ -183,7 +184,7 @@ async function save() {
 function remove() {
   const d = draft.value;
   if (!d) return;
-  $q.dialog({ title: `Remove ${title(toEquipment(d)).toLowerCase()}?`, message: 'Its details and photos are removed.', cancel: true, ok: { label: 'Remove', color: 'negative', unelevated: true } }).onOk(async () => {
+  $q.dialog({ title: t('Remove {d}?', { d: title(toEquipment(d)).toLowerCase() }), message: t('Its details and photos are removed.'), cancel: true, ok: { label: t('Remove'), color: 'negative', unelevated: true } }).onOk(async () => {
     const list = (props.pool.equipment ?? []).filter((e) => e._id !== d._id);
     await data.saveEquipment(props.pool._id, list, `Remove ${title(toEquipment(d)).toLowerCase()}`);
     saved = true;
@@ -213,7 +214,7 @@ async function onFiles(ev: Event) {
       photos.value = new Map(photos.value).set(d._id, [...(photos.value.get(d._id) ?? []), photo]);
     } catch (err) {
       const message = errorMessage(err);
-      $q.notify({ type: 'negative', message: `Photo not added: ${message}`, timeout: 0, actions: [{ label: 'OK', color: 'white' }] });
+      $q.notify({ type: 'negative', message: t('Photo not added: {message}', { message }), timeout: 0, actions: [{ label: t('OK'), color: 'white' }] });
       void reportClientProblem('equipment-photo', message, { name: file.name, type: file.type, size: file.size });
     } finally {
       uploading.value--;

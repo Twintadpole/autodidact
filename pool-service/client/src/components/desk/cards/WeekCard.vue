@@ -7,7 +7,7 @@
       </div>
       <div>
         <div class="hero hero-2" data-test="week-week">{{ week.done }} / {{ week.total }}</div>
-        <div class="hero-sub">this week</div>
+        <div class="hero-sub">{{ $t(`this week`) }}</div>
       </div>
       <div v-if="data.activeTimers.length" class="text-positive text-weight-medium">
         <q-icon name="timer" /> {{ data.activeTimers.length }} on site now
@@ -25,8 +25,8 @@
 
     <!-- Today's stops -->
     <q-list v-if="mode === 'l'" dense separator class="q-mt-md col scroll" data-test="week-stops">
-      <q-item-label header class="q-px-none q-pb-xs">Today's stops</q-item-label>
-      <div v-if="!todayPools.length" class="text-grey-7 q-py-sm">No pools today.</div>
+      <q-item-label header class="q-px-none q-pb-xs">{{ $t(`Today's stops`) }}</q-item-label>
+      <div v-if="!todayPools.length" class="text-grey-7 q-py-sm">{{ $t(`No pools today.`) }}</div>
       <q-item v-for="p in todayPools" :key="p._id" clickable class="q-px-none" @click="router.push(`/pools/${p._id}`)">
         <q-item-section avatar style="min-width: 32px">
           <q-icon :name="p.week.done ? 'check_circle' : 'radio_button_unchecked'" :color="p.week.done ? 'positive' : 'grey-5'" />
@@ -34,7 +34,7 @@
         <q-item-section>
           <q-item-label :class="{ 'text-grey-6': p.week.done }">{{ data.poolLabel(p._id) }}</q-item-label>
         </q-item-section>
-        <q-item-section v-if="issuesOf(p._id)" side><q-badge color="orange-8" :label="`${issuesOf(p._id)} issue${issuesOf(p._id) === 1 ? '' : 's'}`" /></q-item-section>
+        <q-item-section v-if="issuesOf(p._id)" side><q-badge color="orange-8" :label="$tn(issuesOf(p._id), '{n} issue', '{n} issues')" /></q-item-section>
       </q-item>
     </q-list>
   </div>

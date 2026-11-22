@@ -1,6 +1,7 @@
+import { t } from '@/i18n';
 import { API_REDIRECT, isAccessBlocked, reportAccess } from '@/offline/access';
 
-const ACCESS_MESSAGE = 'Cloudflare login needed. Tap "Log in again".';
+const accessMessage = () => t('Cloudflare login needed. Tap "Log in again".');
 
 /** Small fetch wrapper for the API (same origin, session cookie). Phase 4 routes writes through the outbox instead. */
 export class ApiError extends Error {
@@ -28,11 +29,11 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
   try {
     res = await fetch(`/api${path}`, req);
   } catch {
-    throw new ApiError(0, 'No connection to the server. Check your signal and try again.');
+    throw new ApiError(0, t('No connection to the server. Check your signal and try again.'));
   }
   if (isAccessBlocked(res)) {
     reportAccess(true);
-    throw new ApiError(0, ACCESS_MESSAGE);
+    throw new ApiError(0, accessMessage());
   }
   reportAccess(false);
   const text = await res.text();
@@ -55,11 +56,11 @@ export async function apiForm<T = unknown>(path: string, form: FormData): Promis
   try {
     res = await fetch(`/api${path}`, { method: 'POST', credentials: 'same-origin', body: form, redirect: API_REDIRECT });
   } catch {
-    throw new ApiError(0, 'No connection to the server. Check your signal and try again.');
+    throw new ApiError(0, t('No connection to the server. Check your signal and try again.'));
   }
   if (isAccessBlocked(res)) {
     reportAccess(true);
-    throw new ApiError(0, ACCESS_MESSAGE);
+    throw new ApiError(0, accessMessage());
   }
   reportAccess(false);
   const text = await res.text();
@@ -85,11 +86,11 @@ export async function apiDownload(path: string, body?: unknown): Promise<void> {
       ...(body !== undefined && { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
     });
   } catch {
-    throw new ApiError(0, 'Excel files are made on the server: this needs a connection (CSV works offline).');
+    throw new ApiError(0, t('Excel files are made on the server: this needs a connection (CSV works offline).'));
   }
   if (isAccessBlocked(res)) {
     reportAccess(true);
-    throw new ApiError(0, ACCESS_MESSAGE);
+    throw new ApiError(0, accessMessage());
   }
   reportAccess(false);
   if (!res.ok) {
@@ -120,7 +121,8 @@ export function saveBlob(blob: Blob, name: string) {
 
 /** A readable message for notifications. */
 export function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  // The server's messages are fixed English texts: translated like the app's own (GPF item 5).
+  return t(err instanceof Error ? err.message : String(err));
 }
 
 /**

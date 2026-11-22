@@ -3,11 +3,11 @@
     <div class="row items-end q-gutter-x-lg">
       <div>
         <div class="hero" data-test="pipeline-current">{{ counts.current }}</div>
-        <div class="hero-sub">current customers</div>
+        <div class="hero-sub">{{ $t(`current customers`) }}</div>
       </div>
       <div>
         <div class="hero hero-2" data-test="pipeline-monthly">{{ fmt(monthly) }}</div>
-        <div class="hero-sub">a month in rates</div>
+        <div class="hero-sub">{{ $t(`a month in rates`) }}</div>
       </div>
       <div class="hero-sub" data-test="pipeline-prospects">
         {{ counts.prospect }} prospect{{ counts.prospect === 1 ? '' : 's' }}{{ prospectRates ? ` (${fmt(prospectRates)} a month)` : '' }} · {{ counts.past }} past
@@ -16,7 +16,7 @@
 
     <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
       <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-        <EChart :option="option" :label="`Customers started and ended by month, last ${tools.months} months`" />
+        <EChart :option="option" :label="$t('Customers started and ended by month, last {months} months', { months: tools.months })" />
       </div>
       <CardTable
         v-if="mode === 'l'"
@@ -24,7 +24,7 @@
         :columns="columns"
         :rows="tableRows"
         clickable
-        empty="No prospects."
+        :empty="$t('No prospects.')"
         :class="side ? 'side-table scroll' : 'q-mt-sm'"
         test-id="pipeline-table"
         @row="(r) => router.push(`/customers/${r.id}`)"
@@ -34,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, locale } from '@/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { customerStatus } from '@pool/shared';
@@ -72,15 +73,15 @@ const months = computed(() =>
 );
 
 const columns: CardColumn[] = [
-  { key: 'name', label: 'Prospect' },
-  { key: 'rate', label: 'Rate', align: 'right', money: true },
-  { key: 'added', label: 'Added' },
+  { key: 'name', label: t('Prospect') },
+  { key: 'rate', label: t('Rate'), align: 'right', money: true },
+  { key: 'added', label: t('Added') },
 ];
 const tableRows = computed(() =>
   withStatus.value
     .filter((x) => x.s === 'prospect')
     .sort((a, b) => b.c.createdAt.localeCompare(a.c.createdAt))
-    .map((x) => ({ id: x.c._id, name: x.c.name, rate: x.c.monthlyRate ?? null, added: new Date(x.c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) })),
+    .map((x) => ({ id: x.c._id, name: x.c.name, rate: x.c.monthlyRate ?? null, added: new Date(x.c.createdAt).toLocaleDateString(locale.value, { month: 'short', day: 'numeric', year: 'numeric' }) })),
 );
 
 const option = computed(() => ({
@@ -93,8 +94,8 @@ const option = computed(() => ({
   xAxis: categoryAxis(months.value.map((m) => monthLabel(m.p))),
   yAxis: valueAxis((v: number) => String(v)),
   series: [
-    { name: 'Started', type: 'bar', data: months.value.map((m) => m.started), itemStyle: barEnd(), barGap: '8%', barMaxWidth: 14 },
-    { name: 'Ended', type: 'bar', data: months.value.map((m) => m.ended), itemStyle: barEnd(), barMaxWidth: 14 },
+    { name: t('Started'), type: 'bar', data: months.value.map((m) => m.started), itemStyle: barEnd(), barGap: '8%', barMaxWidth: 14 },
+    { name: t('Ended'), type: 'bar', data: months.value.map((m) => m.ended), itemStyle: barEnd(), barMaxWidth: 14 },
   ],
 }));
 </script>

@@ -3,13 +3,14 @@
     <q-form class="column q-gutter-md" @submit.prevent="save">
       <CustomerFields :form="form" />
 
-      <q-btn type="submit" color="primary" unelevated size="lg" :label="isNew ? 'Add customer' : 'Save'" :loading="busy" data-test="customer-save" />
-      <q-btn v-if="!isNew && auth.isOwner" flat color="negative" icon="delete" label="Delete customer" @click="remove" />
+      <q-btn type="submit" color="primary" unelevated size="lg" :label="isNew ? $t('Add customer') : $t('Save')" :loading="busy" data-test="customer-save" />
+      <q-btn v-if="!isNew && auth.isOwner" flat color="negative" icon="delete" :label="$t(`Delete customer`)" @click="remove" />
     </q-form>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -66,10 +67,10 @@ async function save() {
 function remove() {
   if (!id.value) return;
   $q.dialog({
-    title: 'Delete customer?',
-    message: 'Their pools are removed from the route too.',
+    title: t('Delete customer?'),
+    message: t('Their pools are removed from the route too.'),
     cancel: true,
-    ok: { label: 'Delete', color: 'negative', unelevated: true },
+    ok: { label: t('Delete'), color: 'negative', unelevated: true },
   }).onOk(async () => {
     await data.deleteCustomer(id.value!);
     await router.replace('/customers');

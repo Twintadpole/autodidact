@@ -4,7 +4,7 @@
     <div
       class="dash-head row items-center no-wrap q-pl-sm"
       :draggable="draggable"
-      :title="draggable ? 'Drag to move' : undefined"
+      :title="draggable ? $t('Drag to move') : undefined"
       @dragstart="onDragStart"
       @dragend="dragging = false"
     >
@@ -13,20 +13,20 @@
       <div class="text-subtitle2 ellipsis q-ml-sm col">{{ title }}</div>
       <slot name="head" />
       <template v-if="!fullscreen">
-        <q-btn flat round dense size="sm" icon="photo_size_select_large" aria-label="Card size and position" :data-test="`card-size-${id}`">
+        <q-btn flat round dense size="sm" icon="photo_size_select_large" :aria-label="$t(`Card size and position`)" :data-test="`card-size-${id}`">
           <q-menu auto-close>
             <q-list dense style="min-width: 150px">
               <q-item v-for="s in CARD_SIZES" :key="s" clickable :active="s === size" :data-test="`size-${id}-${s}`" @click="emit('size', s)">
                 <q-item-section>{{ SIZE_LABEL[s] }}</q-item-section>
               </q-item>
               <q-separator />
-              <q-item clickable :data-test="`move-${id}-up`" @click="emit('move', -1)"><q-item-section>Move earlier</q-item-section></q-item>
-              <q-item clickable :data-test="`move-${id}-down`" @click="emit('move', 1)"><q-item-section>Move later</q-item-section></q-item>
+              <q-item clickable :data-test="`move-${id}-up`" @click="emit('move', -1)"><q-item-section>{{ $t(`Move earlier`) }}</q-item-section></q-item>
+              <q-item clickable :data-test="`move-${id}-down`" @click="emit('move', 1)"><q-item-section>{{ $t(`Move later`) }}</q-item-section></q-item>
             </q-list>
           </q-menu>
         </q-btn>
-        <q-btn flat round dense size="sm" icon="open_in_full" aria-label="Full screen" :data-test="`card-full-${id}`" @click="emit('fullscreen')" />
-        <q-btn flat round dense size="sm" icon="visibility_off" aria-label="Hide card" :data-test="`card-hide-${id}`" @click="emit('hide')" />
+        <q-btn flat round dense size="sm" icon="open_in_full" :aria-label="$t(`Full screen`)" :data-test="`card-full-${id}`" @click="emit('fullscreen')" />
+        <q-btn flat round dense size="sm" icon="visibility_off" :aria-label="$t(`Hide card`)" :data-test="`card-hide-${id}`" @click="emit('hide')" />
       </template>
     </div>
     <q-separator />

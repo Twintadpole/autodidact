@@ -1,6 +1,6 @@
 <template>
   <div class="column no-wrap full-height" data-test="water-card">
-    <div v-if="!report && error" class="text-grey-7">Needs a connection the first time (it uses every visit).</div>
+    <div v-if="!report && error" class="text-grey-7">{{ $t(`Needs a connection the first time (it uses every visit).`) }}</div>
     <template v-else-if="report">
       <div class="row items-end q-gutter-x-lg">
         <div>
@@ -10,12 +10,12 @@
         <div class="hero-sub">{{ report.visitsOff }} of {{ report.visits }} visits had something off ({{ tools.months }} months)</div>
         <q-space />
         <span v-if="error && fetchedAt" class="text-caption text-grey-7"><q-icon name="cloud_off" /> as of {{ asOf(fetchedAt) }}</span>
-        <q-btn flat round dense size="sm" icon="refresh" aria-label="Refresh" :loading="loading" @click="reload" />
+        <q-btn flat round dense size="sm" icon="refresh" :aria-label="$t(`Refresh`)" :loading="loading" @click="reload" />
       </div>
 
       <div v-if="mode !== 's'" class="col q-mt-sm" :class="side ? 'row no-wrap q-gutter-x-md' : 'column no-wrap'">
         <div class="chart-box" :class="mode === 'l' && !side ? 'chart-fixed' : 'col'">
-          <EChart :option="option" :label="`Readings out of range by test, last ${tools.months} months`" />
+          <EChart :option="option" :label="$t('Readings out of range by test, last {months} months', { months: tools.months })" />
         </div>
         <CardTable
           v-if="mode === 'l'"
@@ -23,7 +23,7 @@
           :columns="columns"
           :rows="report.poolsNow"
           clickable
-          empty="Every pool's last visit was in range."
+          :empty="$t(`Every pool's last visit was in range.`)"
           :class="side ? 'side-table scroll' : 'q-mt-sm'"
           test-id="water-table"
           @row="(r) => router.push(`/pools/${r.poolId}/overview`)"
@@ -34,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, locale } from '@/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { READINGS, rateReading } from '@pool/shared';
@@ -88,7 +89,7 @@ const { data: report, fetchedAt, loading, error, reload } = useCachedReport<Wate
       return {
         poolId: v.poolId,
         pool: data.poolLabel(v.poolId),
-        date: new Date(v.visitedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: new Date(v.visitedAt).toLocaleDateString(locale.value, { month: 'short', day: 'numeric' }),
         readings: bad.map((r) => `${r.short} ${v.readings![r.key]} (${low(r, v.readings![r.key]!)})`).join(', '),
       };
     })
@@ -97,9 +98,9 @@ const { data: report, fetchedAt, loading, error, reload } = useCachedReport<Wate
 });
 
 const columns: CardColumn[] = [
-  { key: 'pool', label: 'Customer · pool', class: 'ellipsis' },
-  { key: 'date', label: 'Last visit' },
-  { key: 'readings', label: 'Way off' },
+  { key: 'pool', label: t('Customer · pool'), class: 'ellipsis' },
+  { key: 'date', label: t('Last visit') },
+  { key: 'readings', label: t('Way off') },
 ];
 
 const option = computed(() => {
@@ -113,8 +114,8 @@ const option = computed(() => {
     yAxis: valueAxis((v: number) => String(v)),
     // Status colours, named in the legend: amber = a little off, red = way off.
     series: [
-      { name: 'A little off', type: 'bar', stack: 'off', barMaxWidth: 28, data: keys.map((r) => report.value!.byReading[r.key]![0]), itemStyle: { color: STATUS.warning, borderColor: '#fcfcfb', borderWidth: 1 } },
-      { name: 'Way off', type: 'bar', stack: 'off', barMaxWidth: 28, data: keys.map((r) => report.value!.byReading[r.key]![1]), itemStyle: { ...barEnd(), color: STATUS.critical, borderColor: '#fcfcfb', borderWidth: 1 } },
+      { name: t('A little off'), type: 'bar', stack: 'off', barMaxWidth: 28, data: keys.map((r) => report.value!.byReading[r.key]![0]), itemStyle: { color: STATUS.warning, borderColor: '#fcfcfb', borderWidth: 1 } },
+      { name: t('Way off'), type: 'bar', stack: 'off', barMaxWidth: 28, data: keys.map((r) => report.value!.byReading[r.key]![1]), itemStyle: { ...barEnd(), color: STATUS.critical, borderColor: '#fcfcfb', borderWidth: 1 } },
     ],
   };
 });

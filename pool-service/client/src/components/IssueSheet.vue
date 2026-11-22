@@ -3,7 +3,7 @@
     <q-card class="full-width issue-sheet" data-test="issue-sheet">
       <q-form @submit.prevent="save">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ issue ? 'Issue' : 'New issue' }}</div>
+          <div class="text-h6">{{ issue ? $t('Issue') : $t('New issue') }}</div>
           <q-space />
           <q-chip v-if="issue" dense :color="statusColor" text-color="white" data-test="issue-status-chip">{{ statusLabel }}</q-chip>
           <q-btn flat round dense icon="close" v-close-popup />
@@ -11,11 +11,11 @@
 
         <q-card-section class="q-gutter-sm">
           <div v-if="poolLabel" class="text-caption text-grey-7">{{ poolLabel }}</div>
-          <q-input v-model="form.title" label="Title" outlined autofocus :rules="[(v) => !!v?.trim() || 'Required']" data-test="issue-title" />
-          <q-input v-model="form.description" label="Details" type="textarea" autogrow outlined data-test="issue-description" />
+          <q-input v-model="form.title" :label="$t(`Title`)" outlined autofocus :rules="[(v) => !!v?.trim() || $t('Required')]" data-test="issue-title" />
+          <q-input v-model="form.description" :label="$t(`Details`)" type="textarea" autogrow outlined data-test="issue-description" />
           <div class="row">
-            <q-toggle v-model="form.urgent" label="Urgent" color="negative" class="col-6" data-test="issue-urgent" />
-            <q-toggle v-model="form.important" label="Important" color="orange-8" class="col-6" data-test="issue-important" />
+            <q-toggle v-model="form.urgent" :label="$t(`Urgent`)" color="negative" class="col-6" data-test="issue-urgent" />
+            <q-toggle v-model="form.important" :label="$t(`Important`)" color="orange-8" class="col-6" data-test="issue-important" />
           </div>
           <div class="text-caption text-grey-7">{{ quadrantLabel }}</div>
           <q-select
@@ -26,20 +26,20 @@
             map-options
             outlined
             dense
-            label="Status"
+            :label="$t(`Status`)"
             data-test="issue-status"
           />
 
           <!-- Photos -->
           <div>
-            <div class="text-caption text-grey-7 q-mb-xs">Photos</div>
+            <div class="text-caption text-grey-7 q-mb-xs">{{ $t(`Photos`) }}</div>
             <PhotoGrid :photos="photos" :pending="uploading" data-test="issue-photos" @open="(ph) => (viewing = ph)">
               <template #below="{ photo: ph }">
                 <q-checkbox
                   :model-value="ph.savedToPool"
                   dense
                   size="sm"
-                  label="Save to pool"
+                  :label="$t(`Save to pool`)"
                   class="text-caption q-mt-xs"
                   data-test="photo-save-to-pool"
                   @update:model-value="(v: boolean) => setSaved(ph, v)"
@@ -47,8 +47,8 @@
               </template>
             </PhotoGrid>
             <div class="row q-gutter-sm q-mt-xs">
-              <q-btn outline dense no-caps color="primary" icon="photo_camera" label="Camera" data-test="photo-camera" @click="cameraInput?.click()" />
-              <q-btn outline dense no-caps color="primary" icon="photo_library" label="Gallery" data-test="photo-gallery" @click="galleryInput?.click()" />
+              <q-btn outline dense no-caps color="primary" icon="photo_camera" :label="$t(`Camera`)" data-test="photo-camera" @click="cameraInput?.click()" />
+              <q-btn outline dense no-caps color="primary" icon="photo_library" :label="$t(`Gallery`)" data-test="photo-gallery" @click="galleryInput?.click()" />
             </div>
             <input ref="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" @change="onFiles" />
             <input ref="galleryInput" type="file" accept="image/*" multiple class="hidden" data-test="photo-input" @change="onFiles" />
@@ -56,16 +56,16 @@
         </q-card-section>
 
         <q-card-actions class="q-px-md q-pb-md column q-gutter-sm items-stretch">
-          <q-btn type="submit" color="primary" unelevated size="lg" :label="issue ? 'Save' : 'Add issue'" :loading="busy" data-test="issue-save" />
+          <q-btn type="submit" color="primary" unelevated size="lg" :label="issue ? $t('Save') : $t('Add issue')" :loading="busy" data-test="issue-save" />
           <div v-if="issue" class="row q-col-gutter-sm">
             <div v-if="issue.status !== 'resolved'" class="col-6">
-              <q-btn class="full-width" color="positive" outline icon="task_alt" label="Completed" :disable="busy" data-test="issue-complete" @click="quick('resolved')" />
+              <q-btn class="full-width" color="positive" outline icon="task_alt" :label="$t(`Completed`)" :disable="busy" data-test="issue-complete" @click="quick('resolved')" />
             </div>
             <div v-if="issue.status !== 'postponed' && issue.status !== 'resolved'" class="col-6">
-              <q-btn class="full-width" color="grey-8" outline icon="schedule" label="Postpone" :disable="busy" data-test="issue-postpone" @click="quick('postponed')" />
+              <q-btn class="full-width" color="grey-8" outline icon="schedule" :label="$t(`Postpone`)" :disable="busy" data-test="issue-postpone" @click="quick('postponed')" />
             </div>
             <div v-if="issue.status === 'resolved' || issue.status === 'postponed'" class="col-6">
-              <q-btn class="full-width" color="primary" outline icon="replay" label="Reopen" :disable="busy" data-test="issue-reopen" @click="quick('open')" />
+              <q-btn class="full-width" color="primary" outline icon="replay" :label="$t(`Reopen`)" :disable="busy" data-test="issue-reopen" @click="quick('open')" />
             </div>
           </div>
         </q-card-actions>
@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, translated } from '@/i18n';
 import { computed, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { deriveQuadrant, QUADRANTS, type IssueStatus } from '@pool/shared';
@@ -95,12 +96,12 @@ const $q = useQuasar();
 const data = useDataStore();
 const busy = ref(false);
 
-const STATUS_LABELS: Record<IssueStatus, string> = {
+const STATUS_LABELS: Record<IssueStatus, string> = translated({
   open: 'Open',
   in_progress: 'In progress',
   postponed: 'Postponed',
   resolved: 'Completed',
-};
+});
 const statusOptions = (Object.keys(STATUS_LABELS) as IssueStatus[]).map((s) => ({ label: STATUS_LABELS[s], value: s }));
 
 const form = reactive({ title: '', description: '', urgent: false, important: false, status: 'open' as IssueStatus });
@@ -128,7 +129,7 @@ async function onFiles(ev: Event) {
       photos.value.push(photo);
     } catch (err) {
       const message = errorMessage(err);
-      $q.notify({ type: 'negative', message: `Photo not added: ${message}`, timeout: 0, actions: [{ label: 'OK', color: 'white' }] });
+      $q.notify({ type: 'negative', message: t('Photo not added: {message}', { message }), timeout: 0, actions: [{ label: t('OK'), color: 'white' }] });
       void reportClientProblem('issue-photo', message, { name: file.name, type: file.type, size: file.size });
     } finally {
       uploading.value--;
@@ -183,7 +184,7 @@ const statusColor = computed(() =>
 );
 const quadrantLabel = computed(() => {
   const q = QUADRANTS.find((x) => x.key === deriveQuadrant(form));
-  return `Goes in: ${q?.label}`;
+  return t('Goes in: {label}', { label: q?.label });
 });
 const poolLabel = computed(() => (data.poolById.get(props.poolId) ? data.poolLabel(props.poolId) : ''));
 

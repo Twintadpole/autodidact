@@ -1,3 +1,4 @@
+import { locale } from '@/i18n';
 import { inject, provide, reactive, type InjectionKey } from 'vue';
 
 /** How money is shown: $1,234.56, $1,235 or $1.2k. */
@@ -50,5 +51,5 @@ export function formatMoney(v: number, f: NumberFormat): string {
     if (a >= 1000) return `${sign}$${Math.round(a / 100) / 10}k`;
     return `${sign}$${Math.round(a)}`;
   }
-  return v.toLocaleString('en-US', { style: 'currency', currency: 'USD', ...(f === 'whole' && { minimumFractionDigits: 0, maximumFractionDigits: 0 }) });
+  return v.toLocaleString(locale.value, { style: 'currency', currency: 'USD', ...(f === 'whole' && { minimumFractionDigits: 0, maximumFractionDigits: 0 }) });
 }

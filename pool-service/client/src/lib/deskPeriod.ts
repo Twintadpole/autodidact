@@ -1,11 +1,15 @@
-import { periodRange, PERIOD_LABEL, type PeriodKey } from './report';
+import { translatedOptions } from '@/i18n';
+import { periodRange, type PeriodKey } from './report';
 
 /** Date filter on the desktop tables: the money report's periods, plus everything. */
 export type DeskPeriod = PeriodKey | 'all';
-export const PERIOD_OPTIONS: { label: string; value: DeskPeriod }[] = [
-  ...(Object.keys(PERIOD_LABEL) as PeriodKey[]).map((k) => ({ label: PERIOD_LABEL[k], value: k })),
+export const PERIOD_OPTIONS: { label: string; value: DeskPeriod }[] = translatedOptions([
+  { label: 'This month', value: 'thisMonth' },
+  { label: 'Last month', value: 'lastMonth' },
+  { label: 'This year', value: 'thisYear' },
+  { label: 'Last year', value: 'lastYear' },
   { label: 'All dates', value: 'all' },
-];
+]);
 
 /** From/to local dates for a period; null for all dates. */
 export function deskRange(p: DeskPeriod, today = new Date()): { from: string; to: string } | null {

@@ -2,29 +2,29 @@
   <div class="desk-table column q-gutter-sm">
     <!-- Toolbar: search, the page's own filters, columns -->
     <div class="row items-center q-gutter-sm">
-      <q-input v-model="search" dense outlined clearable debounce="150" placeholder="Search" class="desk-search" data-test="table-search">
+      <q-input v-model="search" dense outlined clearable debounce="150" :placeholder="$t(`Search`)" class="desk-search" data-test="table-search">
         <template #prepend><q-icon name="search" /></template>
       </q-input>
       <!-- Filters scroll sideways in their own box on a narrow screen -->
       <div class="desk-filters row no-wrap items-center q-gutter-sm"><slot name="filters" /></div>
       <q-space />
       <slot name="actions" />
-      <q-btn flat dense no-caps icon="download" label="Export" :loading="exporting" data-test="table-export">
+      <q-btn flat dense no-caps icon="download" :label="$t(`Export`)" :loading="exporting" data-test="table-export">
         <q-menu auto-close>
           <q-list dense style="min-width: 220px">
-            <q-item-label header>{{ shown.length }} row{{ shown.length === 1 ? '' : 's' }}, the columns shown</q-item-label>
+            <q-item-label header>{{ $tn(shown.length, '{n} row, the columns shown', '{n} rows, the columns shown') }}</q-item-label>
             <q-item clickable data-test="table-export-xlsx" @click="doExport('xlsx')">
               <q-item-section avatar style="min-width: 32px"><q-icon name="grid_on" /></q-item-section>
-              <q-item-section>Excel (.xlsx)</q-item-section>
+              <q-item-section>{{ $t(`Excel (.xlsx)`) }}</q-item-section>
             </q-item>
             <q-item clickable data-test="table-export-csv" @click="doExport('csv')">
               <q-item-section avatar style="min-width: 32px"><q-icon name="description" /></q-item-section>
-              <q-item-section>CSV (works offline)</q-item-section>
+              <q-item-section>{{ $t(`CSV (works offline)`) }}</q-item-section>
             </q-item>
           </q-list>
         </q-menu>
       </q-btn>
-      <q-btn flat dense no-caps icon="view_column" label="Columns" data-test="table-columns">
+      <q-btn flat dense no-caps icon="view_column" :label="$t(`Columns`)" data-test="table-columns">
         <q-menu>
           <q-list dense style="min-width: 200px">
             <q-item v-for="c in hideable" :key="c.name" tag="label" clickable>
@@ -32,7 +32,7 @@
               <q-item-section>{{ c.label }}</q-item-section>
             </q-item>
             <q-separator />
-            <q-item clickable @click="resetColumns"><q-item-section class="text-grey-8">Show the usual columns</q-item-section></q-item>
+            <q-item clickable @click="resetColumns"><q-item-section class="text-grey-8">{{ $t(`Show the usual columns`) }}</q-item-section></q-item>
           </q-list>
         </q-menu>
       </q-btn>
@@ -52,7 +52,7 @@
       :row-key="rowKey"
       :rows-per-page-options="[25, 50, 100, 0]"
       :loading="loading"
-      :no-data-label="noData"
+      :no-data-label="$t(noData)"
       binary-state-sort
       class="desk-q-table"
       :data-test="testId"
@@ -64,7 +64,7 @@
       <template v-if="hasTotals && shown.length" #bottom-row="props">
         <q-tr class="desk-total" data-test="table-total">
           <q-td v-for="col in props.cols" :key="col.name" :class="`text-${col.align ?? 'left'}`">
-            <template v-if="col.name === firstVisible">Total · {{ shown.length }} {{ shown.length === 1 ? 'row' : 'rows' }}</template>
+            <template v-if="col.name === firstVisible">{{ $tn(shown.length, 'Total · {n} row', 'Total · {n} rows') }}</template>
             <template v-else-if="sumCols.has(col.name)">{{ formatTotal(col.name) }}</template>
           </q-td>
         </q-tr>

@@ -2,9 +2,9 @@
   <q-layout view="hHh lpR fFf">
     <q-header elevated>
       <q-toolbar class="q-px-sm">
-        <q-btn v-if="route.meta.back" flat round icon="arrow_back" aria-label="Back" data-test="back" @click="goBack" />
+        <q-btn v-if="route.meta.back" flat round icon="arrow_back" :aria-label="$t(`Back`)" data-test="back" @click="goBack" />
         <q-toolbar-title class="ellipsis" :class="route.meta.back ? 'q-pl-xs' : 'q-pl-sm'">
-          <div class="ellipsis" data-test="page-title">{{ ui.title || route.meta.title || appName }}</div>
+          <div class="ellipsis" data-test="page-title">{{ ui.title || (route.meta.title ? $t(route.meta.title) : appName) }}</div>
           <div v-if="ui.subtitle" class="text-caption ellipsis header-sub">{{ ui.subtitle }}</div>
         </q-toolbar-title>
         <!-- Sync status: tap for the Sync screen -->
@@ -29,19 +29,19 @@
       <q-banner v-if="loadError" class="bg-red-1 text-negative" dense>
         <template #avatar><q-icon name="cloud_off" /></template>
         {{ loadError }}
-        <template #action><q-btn flat label="Retry" @click="load(true)" /></template>
+        <template #action><q-btn flat :label="$t(`Retry`)" @click="load(true)" /></template>
       </q-banner>
       <router-view />
     </q-page-container>
 
     <q-footer bordered class="bg-white text-grey-8">
       <q-tabs dense no-caps active-color="primary" indicator-color="transparent" class="bottom-nav">
-        <q-route-tab to="/" exact icon="checklist" label="Route" data-test="tab-route" />
-        <q-route-tab to="/customers" icon="people" label="Customers" data-test="tab-customers" />
-        <q-route-tab to="/issues" icon="report_problem" label="Issues" data-test="tab-issues">
+        <q-route-tab to="/" exact icon="checklist" :label="$t(`Route`)" data-test="tab-route" />
+        <q-route-tab to="/customers" icon="people" :label="$t(`Customers`)" data-test="tab-customers" />
+        <q-route-tab to="/issues" icon="report_problem" :label="$t(`Issues`)" data-test="tab-issues">
           <q-badge v-if="openCount" :color="doNowCount ? 'negative' : 'orange-8'" floating data-test="issues-badge">{{ openCount }}</q-badge>
         </q-route-tab>
-        <q-route-tab to="/more" icon="more_horiz" label="More" data-test="tab-more" />
+        <q-route-tab to="/more" icon="more_horiz" :label="$t(`More`)" data-test="tab-more" />
       </q-tabs>
     </q-footer>
   </q-layout>

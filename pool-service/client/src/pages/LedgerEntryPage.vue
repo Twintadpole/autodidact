@@ -3,13 +3,14 @@
     <q-form class="column q-gutter-md" @submit.prevent="save">
       <LedgerFields :form="form" :kind="kind" :existing="existing" />
 
-      <q-btn type="submit" color="primary" unelevated size="lg" label="Save" :loading="busy" data-test="entry-save" />
-      <q-btn v-if="existing" flat color="negative" icon="delete" label="Delete" no-caps data-test="entry-delete" @click="remove" />
+      <q-btn type="submit" color="primary" unelevated size="lg" :label="$t(`Save`)" :loading="busy" data-test="entry-save" />
+      <q-btn v-if="existing" flat color="negative" icon="delete" :label="$t(`Delete`)" no-caps data-test="entry-delete" @click="remove" />
     </q-form>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { t, translated } from '@/i18n';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -31,14 +32,17 @@ const busy = ref(false);
 
 const existing = computed(() => (route.params.id ? data.ledger.find((e) => e._id === String(route.params.id)) : undefined));
 const kind = computed<LedgerKind>(() => existing.value?.kind ?? ((route.params.kind as LedgerKind) || 'expense'));
-const TITLES: Record<LedgerKind, string> = { expense: 'Expense', income: 'Other income', mileage: 'Miles' };
+const TITLES: Record<LedgerKind, string> = translated({ expense: 'Expense', income: 'Other income', mileage: 'Miles' });
+const NEW_TITLE: Record<LedgerKind, string> = translated({ expense: 'New expense', income: 'New other income', mileage: 'New miles' });
+const EDIT_TITLE: Record<LedgerKind, string> = translated({ expense: 'Edit expense', income: 'Edit other income', mileage: 'Edit miles' });
+const DELETE_TITLE: Record<LedgerKind, string> = translated({ expense: 'Delete this expense?', income: 'Delete this other income?', mileage: 'Delete these miles?' });
 
 const form = reactive(blankLedgerForm());
 
 watch(
   existing,
   (e) => {
-    ui.setTitle(`${e ? 'Edit' : 'New'} ${TITLES[kind.value].toLowerCase()}`);
+    ui.setTitle((e ? EDIT_TITLE : NEW_TITLE)[kind.value]);
     if (e) Object.assign(form, ledgerToForm(e));
   },
   { immediate: true },
@@ -51,7 +55,7 @@ async function save() {
     const saved = await data.saveLedger(doc);
     if (saved.billToCustomer && saved.invoiceId && (!existing.value || existing.value.invoiceId !== saved.invoiceId)) {
       const inv = data.invoiceById.get(saved.invoiceId);
-      $q.notify({ type: 'positive', message: inv ? `Added to draft invoice #${inv.number}` : 'Added to their invoice' });
+      $q.notify({ type: 'positive', message: inv ? t('Added to draft invoice #{number}', { number: inv.number }) : t('Added to their invoice') });
     }
     router.back();
   } catch (err) {
@@ -64,7 +68,7 @@ async function save() {
 function remove() {
   const e = existing.value;
   if (!e) return;
-  $q.dialog({ title: `Delete this ${TITLES[e.kind].toLowerCase()}?`, cancel: true, ok: { label: 'Delete', color: 'negative', unelevated: true } }).onOk(async () => {
+  $q.dialog({ title: DELETE_TITLE[e.kind], cancel: true, ok: { label: t('Delete'), color: 'negative', unelevated: true } }).onOk(async () => {
     await data.deleteLedger(e._id);
     router.back();
   });

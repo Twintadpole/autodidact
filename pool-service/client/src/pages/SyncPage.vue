@@ -11,13 +11,13 @@
         </div>
       </q-card-section>
       <q-card-actions>
-        <q-btn color="primary" unelevated icon="sync" label="Sync now" :loading="sync.syncing" data-test="sync-now" @click="syncNow" />
+        <q-btn color="primary" unelevated icon="sync" :label="$t(`Sync now`)" :loading="sync.syncing" data-test="sync-now" @click="syncNow" />
       </q-card-actions>
     </q-card>
 
     <div>
       <div class="text-subtitle1 q-mb-xs">Waiting to upload ({{ sync.outbox.length }})</div>
-      <div v-if="!sync.outbox.length" class="text-grey-7 text-body2">Nothing waiting. Everything on this phone is on the server.</div>
+      <div v-if="!sync.outbox.length" class="text-grey-7 text-body2">{{ $t(`Nothing waiting. Everything on this phone is on the server.`) }}</div>
       <q-list v-else bordered separator class="bg-white rounded-borders" data-test="outbox">
         <q-item v-for="row in sync.outbox" :key="row.id" data-test="outbox-row">
           <q-item-section avatar>
@@ -26,27 +26,26 @@
           <q-item-section>
             <q-item-label>{{ row.summary }}</q-item-label>
             <q-item-label caption>
-              {{ when(row.createdAt) }}<span v-if="row.photoIds.length"> · {{ row.photoIds.length }} photo</span>
-              <span v-if="row.attempts"> · tried {{ row.attempts }}×</span>
+              {{ when(row.createdAt) }}<span v-if="row.photoIds.length"> · {{ $tn(row.photoIds.length, '{n} photo', '{n} photos') }}</span>
+              <span v-if="row.attempts"> · {{ $t('tried {n}×', { n: row.attempts }) }}</span>
             </q-item-label>
             <q-item-label v-if="row.lastError" caption :class="row.status === 'failed' ? 'text-negative' : ''">{{ row.lastError }}</q-item-label>
           </q-item-section>
           <q-item-section side class="row no-wrap">
-            <q-btn flat round dense icon="replay" color="primary" aria-label="Retry" @click="retry(row.id)" />
-            <q-btn flat round dense icon="delete" color="grey-7" aria-label="Discard" @click="discard(row)" />
+            <q-btn flat round dense icon="replay" color="primary" :aria-label="$t(`Retry`)" @click="retry(row.id)" />
+            <q-btn flat round dense icon="delete" color="grey-7" :aria-label="$t(`Discard`)" @click="discard(row)" />
           </q-item-section>
         </q-item>
       </q-list>
     </div>
 
-    <q-expansion-item icon="build" label="Advanced" header-class="text-grey-8" class="bg-white rounded-borders">
+    <q-expansion-item icon="build" :label="$t(`Advanced`)" header-class="text-grey-8" class="bg-white rounded-borders">
       <q-card>
         <q-card-section class="text-body2">
-          <b>Reload from server</b> replaces this phone's copy with what's on the server. Use it if something looks wrong after
-          discarding a change. Only possible when nothing is waiting to upload.
+          <b>{{ $t(`Reload from server`) }}</b> {{ $t(`replaces this phone's copy with what's on the server. Use it if something looks wrong after discarding a change. Only possible when nothing is waiting to upload.`) }}
         </q-card-section>
         <q-card-actions>
-          <q-btn outline color="primary" label="Reload from server" :disable="sync.outbox.length > 0" @click="reload" />
+          <q-btn outline color="primary" :label="$t(`Reload from server`)" :disable="sync.outbox.length > 0" @click="reload" />
         </q-card-actions>
       </q-card>
     </q-expansion-item>
@@ -54,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { t, tn } from '@/i18n';
 import { computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { format, parseISO } from 'date-fns';
@@ -69,14 +69,14 @@ const when = (iso: string) => format(parseISO(iso), 'MMM d, h:mm a');
 const statusText = computed(() => {
   switch (sync.state) {
     case 'failed':
-      return `${sync.failed} change(s) were refused by the server`;
+      return tn(sync.failed, '{n} change was refused by the server', '{n} changes were refused by the server');
     case 'offline':
-      return sync.pending ? `No connection · ${sync.pending} change(s) saved on this phone` : 'No connection · nothing waiting';
+      return sync.pending ? tn(sync.pending, 'No connection · {n} change saved on this phone', 'No connection · {n} changes saved on this phone') : t('No connection · nothing waiting');
     case 'syncing':
     case 'waiting':
-      return `${sync.pending} change(s) waiting to upload`;
+      return tn(sync.pending, '{n} change waiting to upload', '{n} changes waiting to upload');
     default:
-      return 'Everything is uploaded';
+      return t('Everything is uploaded');
   }
 });
 const statusIcon = computed(() => ({ failed: 'sync_problem', offline: 'cloud_off', syncing: 'cloud_upload', waiting: 'cloud_upload', synced: 'cloud_done' })[sync.state]);
@@ -93,18 +93,18 @@ async function retry(id: string) {
 
 function discard(row: OutboxRow) {
   $q.dialog({
-    title: 'Discard this change?',
-    message: `“${row.summary}” will never reach the server. This can't be undone.`,
+    title: t('Discard this change?'),
+    message: t('“{summary}” will never reach the server. This can’t be undone.', { summary: row.summary }),
     cancel: true,
-    ok: { label: 'Discard', color: 'negative', unelevated: true },
+    ok: { label: t('Discard'), color: 'negative', unelevated: true },
   }).onOk(() => void sync.discard(row.id));
 }
 
 function reload() {
-  $q.dialog({ title: 'Reload from server?', message: "This phone's copy is replaced with the server's.", cancel: true }).onOk(async () => {
+  $q.dialog({ title: t('Reload from server?'), message: t('This phone’s copy is replaced with the server’s.'), cancel: true }).onOk(async () => {
     try {
       await sync.reloadFromServer();
-      $q.notify({ message: 'Reloaded', color: 'grey-8' });
+      $q.notify({ message: t('Reloaded'), color: 'grey-8' });
     } catch (err) {
       $q.notify({ type: 'negative', message: err instanceof Error ? err.message : String(err) });
     }

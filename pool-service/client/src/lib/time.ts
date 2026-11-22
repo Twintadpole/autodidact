@@ -1,3 +1,4 @@
+import { t, locale } from '@/i18n';
 import { format, parseISO } from 'date-fns';
 
 /** 3725 → "1:02:05", 125 → "2:05". */
@@ -12,11 +13,11 @@ export function hms(totalSeconds: number): string {
 /** 3725 → "1 h 2 min", 600 → "10 min". */
 export function humanDuration(totalSeconds: number): string {
   const m = Math.round(totalSeconds / 60);
-  if (m < 60) return `${m} min`;
-  return `${Math.floor(m / 60)} h ${m % 60} min`;
+  if (m < 60) return t('{m} min', { m });
+  return t('{h} h {m} min', { h: Math.floor(m / 60), m: m % 60 });
 }
 
-export const clock = (iso: string | null | undefined) => (iso ? format(parseISO(iso), 'h:mm a') : '…');
+export const clock = (iso: string | null | undefined) => (iso ? parseISO(iso).toLocaleTimeString(locale.value, { hour: 'numeric', minute: '2-digit' }) : '…');
 
 /** ISO → value for <input type="datetime-local"> in the phone's own time zone. */
 export function toLocalInput(iso: string | null): string {

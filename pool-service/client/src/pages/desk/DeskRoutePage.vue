@@ -11,7 +11,7 @@
         <q-btn-toggle v-model="doneFilter" dense no-caps unelevated toggle-color="primary" color="grey-3" text-color="grey-9" :options="doneOptions" data-test="desk-route-done" />
       </template>
       <template #actions>
-        <q-btn flat no-caps icon="restart_alt" label="Reset week" data-test="desk-reset-week" @click="confirmReset" />
+        <q-btn flat no-caps icon="restart_alt" :label="$t(`Reset week`)" data-test="desk-reset-week" @click="confirmReset" />
       </template>
       <template #body-cell-done="props">
         <q-td :props="props" @click.stop>
@@ -27,11 +27,12 @@
         </q-td>
       </template>
     </DeskTable>
-    <div class="text-caption text-grey-7 q-mt-sm">Click a pool to open its visit screen.</div>
+    <div class="text-caption text-grey-7 q-mt-sm">{{ $t(`Click a pool to open its visit screen.`) }}</div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { t, translated } from '@/i18n';
 import { computed, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
@@ -49,7 +50,7 @@ const $q = useQuasar();
 const router = useRouter();
 const data = useDataStore();
 
-const EXTRA = { upcoming: 'Coming up (one-time)', pastOnce: 'Past one-time', none: 'Not scheduled' } as const;
+const EXTRA = translated({ upcoming: 'Coming up (one-time)', pastOnce: 'Past one-time', none: 'Not scheduled' } as const);
 type GroupKey = ServiceDay | keyof typeof EXTRA;
 const order: GroupKey[] = [...serviceDaysFrom(new Date()), 'upcoming', 'pastOnce', 'none'];
 const groupOf = (s: RouteSlot): GroupKey => (s.kind === 'weekly' || s.kind === 'once' ? s.day : s.kind);
@@ -103,13 +104,13 @@ const allRows = computed<Row[]>(() =>
 const dayFilter = ref<GroupKey | 'all'>('all');
 const doneFilter = ref<'all' | 'remaining' | 'done'>('all');
 const dayOptions = computed(() => [
-  { label: 'All days', value: 'all' },
-  ...order.filter((g) => allRows.value.some((r) => r.group === g)).map((g) => ({ label: `${g in EXTRA ? EXTRA[g as keyof typeof EXTRA] : DAY_LABELS[g as ServiceDay]}${g === order[0] ? ' · Today' : ''}`, value: g })),
+  { label: t('All days'), value: 'all' },
+  ...order.filter((g) => allRows.value.some((r) => r.group === g)).map((g) => ({ label: `${g in EXTRA ? EXTRA[g as keyof typeof EXTRA] : DAY_LABELS[g as ServiceDay]}${g === order[0] ? ` · ${t('Today')}` : ''}`, value: g })),
 ]);
 const doneOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Remaining', value: 'remaining' },
-  { label: 'Done', value: 'done' },
+  { label: t('All'), value: 'all' },
+  { label: t('Remaining'), value: 'remaining' },
+  { label: t('Done'), value: 'done' },
 ];
 const rows = computed(() =>
   allRows.value.filter((r) => (dayFilter.value === 'all' || r.group === dayFilter.value) && (doneFilter.value === 'all' || (doneFilter.value === 'done' ? r.done : !r.done))),
@@ -121,16 +122,16 @@ const doneCount = computed(() => scheduled.value.filter((r) => r.done).length);
 const weekLabel = format(startOfISOWeek(new Date()), 'MMM d');
 
 const columns: DeskColumn<Row>[] = [
-  { name: 'done', label: 'Done', field: 'done', align: 'center', sortable: true },
+  { name: 'done', label: t('Done'), field: 'done', align: 'center', sortable: true },
   // Day (today first), then one-time date, then stop number.
-  { name: 'day', label: 'Day', field: 'day', align: 'left', sortable: true, required: true, sort: (_a, _b, x: Row, y: Row) => x.day - y.day || x.date.localeCompare(y.date) || x.stop - y.stop || x.customer.localeCompare(y.customer), exportValue: (r) => r.dayLabel },
-  { name: 'stop', label: 'Stop #', field: 'stop', align: 'right', sortable: true, hidden: true },
-  { name: 'customer', label: 'Customer', field: 'customer', align: 'left', sortable: true },
-  { name: 'pool', label: 'Pool', field: 'pool', align: 'left', sortable: true },
-  { name: 'address', label: 'Address', field: 'address', align: 'left', sortable: true },
-  { name: 'schedule', label: 'Schedule', field: 'schedule', align: 'left', hidden: true },
-  { name: 'issues', label: 'Open issues', field: 'issues', align: 'center', sortable: true },
-  { name: 'access', label: 'Access notes', field: 'access', align: 'left', hidden: true },
+  { name: 'day', label: t('Day'), field: 'day', align: 'left', sortable: true, required: true, sort: (_a, _b, x: Row, y: Row) => x.day - y.day || x.date.localeCompare(y.date) || x.stop - y.stop || x.customer.localeCompare(y.customer), exportValue: (r) => r.dayLabel },
+  { name: 'stop', label: t('Stop #'), field: 'stop', align: 'right', sortable: true, hidden: true },
+  { name: 'customer', label: t('Customer'), field: 'customer', align: 'left', sortable: true },
+  { name: 'pool', label: t('Pool'), field: 'pool', align: 'left', sortable: true },
+  { name: 'address', label: t('Address'), field: 'address', align: 'left', sortable: true },
+  { name: 'schedule', label: t('Schedule'), field: 'schedule', align: 'left', hidden: true },
+  { name: 'issues', label: t('Open issues'), field: 'issues', align: 'center', sortable: true },
+  { name: 'access', label: t('Access notes'), field: 'access', align: 'left', hidden: true },
 ];
 
 async function toggle(id: string, done: boolean) {
@@ -142,10 +143,10 @@ async function toggle(id: string, done: boolean) {
 }
 
 function confirmReset() {
-  $q.dialog({ title: 'Reset week?', message: 'This clears the checkmark on every pool.', cancel: true, ok: { label: 'Reset', color: 'negative', unelevated: true } }).onOk(async () => {
+  $q.dialog({ title: t('Reset week?'), message: t('This clears the checkmark on every pool.'), cancel: true, ok: { label: t('Reset'), color: 'negative', unelevated: true } }).onOk(async () => {
     try {
       await data.resetWeek();
-      $q.notify({ message: 'Week reset', color: 'grey-8' });
+      $q.notify({ message: t('Week reset'), color: 'grey-8' });
     } catch (err) {
       $q.notify({ type: 'negative', message: errorMessage(err) });
     }

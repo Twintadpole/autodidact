@@ -4,18 +4,18 @@
       <q-item-section avatar><q-icon name="phone" color="primary" /></q-item-section>
       <q-item-section>
         <q-item-label>{{ formatPhone(ph.number) }}</q-item-label>
-        <q-item-label caption>{{ ph.label }}</q-item-label>
+        <q-item-label caption>{{ $t(ph.label) }}</q-item-label>
       </q-item-section>
       <q-item-section side class="row no-wrap">
-        <q-btn round flat color="primary" icon="call" :href="telHref(ph.number)" aria-label="Call" data-test="tel-link" />
-        <q-btn round flat color="primary" icon="sms" :href="smsHref(ph.number)" aria-label="Text" data-test="sms-link" />
+        <q-btn round flat color="primary" icon="call" :href="telHref(ph.number)" :aria-label="$t(`Call`)" data-test="tel-link" />
+        <q-btn round flat color="primary" icon="sms" :href="smsHref(ph.number)" :aria-label="$t(`Text`)" data-test="sms-link" />
       </q-item-section>
     </q-item>
     <q-item v-if="hasAddress(address)" clickable tag="a" :href="mapsUrl(address)" target="_blank" data-test="maps-link">
       <q-item-section avatar><q-icon name="directions" color="primary" /></q-item-section>
       <q-item-section>
         <q-item-label>{{ addressText(address) }}</q-item-label>
-        <q-item-label caption>Navigate with Google Maps</q-item-label>
+        <q-item-label caption>{{ $t(`Navigate with Google Maps`) }}</q-item-label>
       </q-item-section>
     </q-item>
     <q-item v-if="customer.email" clickable tag="a" :href="`mailto:${customer.email}`">

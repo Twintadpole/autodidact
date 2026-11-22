@@ -1,16 +1,16 @@
 <template>
   <!-- Expense, other income or mileage fields, shared by the phone screen and the desktop panel. -->
   <div class="column q-gutter-md">
-    <q-input v-model="form.date" outlined stack-label label="Date" type="date" data-test="entry-date" />
+    <q-input v-model="form.date" outlined stack-label :label="$t(`Date`)" type="date" data-test="entry-date" />
 
     <!-- Expense / income -->
     <template v-if="kind !== 'mileage'">
-      <q-input v-model="form.amount" outlined label="Amount" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" autofocus data-test="entry-amount" />
+      <q-input v-model="form.amount" outlined :label="$t(`Amount`)" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" autofocus data-test="entry-amount" />
       <q-select
         v-if="kind === 'expense'"
         v-model="form.category"
         outlined
-        label="Category"
+        :label="$t(`Category`)"
         emit-value
         map-options
         clearable
@@ -20,63 +20,64 @@
         new-value-mode="add-unique"
         input-debounce="0"
         :options="categoryOptions"
-        hint="Pick one, or type your own"
+        :hint="$t(`Pick one, or type your own`)"
         data-test="entry-category"
         @new-value="addCategory"
       />
-      <q-input v-if="kind === 'expense'" v-model="form.vendor" outlined label="Vendor" hint="e.g. Leslie's, Home Depot, QT" data-test="entry-vendor" />
+      <q-input v-if="kind === 'expense'" v-model="form.vendor" outlined :label="$t(`Vendor`)" :hint="$t(`e.g. Leslie's, Home Depot, QT`)" data-test="entry-vendor" />
       <q-select
         v-model="form.customerId"
         outlined
-        :label="kind === 'income' ? 'From customer' : 'For customer'"
+        :label="kind === 'income' ? $t('From customer') : $t('For customer')"
         emit-value
         map-options
         clearable
         use-input
         input-debounce="0"
         :options="customerOptions"
-        :hint="kind === 'expense' ? 'Counts against this customer’s profit' : ''"
+        :hint="kind === 'expense' ? $t('Counts against this customer’s profit') : ''"
         data-test="entry-customer"
         @filter="filterCustomers"
       />
       <template v-if="billable">
-        <q-toggle v-model="form.billToCustomer" label="Add to their invoice" data-test="entry-bill" />
-        <q-input v-if="form.billToCustomer" v-model="form.billedAmount" outlined dense label="Bill the customer" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" hint="Starts at what you paid; add a markup if you like" data-test="entry-billed" />
+        <q-toggle v-model="form.billToCustomer" :label="$t(`Add to their invoice`)" data-test="entry-bill" />
+        <q-input v-if="form.billToCustomer" v-model="form.billedAmount" outlined dense :label="$t(`Bill the customer`)" prefix="$" type="number" inputmode="decimal" min="0" step="0.01" :hint="$t(`Starts at what you paid; add a markup if you like`)" data-test="entry-billed" />
         <div v-if="linkedInvoice && linkedInvoice.status !== 'draft'" class="text-caption text-grey-7">Already on invoice #{{ linkedInvoice.number }} ({{ linkedInvoice.status }}); changes here don't change that invoice.</div>
       </template>
     </template>
 
     <!-- Mileage -->
     <template v-else>
-      <q-input v-model="form.miles" outlined label="Miles driven" type="number" inputmode="decimal" min="0" step="0.1" autofocus data-test="entry-miles" />
-      <div class="text-caption text-grey-7 q-mt-xs">Or use the odometer:</div>
+      <q-input v-model="form.miles" outlined :label="$t(`Miles driven`)" type="number" inputmode="decimal" min="0" step="0.1" autofocus data-test="entry-miles" />
+      <div class="text-caption text-grey-7 q-mt-xs">{{ $t(`Or use the odometer:`) }}</div>
       <div class="row q-col-gutter-sm q-mt-none">
-        <q-input v-model="form.odometerStart" outlined dense label="Start" type="number" inputmode="decimal" class="col-6" data-test="entry-odo-start" />
-        <q-input v-model="form.odometerEnd" outlined dense label="End" type="number" inputmode="decimal" class="col-6" data-test="entry-odo-end" />
+        <q-input v-model="form.odometerStart" outlined dense :label="$t(`Start`)" type="number" inputmode="decimal" class="col-6" data-test="entry-odo-start" />
+        <q-input v-model="form.odometerEnd" outlined dense :label="$t(`End`)" type="number" inputmode="decimal" class="col-6" data-test="entry-odo-end" />
       </div>
     </template>
 
-    <q-input v-model="form.note" outlined autogrow type="textarea" label="Note" data-test="entry-note" />
+    <q-input v-model="form.note" outlined autogrow type="textarea" :label="$t(`Note`)" data-test="entry-note" />
 
     <!-- Receipt -->
     <div v-if="kind === 'expense'">
       <div class="row items-center q-gutter-sm">
-        <div class="text-subtitle2">Receipt</div>
+        <div class="text-subtitle2">{{ $t(`Receipt`) }}</div>
         <q-space />
-        <q-btn outline dense no-caps color="primary" icon="photo_camera" label="Camera" @click="cameraInput?.click()" />
-        <q-btn outline dense no-caps color="primary" icon="photo_library" label="Gallery" @click="galleryInput?.click()" />
+        <q-btn outline dense no-caps color="primary" icon="photo_camera" :label="$t(`Camera`)" @click="cameraInput?.click()" />
+        <q-btn outline dense no-caps color="primary" icon="photo_library" :label="$t(`Gallery`)" @click="galleryInput?.click()" />
       </div>
       <input ref="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" @change="onReceipt" />
       <input ref="galleryInput" type="file" accept="image/*" class="hidden" data-test="entry-receipt-input" @change="onReceipt" />
       <div v-if="form.receiptDataUrl" class="q-mt-sm relative-position receipt" data-test="entry-receipt">
         <img :src="form.receiptDataUrl" alt="Receipt" />
-        <q-btn round dense color="grey-8" icon="close" size="sm" class="absolute-top-right q-ma-xs" aria-label="Remove receipt" @click="form.receiptDataUrl = ''" />
+        <q-btn round dense color="grey-8" icon="close" size="sm" class="absolute-top-right q-ma-xs" :aria-label="$t(`Remove receipt`)" @click="form.receiptDataUrl = ''" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { t } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { EXPENSE_CATEGORIES, type LedgerKind } from '@pool/shared';
@@ -154,7 +155,7 @@ async function onReceipt(ev: Event) {
       }
     }
   } catch (err) {
-    $q.notify({ type: 'negative', message: `Couldn't read that photo (${errorMessage(err)}). If it's a HEIC photo, use the Camera button.` });
+    $q.notify({ type: 'negative', message: t("Couldn't read that photo ({err}). If it's a HEIC photo, use the Camera button.", { err: errorMessage(err) }) });
   }
 }
 </script>

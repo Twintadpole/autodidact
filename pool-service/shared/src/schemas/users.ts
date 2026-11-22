@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BUSINESS_SETTINGS_ID } from './collections.js';
+import { LANGUAGE_CODES, type LanguageCode } from '../languages.js';
 
 /**
  * User accounts and roles (GPF item 3). An owner sees and does everything. A tech sees the field
@@ -32,7 +33,11 @@ export interface Me {
   role: Role;
   /** Set after an owner resets the password: the app asks for a new one. */
   mustChangePassword: boolean;
+  /** The app's language for this person (GPF item 5); null = the phone's own. */
+  language: LanguageCode | null;
 }
+/** What people change about themselves (My account). */
+export const mePatchSchema = z.object({ language: z.enum(LANGUAGE_CODES).nullable().optional(), name: z.string().trim().min(1).max(100).optional() });
 /** Team list (owner only), and the names every phone gets with each pull. */
 export interface TeamMember {
   _id: string;

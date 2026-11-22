@@ -5,7 +5,7 @@
       <q-card-section class="row items-center no-wrap q-py-sm bg-grey-2">
         <div class="text-h6 ellipsis col" data-test="side-panel-title">{{ title }}</div>
         <slot name="head" />
-        <q-btn flat round dense icon="close" aria-label="Close" v-close-popup />
+        <q-btn flat round dense icon="close" :aria-label="$t(`Close`)" v-close-popup />
       </q-card-section>
       <q-separator />
       <q-card-section class="col scroll">
