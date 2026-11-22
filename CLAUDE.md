@@ -87,7 +87,12 @@ Then start the VPS session:
      welcome-owner.md + beta-tester-guide.md → `tenant.sh welcome <name>` PDFs (make-pdf.cjs in the Playwright
      image). `e2e/onboarding.cjs` (5); accounts.cjs skips the welcome. All 20 e2e pass; kit 118/118
      (fixed a race: create/update now wait up to 30 s for Traefik to route a restarted app, `t_edge_code`).
-  5. Translation review sheets (export/import), reviewers found by the owner.
+  5. ✅ Translation review (built Nov 22): `npm run i18n:review -- export [codes] --out <dir>` (per language
+     xlsx: "How to review" + "Texts": hidden Key/Form, English, Translation now, Your correction, Comment, Where)
+     and `-- import <code> <file> [--dry-run]` (refuses changed {placeholders}; a plural form may drop {n};
+     lists comments). Sheets for the owner in `~/translation-review/` on the VPS with translator-guide.pdf
+     (`gpf/docs/translator-guide.md`, `tenant.sh docs`). Owner finds reviewers; returned files → dry run →
+     show the owner → import → i18n:check → drop "beta" for that language when fully reviewed.
   4. Password reset by email: owner Nov 22: send from **twintadpole@gmail.com** (Gmail app password, owner types it
      with nano), the message says it's from the app, which business, which tech; goes to **both** the tech and
      the owner.

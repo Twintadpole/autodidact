@@ -2,6 +2,13 @@
 
 ## Unreleased (November 2026)
 
+### Beta: translation review
+
+- `npm run i18n:review -- export`: one Excel sheet per language for a native-speaker reviewer (English,
+  the translation now, a column for their correction and a comment, and which screen shows it).
+  `-- import <code> <file>` applies the corrections, refusing any that drop a {placeholder}, and lists
+  the comments. Guide for reviewers: `gpf/docs/translator-guide.md`.
+
 ### Beta: onboarding
 
 - **Invite** (Team → add a login, or a new temporary password): opens the phone's share sheet with a

@@ -42,6 +42,7 @@ bash gpf/tenant.sh restore-check all --offsite   # weekly (cron): every tenant, 
 bash gpf/tenant.sh monitor health|backups|disk|test   # alerts (monitor.sh), usually from cron
 bash gpf/tenant.sh cron [--install]          # print / install the cron jobs below
 bash gpf/tenant.sh welcome <name>            # docs/welcome-<name>.pdf + beta-tester-guide.pdf for a new business
+bash gpf/tenant.sh docs                      # <GPF_ROOT>/docs/: beta-tester-guide.pdf, translator-guide.pdf
 bash gpf/tenant.sh feedback <name|all> [days]   # beta feedback its users sent (14 days)
 bash gpf/tenant.sh errors <name|all> [days]     # errors the app reported from phones (7 days)
 bash gpf/tenant.sh export <name>             # exports/<time>/everything.xlsx + photos.zip

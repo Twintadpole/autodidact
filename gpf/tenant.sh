@@ -19,6 +19,7 @@
 #   tenant.sh cron [--install]           the cron lines for nightly backups, restore checks and alerts
 #   tenant.sh welcome <name>             PDFs for a new business: its welcome guide (address, login) and
 #                                        the beta tester guide, in tenants/<name>/docs/ (password not included)
+#   tenant.sh docs                       PDFs of the general guides (tester, translator) in <GPF_ROOT>/docs/
 #   tenant.sh feedback <name|all> [days] beta feedback its users sent (default: last 14 days)
 #   tenant.sh errors <name|all> [days]   errors the app reported from phones (default: last 7 days)
 #   tenant.sh export <name>              Excel "export everything" + photos.zip, for the customer
@@ -366,6 +367,12 @@ cmd_welcome() {
   echo "${name}: welcome guide and tester guide in ${docs}/ (send the temporary password separately)"
 }
 
+cmd_docs() {
+  local support="${GPF_SUPPORT_EMAIL}, or More → Send feedback in the app."
+  make_pdf beta-tester-guide.md "${GPF_ROOT}/docs/beta-tester-guide.pdf" "SUPPORT=${support}"
+  make_pdf translator-guide.md "${GPF_ROOT}/docs/translator-guide.pdf" "SUPPORT=${GPF_SUPPORT_EMAIL}"
+}
+
 # ---- beta: feedback and app errors, read from each tenant's database (read only)
 feedback_one() {
   local name="$1" days="${2:-14}"
@@ -547,6 +554,7 @@ case "${1:-}" in
   monitor) shift; bash "$(dirname "${BASH_SOURCE[0]}")/monitor.sh" "$@" ;;
   cron) cmd_cron "${2:-}" ;;
   welcome) cmd_welcome "${2:-}" ;;
+  docs) cmd_docs ;;
   feedback) shift; cmd_feedback "$@" ;;
   errors) shift; cmd_errors "$@" ;;
   export) cmd_export "${2:-}" ;;

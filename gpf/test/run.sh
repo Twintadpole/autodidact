@@ -52,7 +52,7 @@ cleanup() {
   for s in $(ls -1 "${GPF_CONFIG}/deleted" 2>/dev/null); do GPF_PURGE_DAYS=0 bash "${GPF}" purge "${s}" --confirm "${s}" >/dev/null; done
   for t in $(tenants); do tdc "${t}" down >/dev/null 2>&1; done
   [[ -e "${GPF_CONFIG}/current-image" ]] && edc down >/dev/null 2>&1
-  rm -rf "${GPF_ROOT}/monitor"
+  rm -rf "${GPF_ROOT}/monitor" "${GPF_ROOT}/docs"
   docker ps -aq --filter name=gpft- | xargs -r docker rm -f >/dev/null
   docker network ls -q --filter name=gpft- | xargs -r docker network rm >/dev/null
   docker run --rm -v /var/tmp/gpft:/t "${HELPER_IMAGE}" rm -rf /t/tenants /t/deleted /t/offsite /t/config/tenants /t/config/deleted /t/config/edge
@@ -178,6 +178,7 @@ check "new feedback: one alert, not repeated" test "$(alerts | grep -c 'alpha: 1
 check "welcome: guide PDFs for alpha" run welcome alpha
 check "alpha's welcome guide is a PDF" bash -c "head -c4 '$(t_dir alpha)/docs/welcome-alpha.pdf' | grep -q '%PDF'"
 check "the tester guide is a PDF" bash -c "head -c4 '$(t_dir alpha)/docs/beta-tester-guide.pdf' | grep -q '%PDF'"
+check "docs: tester and translator guide PDFs" bash -c "bash '${GPF}' docs >/dev/null && head -c4 '${GPF_ROOT}/docs/translator-guide.pdf' | grep -q '%PDF'"
 docker rm -f gpft-ntfy >/dev/null; unset GPF_NTFY_URL
 check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'monitor.sh feedback' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
 
