@@ -52,6 +52,7 @@ cleanup() {
   for s in $(ls -1 "${GPF_CONFIG}/deleted" 2>/dev/null); do GPF_PURGE_DAYS=0 bash "${GPF}" purge "${s}" --confirm "${s}" >/dev/null; done
   for t in $(tenants); do tdc "${t}" down >/dev/null 2>&1; done
   [[ -e "${GPF_CONFIG}/current-image" ]] && edc down >/dev/null 2>&1
+  rm -rf "${GPF_ROOT}/monitor"
   docker ps -aq --filter name=gpft- | xargs -r docker rm -f >/dev/null
   docker network ls -q --filter name=gpft- | xargs -r docker network rm >/dev/null
   docker run --rm -v /var/tmp/gpft:/t "${HELPER_IMAGE}" rm -rf /t/tenants /t/deleted /t/offsite /t/config/tenants /t/config/deleted /t/config/edge
@@ -128,6 +129,48 @@ check "restore-check alpha (local dump)" run restore-check alpha
 check "restore-check alpha --offsite local" run restore-check alpha --offsite local
 if (( R2 )); then check "restore-check alpha --offsite r2" run restore-check alpha --offsite r2; fi
 check "alpha's local offsite copy can't be read with bravo's key" bash -c "! TRESTIC_KEY='$(t_sec bravo)/restic-password' bash -c 'source ${HERE}/../lib.sh; trestic alpha local -- snapshots' >/dev/null 2>&1"
+
+echo "== Weekly restore check and alerts"
+check "restore-check all --offsite (every tenant)" run restore-check all --offsite
+check "alpha LAST_RESTORE_CHECK written" test -s "$(t_dir alpha)/backups/LAST_RESTORE_CHECK"
+check "bravo LAST_RESTORE_CHECK written" test -s "$(t_dir bravo)/backups/LAST_RESTORE_CHECK"
+# A throwaway ntfy (no logins) stands in for the phone.
+docker run -d --name gpft-ntfy -p 127.0.0.1:8095:80 binwiederhier/ntfy:v2.15.0 serve >/dev/null
+for _ in $(seq 1 20); do curl -fs http://127.0.0.1:8095/v1/health >/dev/null && break; sleep 1; done
+export GPF_NTFY_URL=http://127.0.0.1:8095/gpft-alerts
+alerts() { curl -s "http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all" | grep -o '"title":"[^"]*"' | cut -d'"' -f4; }
+mon() { bash "${HERE}/../monitor.sh" "$@" >/var/tmp/gpft-mon.log 2>&1; }
+check "monitor test reaches ntfy" bash -c "bash '${HERE}/../monitor.sh' test && sleep 1 && curl -s 'http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all' | grep -q 'GPF test alert'"
+mon health; mon backups; mon disk
+check "all healthy: no open alerts" test -z "$(ls "${GPF_ROOT}/monitor/"*.down 2>/dev/null)"
+check "alpha's MONITOR_STATUS written" grep -q '^checked ' "$(t_dir alpha)/backups/MONITOR_STATUS"
+tdc bravo stop api >/dev/null 2>&1
+mon health
+check "one failed check: no alert yet" test ! -e "${GPF_ROOT}/monitor/bravo.health.down"
+mon health
+check "two failed checks: bravo DOWN alert" bash -c "sleep 1; curl -s 'http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all' | grep -q 'bravo is DOWN'"
+mon health
+check "no repeat alert" test "$(alerts | grep -c 'bravo is DOWN')" = 1
+check "bravo's status file shows it" grep -q '^down health ' "$(t_dir bravo)/backups/MONITOR_STATUS"
+check "alpha's status file doesn't" bash -c "! grep -q '^down' '$(t_dir alpha)/backups/MONITOR_STATUS'"
+check "alpha still answers" test "$(http alpha /api/health)" = 200
+tdc bravo start api >/dev/null 2>&1; t_wait_healthy bravo >/dev/null
+for _ in $(seq 1 30); do [[ "$(http bravo /api/health)" == 200 ]] && break; sleep 1; done
+mon health
+check "bravo back: OK-again alert" bash -c "sleep 1; curl -s 'http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all' | grep -q 'bravo is back up'"
+echo "2020-01-01T00:00:00Z" > "$(t_dir alpha)/backups/LAST_BACKUP"
+mon backups
+check "old backup: alpha backup alert" bash -c "sleep 1; curl -s 'http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all' | grep -q 'alpha: backup problem'"
+check "alpha's System card shows it" bash -c "api() { curl -s -H 'Host: alpha.${GPF_DOMAIN}' -H 'cookie: ${CA}' 'http://${GPF_EDGE_BIND}/api/system/status'; }; api | grep -q '\"name\":\"backups\"'"
+check "bravo's backups fine" test ! -e "${GPF_ROOT}/monitor/bravo.backups.down"
+run backup alpha >/dev/null; mon backups
+check "after a backup: alpha backups OK again" test ! -e "${GPF_ROOT}/monitor/alpha.backups.down"
+docker stop gpft-traefik >/dev/null; mon health; mon health
+check "edge down: one edge alert, not one per tenant" bash -c "sleep 1; a=\$(curl -s 'http://127.0.0.1:8095/gpft-alerts/json?poll=1&since=all'); grep -q 'GPF edge is DOWN' <<<\"\$a\" && ! grep -q 'alpha is DOWN' <<<\"\$a\""
+docker start gpft-traefik >/dev/null; sleep 3; mon health
+check "edge back: OK again" test ! -e "${GPF_ROOT}/monitor/edge.down"
+docker rm -f gpft-ntfy >/dev/null; unset GPF_NTFY_URL
+check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
 
 echo "== Update (new image tag)"
 img="${BASE_IMAGE}"; docker tag "${img}" "${img}-next"

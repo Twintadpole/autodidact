@@ -63,9 +63,19 @@ Then start the VPS session:
 - Everything since v0.2.0 is built and tested but **NOT deployed** to the owner's app (owner's rule: no deploys
   until they say so): GPF tenant kit, customer import, accounts/roles/routes, branding, six languages.
 - The owner tests on **https://gpf.evolutiondfw.com** (test install, dummy data; see "GPF test install" below).
-- **Next:** the owner asked for a **"ready for beta" checklist** (to get the app ready for testing and a bigger
-  audience): e.g. nightly backups + alerts per tenant, easy tech onboarding, a Help page, password reset by
-  email, native-speaker review of translations, the 30-second Mongo health check. Plan it, then ask.
+- **Beta checklist (owner approved Nov 22, "go as suggested"; order 1, 3, 2, 5, 4):**
+  1. ✅ Safety net (built Nov 22): `gpf/monitor.sh` (health every 5 min through the edge, backups daily,
+     disk hourly; ntfy via `GPF_NTFY_URL`/`GPF_NTFY_TOKEN_FILE`; per-tenant `backups/MONITOR_STATUS` for the
+     System card), `restore-check all --offsite`, `tenant.sh cron [--install]`. Kit test 111/111. Installed in
+     user `claude`'s crontab for the test install (between `# gpf-kit begin/end`); logs `~/gpf/logs/`. Test install
+     alerts go to the log only until the owner says where (their ntfy needs a new topic = live-stack change).
+     Owner's app: Mongo health check 30s (start 2s) in `pool-service/docker-compose.yml`, deploys with the next deploy.
+  3. Help + feedback + error log (app records its own errors; `clientLogRoutes` exists) + "Beta" label.
+  2. Tech onboarding: "Invite tech" share message, first-login welcome + install how-to.
+  5. Translation review sheets (export/import), reviewers found by the owner.
+  4. Password reset by email: owner hasn't chosen how mail is sent (Gmail app password / self-host / skip).
+  - Owner also asked (Nov 22) for a **docs + onboarding plan**: in-app Help, owner onboarding, beta tester guide,
+    terms/privacy. Plan sent; waiting for answers.
 - Before any deploy of this to the owner's app: ask whether their login should be their email (OWNER_EMAIL)
   or stay "owner".
 

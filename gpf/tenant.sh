@@ -14,6 +14,9 @@
 #   tenant.sh update <name|all> [image]  backup, counts, new image, health, counts again (stops on failure)
 #   tenant.sh backup <name|all> [--predeploy]   database dump; nightly runs also send it and photos offsite
 #   tenant.sh restore-check <name> [--offsite local|r2]   restore into a scratch database and compare
+#   tenant.sh restore-check all --offsite [local|r2]      every tenant (the weekly cron job)
+#   tenant.sh monitor health|backups|disk|test   alerts through ntfy (see monitor.sh)
+#   tenant.sh cron [--install]           the cron lines for nightly backups, restore checks and alerts
 #   tenant.sh export <name>              Excel "export everything" + photos.zip, for the customer
 #   tenant.sh suspend|resume <name>      app offline behind a "paused" notice (503); data and backups untouched
 #   tenant.sh delete <name> --confirm <name>    needs an export from the last 24 h; keeps a final backup
@@ -270,7 +273,23 @@ cmd_backup() { each_continue backup_one "$@"; }
 restore_into_scratch() {
   tjob "$1" -- sh -c 'mongorestore --quiet --host mongo -u root -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin --archive --gzip --nsFrom "pool.*" --nsTo "pool_restorecheck.*"'
 }
+# restore-check all --offsite: every tenant, every offsite target; keeps going past a failure.
 cmd_restore_check() {
+  if [[ "${1:-}" == all ]]; then
+    [[ "${2:-}" == --offsite ]] || die "Use: restore-check all --offsite [local|r2]"
+    local targets="${3:-$(offsite_targets)}"
+    [[ -n "${targets}" ]] || die "No offsite copy is set up"
+    local t target failed=()
+    for t in $(tenants); do for target in ${targets}; do
+      set +e; ( set -e; restore_check_one "${t}" --offsite "${target}" ); local rc=$?; set -e
+      (( rc == 0 )) || failed+=("${t}/${target}")
+    done; done
+    (( ${#failed[@]} == 0 )) || die "Restore check failed: ${failed[*]}"
+    return 0
+  fi
+  restore_check_one "$@"
+}
+restore_check_one() {
   local name="${1:-}" opt="${2:-}" target="${3:-}"; need_tenant "${name}"
   local dir; dir="$(t_dir "${name}")"
   tmongosh "${name}" pool_restorecheck <<<'db.dropDatabase()' >/dev/null
@@ -297,6 +316,28 @@ cmd_restore_check() {
   compare_counts "${restored}" "${live}" backup live || die "${name}: the live database has fewer records than the backup!"
   [[ "${opt}" == --offsite ]] && now > "${dir}/backups/LAST_RESTORE_CHECK"
   echo "${name}: restore check passed (${what})"
+}
+
+# ---- cron: nightly backups, weekly restore checks, alerts. --install puts them in this user's
+# crontab between marker lines (replacing an earlier copy); other lines are left alone.
+cron_lines() {
+  local kit; kit="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local env="GPF_PREFIX=${GPF_PREFIX} GPF_ROOT=${GPF_ROOT} GPF_CONFIG=${GPF_CONFIG}"
+  local log="${GPF_ROOT}/logs"
+  echo "# ${GPF_PREFIX}-kit begin (tenant.sh cron --install; remove both marker lines and what's between to stop)"
+  echo "37 2 * * * ${env} bash ${kit}/tenant.sh backup all >> ${log}/backup.log 2>&1"
+  [[ -n "$(offsite_targets)" ]] && echo "13 5 * * 0 ${env} bash ${kit}/tenant.sh restore-check all --offsite >> ${log}/restore-check.log 2>&1"
+  echo "*/5 * * * * ${env} bash ${kit}/monitor.sh health >> ${log}/monitor.log 2>&1"
+  echo "23 * * * * ${env} bash ${kit}/monitor.sh disk >> ${log}/monitor.log 2>&1"
+  echo "41 6 * * * ${env} bash ${kit}/monitor.sh backups >> ${log}/monitor.log 2>&1"
+  echo "# ${GPF_PREFIX}-kit end"
+}
+cmd_cron() {
+  if [[ "${1:-}" != --install ]]; then cron_lines; return 0; fi
+  mkdir -p "${GPF_ROOT}/logs"
+  local current; current="$(crontab -l 2>/dev/null || true)"
+  { [[ -n "${current}" ]] && printf '%s\n' "${current}" | sed "/^# ${GPF_PREFIX}-kit begin/,/^# ${GPF_PREFIX}-kit end/d"; cron_lines; } | crontab -
+  echo "Cron jobs installed for ${GPF_PREFIX} (crontab -l to see them)"
 }
 
 # ---- update
@@ -455,6 +496,8 @@ case "${1:-}" in
   update) shift; cmd_update "$@" ;;
   backup) shift; cmd_backup "$@" ;;
   restore-check) shift; cmd_restore_check "$@" ;;
+  monitor) shift; bash "$(dirname "${BASH_SOURCE[0]}")/monitor.sh" "$@" ;;
+  cron) cmd_cron "${2:-}" ;;
   export) cmd_export "${2:-}" ;;
   suspend) cmd_suspend "${2:-}" ;;
   resume) cmd_resume "${2:-}" ;;
