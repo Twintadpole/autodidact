@@ -68,14 +68,17 @@ Then start the VPS session:
      disk hourly; ntfy via `GPF_NTFY_URL`/`GPF_NTFY_TOKEN_FILE`; per-tenant `backups/MONITOR_STATUS` for the
      System card), `restore-check all --offsite`, `tenant.sh cron [--install]`. Kit test 111/111. Installed in
      user `claude`'s crontab for the test install (between `# gpf-kit begin/end`); logs `~/gpf/logs/`. Test install
-     alerts go to the log only until the owner says where (their ntfy needs a new topic = live-stack change).
+     alerts go to ntfy topic **gpf-alerts** (owner OK'd Nov 22: `ntfy access monitor gpf-alerts write-only`,
+     `owner … read-only`; auth.db copy `data/ntfy/auth.db.bak-20261122`); kit.env has GPF_NTFY_URL/TOKEN_FILE.
      Owner's app: Mongo health check 30s (start 2s) in `pool-service/docker-compose.yml`, deploys with the next deploy.
   3. Help + feedback + error log (app records its own errors; `clientLogRoutes` exists) + "Beta" label.
   2. Tech onboarding: "Invite tech" share message, first-login welcome + install how-to.
   5. Translation review sheets (export/import), reviewers found by the owner.
-  4. Password reset by email: owner hasn't chosen how mail is sent (Gmail app password / self-host / skip).
+  4. Password reset by email: owner Nov 22: send from **twintadpole@gmail.com** (Gmail app password, owner types it
+     with nano), the message says it's from the app, which business, which tech.
   - Owner also asked (Nov 22) for a **docs + onboarding plan**: in-app Help, owner onboarding, beta tester guide,
-    terms/privacy. Plan sent; waiting for answers.
+    terms/privacy. Owner's answers: legal line **"Great Pool Friend. Created by S R Donaldson, all rights
+    reserved."**; support contact **steven@evolutiondfw.com**.
 - Before any deploy of this to the owner's app: ask whether their login should be their email (OWNER_EMAIL)
   or stay "owner".
 
