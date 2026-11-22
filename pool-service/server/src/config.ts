@@ -21,6 +21,8 @@ const envSchema = z.object({
     .pipe(z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash')),
   /** Login name of the first owner, made from ADMIN_PASSWORD_HASH on the first start with accounts ("owner" if unset). */
   OWNER_EMAIL: z.string().trim().toLowerCase().optional(),
+  /** The app's own address, e.g. https://poolapp.example.com: links in emails (password reset). */
+  PUBLIC_URL: z.string().url().optional(),
   /** The product's name (GPF item 4), shown where a business hasn't set its own. */
   PRODUCT_NAME: z.string().trim().min(1).default('Great Pool Friend'),
   PHOTO_DIR: z.string().default('./data/photos'),
@@ -42,6 +44,7 @@ export interface AppConfig {
   sessionSecret: string;
   adminPasswordHash: string;
   ownerEmail?: string;
+  publicUrl?: string;
   productName?: string;
   photoDir: string;
   clientDist?: string;
@@ -51,6 +54,8 @@ export interface AppConfig {
   logLevel: string;
   /** Login attempts allowed per window per IP. */
   loginRateLimit: { max: number; timeWindow: string };
+  /** "Forgot password" requests per address (beta segment 4). */
+  forgotRateLimit: { max: number; timeWindow: string };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -68,6 +73,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sessionSecret: e.SESSION_SECRET,
     adminPasswordHash: e.ADMIN_PASSWORD_HASH,
     ...(e.OWNER_EMAIL && { ownerEmail: e.OWNER_EMAIL }),
+    ...(e.PUBLIC_URL && { publicUrl: e.PUBLIC_URL.replace(/\/+$/, '') }),
     productName: e.PRODUCT_NAME,
     photoDir: path.resolve(e.PHOTO_DIR),
     clientDist: e.CLIENT_DIST ? path.resolve(e.CLIENT_DIST) : undefined,
@@ -76,5 +82,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy: e.TRUST_PROXY,
     logLevel: e.LOG_LEVEL,
     loginRateLimit: { max: 5, timeWindow: '15 minutes' },
+    forgotRateLimit: { max: 5, timeWindow: '15 minutes' },
   };
 }

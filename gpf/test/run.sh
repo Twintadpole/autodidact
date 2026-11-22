@@ -52,7 +52,7 @@ cleanup() {
   for s in $(ls -1 "${GPF_CONFIG}/deleted" 2>/dev/null); do GPF_PURGE_DAYS=0 bash "${GPF}" purge "${s}" --confirm "${s}" >/dev/null; done
   for t in $(tenants); do tdc "${t}" down >/dev/null 2>&1; done
   [[ -e "${GPF_CONFIG}/current-image" ]] && edc down >/dev/null 2>&1
-  rm -rf "${GPF_ROOT}/monitor" "${GPF_ROOT}/docs"
+  rm -rf "${GPF_ROOT}/monitor" "${GPF_ROOT}/docs" "${GPF_ROOT}/mail"
   docker ps -aq --filter name=gpft- | xargs -r docker rm -f >/dev/null
   docker network ls -q --filter name=gpft- | xargs -r docker network rm >/dev/null
   docker run --rm -v /var/tmp/gpft:/t "${HELPER_IMAGE}" rm -rf /t/tenants /t/deleted /t/offsite /t/config/tenants /t/config/deleted /t/config/edge
@@ -179,8 +179,20 @@ check "welcome: guide PDFs for alpha" run welcome alpha
 check "alpha's welcome guide is a PDF" bash -c "head -c4 '$(t_dir alpha)/docs/welcome-alpha.pdf' | grep -q '%PDF'"
 check "the tester guide is a PDF" bash -c "head -c4 '$(t_dir alpha)/docs/beta-tester-guide.pdf' | grep -q '%PDF'"
 check "docs: tester and translator guide PDFs" bash -c "bash '${GPF}' docs >/dev/null && head -c4 '${GPF_ROOT}/docs/translator-guide.pdf' | grep -q '%PDF'"
+# Email (password reset): the sealed app queues it; tenant.sh mail sends it (a throwaway Mailpit).
+docker run -d --name gpft-mailpit -p 127.0.0.1:1026:1025 -p 127.0.0.1:8026:8025 axllent/mailpit:v1.27 >/dev/null
+mkdir -p /var/tmp/gpft/mail && printf 'MAIL_SMTP_URL=smtp://127.0.0.1:1026\nMAIL_FROM=GPF Test <kit-test@example.com>\n' > /var/tmp/gpft/mail/mail.env
+check "before a mailbox is set up, no email reset offered" bash -c "curl -s -H 'Host: alpha.${GPF_DOMAIN}' 'http://${GPF_EDGE_BIND}/api/auth/options' | grep -q '\"resetByEmail\":false'"
+check "mail all (no mailbox): nothing to do" env MAIL_CONFIG_DIR=/var/tmp/gpft/nomail bash "${GPF}" mail all
+check "mail all: marks the apps ready" env MAIL_CONFIG_DIR=/var/tmp/gpft/mail bash "${GPF}" mail all
+check "now alpha offers email reset" bash -c "curl -s -H 'Host: alpha.${GPF_DOMAIN}' 'http://${GPF_EDGE_BIND}/api/auth/options' | grep -q '\"resetByEmail\":true'"
+check "forgot password on alpha" bash -c "curl -s -H 'Host: alpha.${GPF_DOMAIN}' -H 'content-type: application/json' --data '{\"email\":\"owner@alpha.example\"}' 'http://${GPF_EDGE_BIND}/api/auth/forgot' | grep -q '\"ok\":true'"
+check "mail all: sends it" env MAIL_CONFIG_DIR=/var/tmp/gpft/mail bash "${GPF}" mail all
+check "the email reached the mailbox, with alpha's own reset link" bash -c "sleep 1; id=\$(curl -s 'http://127.0.0.1:8026/api/v1/search?query=to:owner@alpha.example' | grep -o '\"ID\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4); curl -s \"http://127.0.0.1:8026/api/v1/message/\$id\" | grep -q 'https://alpha.${GPF_DOMAIN}/reset?token='"
+check "nothing left in alpha's outbox" test "$(tmongosh alpha pool <<<'db.mailOutbox.countDocuments({ sentAt: null })')" = 0
+docker rm -f gpft-mailpit >/dev/null
 docker rm -f gpft-ntfy >/dev/null; unset GPF_NTFY_URL
-check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'monitor.sh feedback' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
+check "cron lines: nightly backup, weekly restore check, alerts" bash -c "c=\$(bash '${GPF}' cron); grep -q 'tenant.sh backup all' <<<\"\$c\" && grep -q 'restore-check all --offsite' <<<\"\$c\" && grep -q 'monitor.sh health' <<<\"\$c\" && grep -q 'monitor.sh feedback' <<<\"\$c\" && grep -q 'tenant.sh mail all' <<<\"\$c\" && grep -q 'GPF_PREFIX=gpft' <<<\"\$c\""
 
 echo "== Update (new image tag)"
 img="${BASE_IMAGE}"; docker tag "${img}" "${img}-next"

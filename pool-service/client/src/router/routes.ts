@@ -17,6 +17,9 @@ declare module 'vue-router' {
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: () => import('@/pages/LoginPage.vue'), meta: { public: true } },
+  // Beta segment 4: password reset by email
+  { path: '/forgot', component: () => import('@/pages/ForgotPage.vue'), meta: { public: true } },
+  { path: '/reset', component: () => import('@/pages/ResetPage.vue'), meta: { public: true } },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),

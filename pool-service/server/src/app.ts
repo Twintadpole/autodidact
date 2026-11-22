@@ -14,6 +14,7 @@ import { exportRoutes } from './routes/export.js';
 import { importRoutes } from './routes/import.js';
 import { teamRoutes } from './routes/team.js';
 import { businessIcon, manifest } from './services/branding.js';
+import { passwordResetRoutes } from './routes/passwordReset.js';
 import { accessLoginRoutes, clientLogRoutes, feedbackRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
@@ -64,6 +65,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
       await api.register(healthRoutes);
       await api.register(accessLoginRoutes);
       await api.register(authRoutes, { config });
+      await api.register(passwordResetRoutes, { config });
 
       // Everything else requires the session cookie
       await api.register(async (secured) => {

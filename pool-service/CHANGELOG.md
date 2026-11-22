@@ -2,6 +2,18 @@
 
 ## Unreleased (November 2026)
 
+### Beta: password reset by email
+
+- **Forgot password?** on the login screen: the person enters their login email and gets a link that
+  works once, for 30 minutes, to choose a new password (every device logged in as them is signed
+  out). The business's other owners get a short notice naming the business and the person, without
+  the link. The answer never says whether a login exists; at most 3 links per login per hour.
+- The app never sends mail itself: it queues each email in its own database and the server's sender
+  (`deploy/mail.sh`; for GPF businesses `tenant.sh mail`) sends it every minute through the mailbox in
+  `~/.config/pool-mail` (Gmail app password). Until a mailbox is set up, the screen says to ask the
+  owner for a new temporary password.
+- `PUBLIC_URL` (server setting): the app's address, for the link.
+
 ### Beta: translation review
 
 - `npm run i18n:review -- export`: one Excel sheet per language for a native-speaker reviewer (English,

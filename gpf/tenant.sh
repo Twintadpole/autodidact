@@ -20,6 +20,8 @@
 #   tenant.sh welcome <name>             PDFs for a new business: its welcome guide (address, login) and
 #                                        the beta tester guide, in tenants/<name>/docs/ (password not included)
 #   tenant.sh docs                       PDFs of the general guides (tester, translator) in <GPF_ROOT>/docs/
+#   tenant.sh mail [name|all]            sends queued emails (password reset) through the mailbox in
+#                                        ~/.config/pool-mail (cron: every minute; see pool-service/deploy/mail-lib.sh)
 #   tenant.sh feedback <name|all> [days] beta feedback its users sent (default: last 14 days)
 #   tenant.sh errors <name|all> [days]   errors the app reported from phones (default: last 7 days)
 #   tenant.sh export <name>              Excel "export everything" + photos.zip, for the customer
@@ -336,6 +338,7 @@ cron_lines() {
   echo "23 * * * * ${env} bash ${kit}/monitor.sh disk >> ${log}/monitor.log 2>&1"
   echo "41 6 * * * ${env} bash ${kit}/monitor.sh backups >> ${log}/monitor.log 2>&1"
   echo "53 * * * * ${env} bash ${kit}/monitor.sh feedback >> ${log}/monitor.log 2>&1"
+  echo "* * * * * ${env} bash ${kit}/tenant.sh mail all >> ${log}/mail.log 2>&1"
   echo "# ${GPF_PREFIX}-kit end"
 }
 cmd_cron() {
@@ -371,6 +374,18 @@ cmd_docs() {
   local support="${GPF_SUPPORT_EMAIL}, or More → Send feedback in the app."
   make_pdf beta-tester-guide.md "${GPF_ROOT}/docs/beta-tester-guide.pdf" "SUPPORT=${support}"
   make_pdf translator-guide.md "${GPF_ROOT}/docs/translator-guide.pdf" "SUPPORT=${GPF_SUPPORT_EMAIL}"
+}
+
+# ---- beta: email. Each app queues its mail in its own database; this sends it (the apps have no internet).
+mail_one() {
+  local name="$1"
+  mail_mongo() { tdc "${name}" exec -T mongo sh -c 'mongosh --quiet -u root -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin pool --eval "$(cat)"'; }
+  [[ -n "$(tdc "${name}" ps -q mongo 2>/dev/null)" ]] || return 0
+  mail_send_pending "$(t_dir "${name}")/backups" "${name}"
+}
+cmd_mail() {
+  source "${APP_SRC}/deploy/mail-lib.sh"
+  each_continue mail_one "${1:-all}"
 }
 
 # ---- beta: feedback and app errors, read from each tenant's database (read only)
@@ -555,6 +570,7 @@ case "${1:-}" in
   cron) cmd_cron "${2:-}" ;;
   welcome) cmd_welcome "${2:-}" ;;
   docs) cmd_docs ;;
+  mail) cmd_mail "${2:-all}" ;;
   feedback) shift; cmd_feedback "$@" ;;
   errors) shift; cmd_errors "$@" ;;
   export) cmd_export "${2:-}" ;;

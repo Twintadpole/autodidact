@@ -53,6 +53,8 @@ services:
       MONGO_URL: mongodb://mongo:27017/pool?replicaSet=rs0
       PHOTO_DIR: /data/photos
       BACKUP_DIR: /backups
+      # Links in emails (password reset). The app queues mail; deploy/mail.sh sends it (cron, every minute).
+      PUBLIC_URL: https://poolapp.evolutiondfw.com
     volumes:
       - ./data/photos:/data/photos
       # Read-only: the More screen shows the last backup time from backups/LAST_BACKUP.

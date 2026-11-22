@@ -33,7 +33,7 @@ export const HELP: HelpTopic[] = [
         h('Android: tap the ⋮ menu, then “Install app” or “Add to Home screen”. iPhone: tap Share, then “Add to Home Screen”.'),
         h('From now on, open it from its icon.'),
       ] },
-      { tip: h('Lost your password? Ask the business owner for a new temporary one.') },
+      { tip: h('Lost your password? Tap “Forgot password?” on the login screen for an email link, or ask the business owner for a new temporary one.') },
     ],
   },
   {

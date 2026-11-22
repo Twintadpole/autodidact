@@ -38,6 +38,7 @@
             </q-card-section>
             <q-card-actions class="q-px-md q-pb-md">
               <q-btn type="submit" color="primary" unelevated size="lg" class="full-width" :label="$t(`Log in`)" :loading="busy" data-test="login" />
+              <q-btn flat no-caps color="primary" class="full-width q-mt-sm" :label="$t(`Forgot password?`)" data-test="forgot" @click="router.push({ path: '/forgot', query: email.trim() ? { email: email.trim() } : {} })" />
             </q-card-actions>
           </q-form>
         </q-card>
@@ -66,7 +67,7 @@ const $q = useQuasar();
 const route = useRoute();
 const router = useRouter();
 const LAST_EMAIL = 'pool.lastEmail';
-const email = ref(localStorage.getItem(LAST_EMAIL) ?? '');
+const email = ref((typeof route.query.email === 'string' ? route.query.email : null) ?? localStorage.getItem(LAST_EMAIL) ?? '');
 const password = ref('');
 const remember = ref(true);
 const busy = ref(false);

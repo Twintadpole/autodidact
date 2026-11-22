@@ -53,6 +53,8 @@ services:
       NODE_ENV: production
       PHOTO_DIR: /data/photos
       BACKUP_DIR: /backups
+      # Links in emails (password reset). The app queues mail; tenant.sh mail sends it (no internet here).
+      PUBLIC_URL: https://${TENANT}.${DOMAIN}
     volumes:
       - ${DATA_DIR}/photos:/data/photos
       - ${DATA_DIR}/../backups:/backups:ro

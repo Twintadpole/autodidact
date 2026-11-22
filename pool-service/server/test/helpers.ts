@@ -31,7 +31,7 @@ export async function setupTestApp(overrides: Partial<AppConfig> = {}): Promise<
   await ensureCollections();
   await seedChemicals();
   cachedHash ??= await argon2.hash(TEST_PASSWORD);
-  await ensureFirstOwner(cachedHash);
+  await ensureFirstOwner(cachedHash, overrides.ownerEmail);
 
   const photoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pool-photos-'));
   const config: AppConfig = {
@@ -46,6 +46,7 @@ export async function setupTestApp(overrides: Partial<AppConfig> = {}): Promise<
     trustProxy: false,
     logLevel: 'silent',
     loginRateLimit: { max: 5, timeWindow: '15 minutes' },
+    forgotRateLimit: { max: 5, timeWindow: '15 minutes' },
     ...overrides,
   };
   const app = await buildApp(config);

@@ -377,6 +377,42 @@ const clientErrorSchema = new Schema(
 );
 clientErrorSchema.index({ lastAt: 1 }, { expireAfterSeconds: 60 * 24 * 3600 });
 
+// ---------------------------------------------------------------- email (password reset)
+/**
+ * Emails waiting to go out. The app never sends mail itself (a business's app has no internet): the
+ * server's sender (deploy/mail.sh, tenant.sh mail) picks these up every minute, adds From and sends
+ * them through the configured mailbox. `raw` is the message without From. Kept 14 days.
+ */
+const mailOutboxSchema = new Schema(
+  {
+    _id: { type: String, required: true },
+    to: { type: [String], required: true },
+    subject: String,
+    raw: { type: String, required: true },
+    kind: String,
+    createdAt: { type: Date, required: true },
+    sentAt: { type: Date, default: null },
+    attempts: { type: Number, default: 0 },
+    error: { type: String, default: null },
+  },
+  { versionKey: false },
+);
+mailOutboxSchema.index({ sentAt: 1, createdAt: 1 });
+mailOutboxSchema.index({ createdAt: 1 }, { expireAfterSeconds: 14 * 24 * 3600 });
+
+/** "Forgot password" links: only a hash of the token is stored; one use; gone after 30 minutes. */
+const passwordResetSchema = new Schema(
+  {
+    _id: { type: String, required: true }, // sha256 of the token
+    userId: { type: String, required: true, index: true },
+    createdAt: { type: Date, required: true },
+    expiresAt: { type: Date, required: true },
+    usedAt: { type: Date, default: null },
+  },
+  { versionKey: false },
+);
+passwordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 24 * 3600 });
+
 // ---------------------------------------------------------------- sessions
 const sessionSchema = new Schema(
   {
@@ -411,6 +447,8 @@ export const ImportLog = model('ImportLog', importLogSchema, 'imports');
 export const User = model('User', userSchema, 'users');
 export const Feedback = model('Feedback', feedbackSchema, 'feedback');
 export const ClientError = model('ClientError', clientErrorSchema, 'clientErrors');
+export const MailOutbox = model('MailOutbox', mailOutboxSchema, 'mailOutbox');
+export const PasswordReset = model('PasswordReset', passwordResetSchema, 'passwordResets');
 
 /** Models exposed through `/sync/pull`, keyed by collection name. */
 export const SYNC_MODELS = {

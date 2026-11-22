@@ -32,6 +32,10 @@ More → **Send feedback** (or the button at the bottom of any Help page). Pick 
 
 The screen you came from, the app version and your language are sent with it. If you have no signal, it is sent when you are back online. Errors the app runs into are reported to your business's own server automatically, so we often know about a problem before you tell us.
 
+## Forgot your password?
+
+Tap **Forgot password?** on the login screen: you get an email with a link that works for 30 minutes, and the business owner gets a short notice. The owner can also give you a new temporary password (More → Team).
+
 ## Your data
 
 - Each business has its own server space and its own database, kept apart from every other business.
@@ -44,7 +48,6 @@ The screen you came from, the app version and your language are sent with it. If
 
 - Invoices and visit recaps are in English only (the customer's own language comes later).
 - Translations other than English are new: tell us about words that look wrong.
-- Forgotten passwords: for now, the owner gives the person a new temporary password (More → Team). Reset by email comes later.
 
 ## Contact
 
