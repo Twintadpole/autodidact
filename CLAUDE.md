@@ -94,8 +94,10 @@ Then start the VPS session:
   - Owner also asked (Nov 22) for a **docs + onboarding plan**: in-app Help, owner onboarding, beta tester guide,
     terms/privacy. Owner's answers: legal line **"Great Pool Friend. Created by S R Donaldson, all rights
     reserved."**; support contact **steven@evolutiondfw.com**.
-- Before any deploy of this to the owner's app: ask whether their login should be their email (OWNER_EMAIL)
-  or stay "owner".
+- **Owner's login (decided Nov 22): steven@evolutiondfw.com** (password unchanged; they keep it in a password
+  manager). The owner adds `OWNER_EMAIL=steven@evolutiondfw.com` to `pool-service/.env` themselves (we never edit
+  .env); check `grep -c ^OWNER_EMAIL pool-service/.env` before the deploy. The first start with accounts makes
+  that login. Deploy only when the owner says so.
 
 ## Session handoff (Nov 18)
 - The cloud ↔ VPS bridge described above was not used in the Nov 14–18 sessions: the owner talked to Claude
@@ -291,7 +293,7 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   - Later (owner): invoices and recaps in the customer's language; native-speaker review → drop "beta".
   Next GPF item: Mongo health check 5s → 30s on the owner's stack (tenants already 30s); then the plan doc's
   phase list (beta, paid launch, warm standby) — ask the owner.
-    Before any deploy of this to the owner's app: set OWNER_EMAIL? (owner decides; else their login is "owner").
+    Before any deploy of this to the owner's app: OWNER_EMAIL=steven@evolutiondfw.com must be in .env (owner adds it).
   - Scratch Mongo for tests needs `--ulimit nofile=64000:64000` (1024 runs out with 9 test files).
   Later items, in order: customer/pool import, user accounts + roles, blank branding for new tenants,
   Mongo health check 5s → 30s (tenants already use 30s with a 2s start interval).
