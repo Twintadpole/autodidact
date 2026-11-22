@@ -43,6 +43,7 @@ Tap **Forgot password?** on the login screen: you get an email with a link that 
 - Your data is yours: it is never sold or shared.
 - The owner can download everything at any time: More → Export everything (one Excel file).
 - If a business leaves, a final backup is kept for 90 days, then deleted.
+- The full details are in **Terms of beta use** and **Privacy** (links on the login screen and at the bottom of More).
 
 ## Not there yet
 

@@ -44,6 +44,7 @@
     <div class="text-center text-caption text-grey-7 q-mt-md" data-test="help-support">
       {{ $t('Support:') }} <a :href="`mailto:${SUPPORT_EMAIL}`">{{ SUPPORT_EMAIL }}</a>
       <div class="q-mt-xs">{{ LEGAL_LINE }}</div>
+      <div class="q-mt-xs"><router-link to="/terms">{{ $t('Terms of beta use') }}</router-link> · <router-link to="/privacy">{{ $t('Privacy') }}</router-link></div>
     </div>
   </q-page>
 </template>

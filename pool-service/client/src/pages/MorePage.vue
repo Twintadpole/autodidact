@@ -108,6 +108,7 @@
     <div class="text-center text-caption text-grey-6" data-test="app-version">
       {{ brand.product }} v{{ version }} <q-badge outline color="primary" :label="$t(`Beta`)" data-test="beta-badge" /> · {{ $t('built {date}', { date: builtAt }) }}
       <div>{{ LEGAL_LINE }}</div>
+      <div><router-link to="/terms" class="text-grey-7">{{ $t('Terms of beta use') }}</router-link> · <router-link to="/privacy" class="text-grey-7">{{ $t('Privacy') }}</router-link></div>
     </div>
   </q-page>
 </template>

@@ -2,7 +2,7 @@
 // Runs in the Playwright container (see "tenant.sh welcome"); no other dependencies.
 //
 //   node make-pdf.cjs <in.md> <out.pdf> [KEY=value …]
-// Markdown subset: # / ## headings, paragraphs, "- " lists, "1. " lists, **bold**, `code`.
+// Markdown subset: # / ## headings, paragraphs, "- " lists, "1. " lists, | tables |, **bold**, `code`.
 const fs = require('node:fs');
 const { chromium } = require('playwright');
 
@@ -23,8 +23,23 @@ const closeList = () => {
   if (list) html.push(`</${list}>`);
   list = null;
 };
+let table = null;
+const closeTable = () => {
+  if (!table) return;
+  const [head, ...body] = table;
+  html.push(`<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+  table = null;
+};
 for (const line of md.split('\n')) {
   let m;
+  if (/^\|.*\|\s*$/.test(line)) {
+    flushPara(); closeList();
+    const cells = line.trim().slice(1, -1).split('|').map((c) => c.trim());
+    if (cells.every((c) => /^:?-{3,}:?$/.test(c))) continue; // the | --- | line
+    (table ??= []).push(cells);
+    continue;
+  }
+  closeTable();
   if ((m = line.match(/^(#{1,2}) (.*)$/))) {
     flushPara(); closeList();
     html.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
@@ -40,7 +55,7 @@ for (const line of md.split('\n')) {
     para.push(line.trim());
   }
 }
-flushPara(); closeList();
+flushPara(); closeList(); closeTable();
 
 const page = `<!doctype html><html><head><meta charset="utf-8"><style>
   body { font-family: Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2933; font-size: 11pt; line-height: 1.45; margin: 0; }
@@ -49,7 +64,11 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><style>
   p { margin: 0 0 7pt; }
   ul, ol { margin: 0 0 7pt; padding-left: 18pt; }
   li { margin-bottom: 3pt; }
-  code { font-family: monospace; background: #eef3f8; padding: 0 2pt; }
+  code { font-family: monospace; background: #eef3f8; padding: 0 2pt; font-size: 9.5pt; }
+  table { border-collapse: collapse; width: 100%; margin: 0 0 8pt; font-size: 10pt; }
+  th, td { border: 1px solid #d5e3f3; padding: 3pt 5pt; text-align: left; vertical-align: top; }
+  th { background: #eef3f8; }
+  h2 { page-break-after: avoid; } tr { page-break-inside: avoid; }
 </style></head><body>${html.join('\n')}</body></html>`;
 
 (async () => {

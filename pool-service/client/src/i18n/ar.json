@@ -674,6 +674,7 @@
  "Postponed {date}": "مؤجل {date}",
  "Previous visit": "الزيارة السابقة",
  "Priority": "الأولوية",
+ "Privacy": "الخصوصية",
  "Problem": "مشكلة",
  "Profit": "الربح",
  "Profit for the month": "ربح الشهر",
@@ -845,6 +846,7 @@
  "Temporary password": "كلمة مرور مؤقتة",
  "Temporary password for {name}": "كلمة مرور مؤقتة لـ {name}",
  "Temporary password: {password}": "كلمة المرور المؤقتة: {password}",
+ "Terms of beta use": "شروط استخدام النسخة التجريبية",
  "Text": "رسالة",
  "Thank you for testing! Use the app for your real work and tell us what gets in your way.": "شكرًا لتجربتك! استخدم التطبيق في عملك الحقيقي وأخبرنا بما يعيقك.",
  "Thanks! Your feedback was sent.": "شكرًا! أُرسلت ملاحظاتك.",
@@ -877,6 +879,7 @@
  "This month": "هذا الشهر",
  "This month isn't over: chemicals and visits are still being added.": "لم ينتهِ هذا الشهر: ما زالت المواد الكيميائية والزيارات تُضاف.",
  "This month: profit {money}": "هذا الشهر: الربح {money}",
+ "This page is in English only for now.": "هذه الصفحة بالإنجليزية فقط حاليًا.",
  "This phone has {n} changes from the previous login that haven’t reached the server. Logging in as someone else deletes them. To keep them, cancel, log in as the previous person and let the phone sync first.": {
   "few": "على هذا الهاتف {n} تغييرات من الحساب السابق لم تصل إلى الخادم. الدخول بحساب شخص آخر يحذفها. للاحتفاظ بها، ألغِ، وادخل بحساب الشخص السابق ودع الهاتف يزامن أولًا.",
   "many": "على هذا الهاتف {n} تغييرًا من الحساب السابق لم تصل إلى الخادم. الدخول بحساب شخص آخر يحذفها. للاحتفاظ بها، ألغِ، وادخل بحساب الشخص السابق ودع الهاتف يزامن أولًا.",

@@ -19,7 +19,8 @@
 #   tenant.sh cron [--install]           the cron lines for nightly backups, restore checks and alerts
 #   tenant.sh welcome <name>             PDFs for a new business: its welcome guide (address, login) and
 #                                        the beta tester guide, in tenants/<name>/docs/ (password not included)
-#   tenant.sh docs                       PDFs of the general guides (tester, translator) in <GPF_ROOT>/docs/
+#   tenant.sh docs                       PDFs in <GPF_ROOT>/docs/: tester, translator and operator guides,
+#                                        terms of beta use, privacy
 #   tenant.sh mail [name|all]            sends queued emails (password reset) through the mailbox in
 #                                        ~/.config/pool-mail (cron: every minute; see pool-service/deploy/mail-lib.sh)
 #   tenant.sh feedback <name|all> [days] beta feedback its users sent (default: last 14 days)
@@ -353,7 +354,7 @@ cmd_cron() {
 make_pdf() { # make_pdf <doc.md> <out.pdf> [KEY=value…]
   local md="$1" out="$2"; shift 2
   mkdir -p "${GPF_ROOT}/.pdf-node" "$(dirname "${out}")"
-  docker_ run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "${GPF_DIR}/docs:/docs:ro" -v "${GPF_ROOT}/.pdf-node:/pdfnode" \
+  docker_ run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "${GPF_DIR}/docs:/docs:ro" -v "${APP_SRC}/client/src/legal:/legal:ro" -v "${GPF_ROOT}/.pdf-node:/pdfnode" \
     -v "$(dirname "${out}"):/out" "${PLAYWRIGHT_IMAGE}" bash -c '
       [ -d /pdfnode/node_modules/playwright ] || (cd /pdfnode && npm i -s --no-audit --no-fund playwright@1.56.1 >/dev/null)
       NODE_PATH=/pdfnode/node_modules node /docs/make-pdf.cjs "/docs/$1" "/out/$2" "${@:3}"' _ "${md}" "$(basename "${out}")" "$@"
@@ -374,6 +375,10 @@ cmd_docs() {
   local support="${GPF_SUPPORT_EMAIL}, or More → Send feedback in the app."
   make_pdf beta-tester-guide.md "${GPF_ROOT}/docs/beta-tester-guide.pdf" "SUPPORT=${support}"
   make_pdf translator-guide.md "${GPF_ROOT}/docs/translator-guide.pdf" "SUPPORT=${GPF_SUPPORT_EMAIL}"
+  make_pdf operator-guide.md "${GPF_ROOT}/docs/operator-guide.pdf"
+  # The app's own Terms and Privacy pages (pool-service/client/src/legal), as PDFs to send with an invite.
+  make_pdf ../legal/terms.md "${GPF_ROOT}/docs/terms-of-beta-use.pdf" "SUPPORT=${GPF_SUPPORT_EMAIL}"
+  make_pdf ../legal/privacy.md "${GPF_ROOT}/docs/privacy.pdf" "SUPPORT=${GPF_SUPPORT_EMAIL}"
 }
 
 # ---- beta: email. Each app queues its mail in its own database; this sends it (the apps have no internet).

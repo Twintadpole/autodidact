@@ -103,7 +103,7 @@ a tenant container. Links use `PUBLIC_URL=https://<name>.<GPF_DOMAIN>` (tenant t
 3. The owner's first login asks for their own password, then shows three welcome screens; the Route's
    Getting started card ticks itself as they fill in their business. They invite techs from Team (Invite).
 
-The guides are `docs/*.md` (edit them there); `docs/make-pdf.cjs` turns them into PDFs in the Playwright
+The full runbook for the operator is `docs/operator-guide.md` (PDF: `tenant.sh docs`). The guides are `docs/*.md` (edit them there; Terms and Privacy live in `pool-service/client/src/legal/`, shown in the app); `docs/make-pdf.cjs` turns them into PDFs in the Playwright
 image (`npm i playwright` once, cached in `<GPF_ROOT>/.pdf-node`). Support address: `GPF_SUPPORT_EMAIL`.
 
 ## Settings (environment)

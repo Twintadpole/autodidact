@@ -662,6 +662,7 @@
  "Postponed {date}": "Ipinagpaliban {date}",
  "Previous visit": "Nakaraang pagbisita",
  "Priority": "Prayoridad",
+ "Privacy": "Privacy",
  "Problem": "Problema",
  "Profit": "Tubo",
  "Profit for the month": "Tubo ng buwan",
@@ -829,6 +830,7 @@
  "Temporary password": "Pansamantalang password",
  "Temporary password for {name}": "Pansamantalang password para kay {name}",
  "Temporary password: {password}": "Pansamantalang password: {password}",
+ "Terms of beta use": "Mga tuntunin sa paggamit ng beta",
  "Text": "Mag-text",
  "Thank you for testing! Use the app for your real work and tell us what gets in your way.": "Salamat sa pagsubok! Gamitin ang app sa totoong trabaho mo at sabihin sa amin kung ano ang nakakaabala.",
  "Thanks! Your feedback was sent.": "Salamat! Naipadala na ang feedback mo.",
@@ -861,6 +863,7 @@
  "This month": "Ngayong buwan",
  "This month isn't over: chemicals and visits are still being added.": "Hindi pa tapos ang buwang ito: may idinadagdag pang kemikal at pagbisita.",
  "This month: profit {money}": "Ngayong buwan: tubo {money}",
+ "This page is in English only for now.": "Sa ngayon, nasa Ingles lang ang pahinang ito.",
  "This phone has {n} changes from the previous login that haven’t reached the server. Logging in as someone else deletes them. To keep them, cancel, log in as the previous person and let the phone sync first.": {
   "one": "May {n} pagbabago ang teleponong ito mula sa nakaraang login na hindi pa nakakarating sa server. Mabubura ito kapag nag-login ang ibang tao. Para itago, kanselahin, mag-login bilang ang naunang tao at hayaang mag-sync muna ang telepono.",
   "other": "May {n} pagbabago ang teleponong ito mula sa nakaraang login na hindi pa nakakarating sa server. Mabubura ang mga ito kapag nag-login ang ibang tao. Para itago, kanselahin, mag-login bilang ang naunang tao at hayaang mag-sync muna ang telepono."

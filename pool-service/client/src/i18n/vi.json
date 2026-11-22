@@ -659,6 +659,7 @@
  "Postponed {date}": "Đã hoãn {date}",
  "Previous visit": "Lần ghé trước",
  "Priority": "Ưu tiên",
+ "Privacy": "Quyền riêng tư",
  "Problem": "Sự cố",
  "Profit": "Lợi nhuận",
  "Profit for the month": "Lợi nhuận của tháng",
@@ -825,6 +826,7 @@
  "Temporary password": "Mật khẩu tạm",
  "Temporary password for {name}": "Mật khẩu tạm cho {name}",
  "Temporary password: {password}": "Mật khẩu tạm: {password}",
+ "Terms of beta use": "Điều khoản dùng bản beta",
  "Text": "Nhắn tin",
  "Thank you for testing! Use the app for your real work and tell us what gets in your way.": "Cảm ơn bạn đã dùng thử! Hãy dùng ứng dụng cho công việc thật và cho chúng tôi biết điều gì gây vướng.",
  "Thanks! Your feedback was sent.": "Cảm ơn! Góp ý của bạn đã được gửi.",
@@ -857,6 +859,7 @@
  "This month": "Tháng này",
  "This month isn't over: chemicals and visits are still being added.": "Tháng này chưa hết: hóa chất và lần ghé vẫn đang được thêm.",
  "This month: profit {money}": "Tháng này: lợi nhuận {money}",
+ "This page is in English only for now.": "Hiện trang này chỉ có bằng tiếng Anh.",
  "This phone has {n} changes from the previous login that haven’t reached the server. Logging in as someone else deletes them. To keep them, cancel, log in as the previous person and let the phone sync first.": {
   "other": "Điện thoại này có {n} thay đổi từ tài khoản trước chưa đến được máy chủ. Đăng nhập bằng người khác sẽ xóa chúng. Để giữ lại, hãy hủy, đăng nhập bằng người trước và để điện thoại đồng bộ trước."
  },

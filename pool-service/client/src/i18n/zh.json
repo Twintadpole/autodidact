@@ -659,6 +659,7 @@
  "Postponed {date}": "推迟于 {date}",
  "Previous visit": "上次上门",
  "Priority": "优先级",
+ "Privacy": "隐私",
  "Problem": "问题",
  "Profit": "利润",
  "Profit for the month": "当月利润",
@@ -825,6 +826,7 @@
  "Temporary password": "临时密码",
  "Temporary password for {name}": "{name} 的临时密码",
  "Temporary password: {password}": "临时密码：{password}",
+ "Terms of beta use": "测试版使用条款",
  "Text": "发短信",
  "Thank you for testing! Use the app for your real work and tell us what gets in your way.": "感谢参与测试！请用它处理真实工作，并告诉我们哪里不顺手。",
  "Thanks! Your feedback was sent.": "谢谢！你的反馈已发送。",
@@ -857,6 +859,7 @@
  "This month": "本月",
  "This month isn't over: chemicals and visits are still being added.": "本月尚未结束：药剂和上门仍在添加中。",
  "This month: profit {money}": "本月：利润 {money}",
+ "This page is in English only for now.": "此页面目前只有英文版。",
  "This phone has {n} changes from the previous login that haven’t reached the server. Logging in as someone else deletes them. To keep them, cancel, log in as the previous person and let the phone sync first.": {
   "other": "本手机有 {n} 项来自上一个登录账号、尚未到达服务器的更改。以其他人身份登录会删除这些更改。若要保留，请取消，用上一个人的账号登录并先让手机同步。"
  },

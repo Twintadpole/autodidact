@@ -102,6 +102,14 @@ Then start the VPS session:
      (**owner still to create** with nano). PUBLIC_URL in docker-compose.yml + tenant template.
      **At the owner's deploy: add the cron line for deploy/mail.sh** (deploy/README.md "Email").
      Tests: reset.test.ts 7, e2e/password-reset.cjs 4 (Mailpit `axllent/mailpit:v1.27`, MAILPIT env), kit 127/127.
+  6. ✅ Docs (built Nov 22): Terms + Privacy in the app (`client/src/legal/*.md` → `LegalPage`, /terms, /privacy,
+     public; `lib/markdown.ts`), operator guide `gpf/docs/operator-guide.md` (the owner's complete runbook), PDFs via
+     `tenant.sh docs` in `~/gpf/docs/` (make-pdf.cjs now does tables). `e2e/legal.cjs` (3).
+  - Tenant addresses: `<name>.evolutiondfw.com` (Cloudflare's free cert covers one level; `<name>.gpf.…` would need
+    Advanced Certificate Manager). gpf.evolutiondfw.com = tenant `gpf`, the owner's test/demo business ("test
+    branch": `update gpf` first, then `update all`). Owner Nov 22: the tunnel already routes gpf; they'll probably
+    run real tenants on this setup. Each tester: a tunnel public hostname (or a `*.evolutiondfw.com` wildcard).
+    Room on this VPS: ~4–6 beta tenants (~230 MB each).
   - Owner also asked (Nov 22) for a **docs + onboarding plan**: in-app Help, owner onboarding, beta tester guide,
     terms/privacy. Owner's answers: legal line **"Great Pool Friend. Created by S R Donaldson, all rights
     reserved."**; support contact **steven@evolutiondfw.com**.

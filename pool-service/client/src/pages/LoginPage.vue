@@ -42,6 +42,11 @@
             </q-card-actions>
           </q-form>
         </q-card>
+        <div class="full-width text-center text-caption q-mt-md" data-test="login-legal">
+          <router-link to="/terms" class="text-grey-7">{{ $t('Terms of beta use') }}</router-link>
+          <span class="text-grey-6 q-mx-sm">·</span>
+          <router-link to="/privacy" class="text-grey-7">{{ $t('Privacy') }}</router-link>
+        </div>
       </q-page>
     </q-page-container>
   </q-layout>

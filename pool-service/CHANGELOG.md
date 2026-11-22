@@ -2,6 +2,14 @@
 
 ## Unreleased (November 2026)
 
+### Beta: terms, privacy, guides
+
+- **Terms of beta use** and **Privacy** pages (English text; links on the login screen, at the bottom
+  of More and of Help). Plain language: the beta is free, your data is yours and never sold, nightly
+  and off-site backups, export any time, a final backup kept 90 days after leaving.
+- Guides as PDFs (`gpf/tenant.sh docs`): operator guide, beta tester guide, translator guide, terms
+  and privacy; and per business, a one-page welcome guide (`tenant.sh welcome <name>`).
+
 ### Beta: password reset by email
 
 - **Forgot password?** on the login screen: the person enters their login email and gets a link that

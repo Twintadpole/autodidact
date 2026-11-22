@@ -20,6 +20,9 @@ const routes: RouteRecordRaw[] = [
   // Beta segment 4: password reset by email
   { path: '/forgot', component: () => import('@/pages/ForgotPage.vue'), meta: { public: true } },
   { path: '/reset', component: () => import('@/pages/ResetPage.vue'), meta: { public: true } },
+  // Beta docs: terms and privacy (English text)
+  { path: '/terms', component: () => import('@/pages/LegalPage.vue'), props: { doc: 'terms' }, meta: { public: true } },
+  { path: '/privacy', component: () => import('@/pages/LegalPage.vue'), props: { doc: 'privacy' }, meta: { public: true } },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),

@@ -662,6 +662,7 @@
  "Postponed {date}": "Pospuesto {date}",
  "Previous visit": "Visita anterior",
  "Priority": "Prioridad",
+ "Privacy": "Privacidad",
  "Problem": "Problema",
  "Profit": "Ganancia",
  "Profit for the month": "Ganancia del mes",
@@ -829,6 +830,7 @@
  "Temporary password": "Contraseña temporal",
  "Temporary password for {name}": "Contraseña temporal para {name}",
  "Temporary password: {password}": "Contraseña temporal: {password}",
+ "Terms of beta use": "Términos de uso de la beta",
  "Text": "Mensaje",
  "Thank you for testing! Use the app for your real work and tell us what gets in your way.": "¡Gracias por probar la app! Úsala para tu trabajo real y dinos qué te estorba.",
  "Thanks! Your feedback was sent.": "¡Gracias! Tu comentario se envió.",
@@ -861,6 +863,7 @@
  "This month": "Este mes",
  "This month isn't over: chemicals and visits are still being added.": "Este mes no ha terminado: todavía se agregan químicos y visitas.",
  "This month: profit {money}": "Este mes: ganancia {money}",
+ "This page is in English only for now.": "Por ahora esta página está solo en inglés.",
  "This phone has {n} changes from the previous login that haven’t reached the server. Logging in as someone else deletes them. To keep them, cancel, log in as the previous person and let the phone sync first.": {
   "one": "Este teléfono tiene {n} cambio del acceso anterior que no ha llegado al servidor. Entrar como otra persona lo elimina. Para conservarlo, cancela, entra como la persona anterior y deja que el teléfono sincronice primero.",
   "other": "Este teléfono tiene {n} cambios del acceso anterior que no han llegado al servidor. Entrar como otra persona los elimina. Para conservarlos, cancela, entra como la persona anterior y deja que el teléfono sincronice primero."
