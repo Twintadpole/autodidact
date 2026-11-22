@@ -59,6 +59,16 @@ Then start the VPS session:
 4. e2e against `http://127.0.0.1:3000/` on the VPS with `E2E_SESSION=$(docker compose exec -T api node server/dist/cli/e2e-session.js)` and `NODE_OPTIONS=--require /e2e/local-cookies.cjs`; the password argument is `unused` (see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
+## Where we left off (Nov 22)
+- Everything since v0.2.0 is built and tested but **NOT deployed** to the owner's app (owner's rule: no deploys
+  until they say so): GPF tenant kit, customer import, accounts/roles/routes, branding, six languages.
+- The owner tests on **https://gpf.evolutiondfw.com** (test install, dummy data; see "GPF test install" below).
+- **Next:** the owner asked for a **"ready for beta" checklist** (to get the app ready for testing and a bigger
+  audience): e.g. nightly backups + alerts per tenant, easy tech onboarding, a Help page, password reset by
+  email, native-speaker review of translations, the 30-second Mongo health check. Plan it, then ask.
+- Before any deploy of this to the owner's app: ask whether their login should be their email (OWNER_EMAIL)
+  or stay "owner".
+
 ## Session handoff (Nov 18)
 - The cloud ↔ VPS bridge described above was not used in the Nov 14–18 sessions: the owner talked to Claude
   running ON the VPS (Remote Control, user `claude`, `~/autodidact`), which built, tested and deployed directly.
