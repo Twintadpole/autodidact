@@ -2,10 +2,10 @@
 
 ## Unreleased (November 2026)
 
-### Languages (Spanish first)
+### Languages: English, Español, Tiếng Việt, 中文, Tagalog, العربية
 
-- **The app speaks the person's language.** My account → Language: English or **Español (beta)** now;
-  Tiếng Việt, 中文, Tagalog and العربية are listed and show English until their translations arrive.
+- **The app speaks the person's language.** My account → Language: English, or (beta) Español,
+  Tiếng Việt, 中文（简体）, Tagalog or العربية. Arabic screens are mirrored, right to left.
   The choice is saved to the login and follows the person to any phone or computer; before logging in,
   the app follows the phone's own language (the login screen has the picker too).
 - Dates, times, numbers and money follow the language. Names, notes, addresses and other things people

@@ -5,6 +5,8 @@
 //  3. My account → Language: English; it's saved to the login (another browser gets English).
 //  4. Back to Español: it follows the login to a new browser that is set to English.
 //  5. Screens in Spanish (screenshots): customer, visit, issues, sync; no "undefined" or {placeholders}.
+//  6. Vietnamese, Chinese, Tagalog and Arabic from My account: More in that language; Arabic turns
+//     the page right to left (screenshots).
 //
 //   node languages.cjs <baseUrl> <password> <outDir>
 const { chromium } = require('playwright');
@@ -91,6 +93,31 @@ const { chromium } = require('playwright');
       await es.page.screenshot({ path: `${out}/lang-${name}-es.png`, fullPage: true });
     }
     ok(`${shots.length} more screens in Spanish without odd text (screenshots saved)`);
+
+    // ---- 6
+    const WORDS = { vi: ['Tài khoản của tôi', 'Hóa đơn'], zh: ['我的账户', '发票'], tl: ['Aking account', 'Mga invoice'], ar: ['حسابي', 'الفواتير'] };
+    const NAMES = { vi: 'Tiếng Việt', zh: '中文（简体）', tl: 'Tagalog', ar: 'العربية' };
+    for (const code of ['vi', 'zh', 'tl', 'ar']) {
+      await es.page.goto(url('/more/account'), { waitUntil: 'networkidle' });
+      await es.page.locator('.q-field', { has: es.page.locator('[data-test=language]') }).click();
+      await es.page.getByRole('option', { name: new RegExp(NAMES[code]) }).click();
+      await es.page.waitForTimeout(500);
+      await es.page.goto(url('/more'), { waitUntil: 'networkidle' });
+      for (const w of WORDS[code]) await es.page.getByText(w, { exact: true }).first().waitFor();
+      await noJunk(es.page, `More (${code})`);
+      const dir = await es.page.evaluate(() => document.documentElement.dir);
+      if ((code === 'ar') !== (dir === 'rtl')) throw new Error(`${code}: page direction ${dir}`);
+      await es.page.screenshot({ path: `${out}/lang-more-${code}.png` });
+      if (code === 'ar') {
+        await es.page.goto(url(`/pools/${pool._id}`), { waitUntil: 'networkidle' });
+        await es.page.waitForTimeout(800);
+        await noJunk(es.page, 'visit (ar)');
+        await es.page.screenshot({ path: `${out}/lang-visit-ar.png`, fullPage: true });
+        await es.page.goto(url('/'), { waitUntil: 'networkidle' });
+        await es.page.screenshot({ path: `${out}/lang-route-ar.png` });
+      }
+    }
+    ok('Vietnamese, Chinese, Tagalog and Arabic: More in each language; Arabic right to left');
     if (errors.length) throw new Error(`page errors: ${errors.join(' | ')}`);
   } finally {
     if (api && made) await api.delete(url(`/api/customers/${made}`)).catch(() => undefined);

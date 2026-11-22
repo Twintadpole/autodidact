@@ -83,8 +83,11 @@ for (const code of args.slice(1)) {
   const lostPlaceholders = Object.keys(sorted).filter((k) => {
     if (!(k in dict)) return false;
     const want = [...k.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join();
-    const vals = typeof dict[k] === 'object' ? Object.values(dict[k]) : [dict[k]];
-    return vals.some((v) => [...String(v).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((x, i, a) => a.indexOf(x) === i).sort().join() !== [...new Set(want.split(','))].filter(Boolean).sort().join());
+    const plural = typeof dict[k] === 'object';
+    const vals = plural ? Object.values(dict[k]) : [dict[k]];
+    // A plural form may leave out {n} (Arabic "one pool" is one word); every other placeholder must stay.
+    const need = [...new Set(want.split(','))].filter((x) => x && !(plural && x === 'n')).sort().join();
+    return vals.some((v) => [...new Set([...String(v).matchAll(/\{(\w+)\}/g)].map((m) => m[1]))].filter((x) => !(plural && x === 'n')).sort().join() !== need);
   });
   console.log(`${code}: ${Object.keys(sorted).length} texts, ${missing.length} missing, ${extra.length} unused, ${wrongShape.length} need plural forms, ${lostPlaceholders.length} with wrong {placeholders}`);
   for (const k of missing.slice(0, 40)) console.log(`  missing: ${k}`);
