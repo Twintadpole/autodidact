@@ -1,0 +1,9 @@
+/** Injected at build time by quasar.config.ts (build.define). */
+declare const __APP_VERSION__: string;
+declare const __BUILT_AT__: string;
+
+/** Text files imported as strings (Terms, Privacy). */
+declare module '*.md?raw' {
+  const text: string;
+  export default text;
+}

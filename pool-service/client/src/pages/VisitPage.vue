@@ -1,0 +1,387 @@
+<template>
+  <q-page class="q-pa-md column q-gutter-md" style="padding-bottom: 96px">
+    <div v-if="!pool" class="flex flex-center q-pa-xl">
+      <q-spinner v-if="data.loading || !data.loaded" size="40px" color="primary" />
+      <div v-else class="text-grey-7">{{ $t(`Pool not found.`) }}</div>
+    </div>
+
+    <template v-else>
+      <!-- Header: quick links, access notes, pinned notes -->
+      <div class="row q-col-gutter-sm">
+        <div class="col-6">
+          <q-btn class="full-width" outline color="primary" icon="info" :label="$t(`Overview`)" no-caps :to="`/pools/${pool._id}/overview`" data-test="open-overview" />
+        </div>
+        <div class="col-6">
+          <q-btn class="full-width" outline color="orange-9" icon="report_problem" no-caps :label="$t('Issues ({n})', { n: openIssues.length })" :to="`/pools/${pool._id}/issues`" data-test="open-issues" />
+        </div>
+      </div>
+
+      <q-banner v-if="pool.accessNotes || pinnedNotes.length" rounded class="bg-amber-1 text-grey-9" data-test="access-notes">
+        <template #avatar><q-icon name="key" color="amber-9" /></template>
+        <div v-if="pool.accessNotes" class="text-weight-medium">{{ pool.accessNotes }}</div>
+        <div v-for="n in pinnedNotes" :key="n._id" class="text-body2 pre-wrap" :data-test="`pinned-${n.parentType}-note`"><q-icon name="push_pin" size="xs" /> {{ n.body }}</div>
+      </q-banner>
+
+      <div v-if="loadingVisits" class="flex flex-center q-pa-lg"><q-spinner size="32px" color="primary" /></div>
+      <template v-else-if="draft">
+        <!-- Time on site -->
+        <VisitTimer
+          :time-log="draft.timeLog!"
+          :busy="saving"
+          @action="onTimer"
+          @edit="timeEditOpen = true"
+          @history="historyOpen = true"
+        >
+          <!-- Same checkmark as the Route list -->
+          <q-separator />
+          <q-item tag="label" dense class="q-py-sm">
+            <q-item-section>
+              <q-item-label class="text-weight-medium">{{ $t(`Done this week`) }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle :model-value="pool.week.done" color="positive" data-test="done-toggle" @update:model-value="toggleDone" />
+            </q-item-section>
+          </q-item>
+        </VisitTimer>
+
+        <!-- Current visit (editable) -->
+        <VisitCard :visit="draft" :title="editingExisting ? $t('Today’s visit (saved)') : $t('This visit')" />
+
+        <!-- Previous visit (read-only) -->
+        <VisitCard v-if="previous" :visit="previous" readonly :title="$t(`Previous visit`)">
+          <template #dose-actions>
+            <q-btn
+              v-if="previous.doses.length"
+              flat
+              dense
+              no-caps
+              color="primary"
+              icon="content_copy"
+              :label="$t(`Same as last time`)"
+              data-test="same-as-last"
+              @click="copyDoses"
+            />
+          </template>
+        </VisitCard>
+        <q-card v-else flat bordered class="q-pa-md text-grey-7 text-center" data-test="no-previous">{{ $t(`No previous visit yet.`) }}</q-card>
+      </template>
+
+      <q-btn outline color="orange-9" icon="add_alert" :label="$t(`Add issue`)" no-caps data-test="add-issue" @click="issueOpen = true" />
+
+      <!-- Sticky save -->
+      <!-- Save: a full button only when there is something to save -->
+      <q-page-sticky v-if="dirty && hasContent" position="bottom" expand class="save-bar">
+        <div class="full-width q-pa-sm bg-white save-bar-inner">
+          <q-btn color="primary" unelevated size="lg" class="full-width" icon="save" :label="$t(`Save visit`)" :loading="saving" data-test="save-visit" @click="save('manual')" />
+        </div>
+      </q-page-sticky>
+      <q-page-sticky v-else-if="editingExisting" position="bottom" expand class="save-bar">
+        <div class="full-width q-py-xs text-center text-caption text-positive bg-white save-bar-inner row items-center justify-center q-gutter-x-md" data-test="save-visit">
+          <span><q-icon name="check_circle" /> {{ $t(`Saved`) }}</span>
+          <q-btn v-if="draft" flat dense no-caps color="primary" icon="forward_to_inbox" :label="$t(`Send recap`)" :to="`/pools/${pool!._id}/visits/${draft._id}/recap`" data-test="visit-send-recap" />
+        </div>
+      </q-page-sticky>
+
+      <IssueSheet v-model="issueOpen" :pool-id="pool._id" @saved="onIssueSaved" />
+      <TimeEditDialog v-if="draft" v-model="timeEditOpen" :time-log="draft.timeLog!" @save="onTimesEdited" />
+      <HistoryDialog v-if="draft" v-model="historyOpen" collection="visits" :doc-id="draft._id" :title="$t(`Visit history`)" />
+    </template>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { t } from '@/i18n';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onBeforeRouteLeave, useRoute } from 'vue-router';
+import { useQuasar } from 'quasar';
+import { isToday, parseISO } from 'date-fns';
+import { EMPTY_TASKS } from '@pool/shared';
+import VisitCard from '@/components/VisitCard.vue';
+import IssueSheet from '@/components/IssueSheet.vue';
+import VisitTimer, { type TimerAction } from '@/components/VisitTimer.vue';
+import TimeEditDialog from '@/components/TimeEditDialog.vue';
+import HistoryDialog from '@/components/HistoryDialog.vue';
+import { normalizeVisit, useDataStore } from '@/stores/data';
+import { useUiStore } from '@/stores/ui';
+import { useSyncStore } from '@/stores/sync';
+import { db } from '@/offline/db';
+import { errorMessage } from '@/stores/api';
+import { clone, newId } from '@/lib/format';
+import type { Note, TimeLog, Visit } from '@/lib/types';
+
+defineOptions({ name: 'VisitPage' });
+
+const $q = useQuasar();
+const route = useRoute();
+const data = useDataStore();
+const ui = useUiStore();
+const sync = useSyncStore();
+
+const poolId = computed(() => String(route.params.id));
+const pool = computed(() => data.poolById.get(poolId.value));
+const customer = computed(() => (pool.value ? data.customerById.get(pool.value.customerId) : undefined));
+const openIssues = computed(() => data.openIssuesAll.filter((i) => i.poolId === poolId.value && i.status !== 'postponed'));
+
+const draft = ref<Visit | null>(null);
+const previous = ref<Visit | null>(null);
+const editingExisting = ref(false);
+const savedSnapshot = ref('');
+const loadingVisits = ref(true);
+const saving = ref(false);
+const issueOpen = ref(false);
+const timeEditOpen = ref(false);
+const historyOpen = ref(false);
+const pinnedNotes = ref<Note[]>([]);
+
+const snapshot = (v: Visit | null) => (v ? JSON.stringify({ r: v.readings, d: v.doses, t: v.tasks, n: v.notes ?? '', tl: v.timeLog }) : '');
+const dirty = computed(() => !!draft.value && snapshot(draft.value) !== savedSnapshot.value);
+const hasContent = computed(() => {
+  const v = draft.value;
+  if (!v) return false;
+  return (
+    Object.values(v.readings).some((x) => x !== null && x !== undefined) ||
+    v.doses.length > 0 ||
+    Object.values(v.tasks).some(Boolean) ||
+    !!v.notes?.trim() ||
+    !!v.timeLog?.segments.length
+  );
+});
+
+function blankVisit(): Visit {
+  const now = new Date().toISOString();
+  return {
+    _id: newId(),
+    poolId: poolId.value,
+    visitedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    readings: {},
+    doses: [],
+    tasks: { ...EMPTY_TASKS },
+    notes: '',
+    timeLog: { segments: [], finished: false },
+  };
+}
+
+/** Pinned notes for this customer (gate codes, dogs…) first, then this pool's. */
+async function pinnedNotesFor(): Promise<Note[]> {
+  const customerId = pool.value?.customerId;
+  const [c, p] = await Promise.all([customerId ? data.notesFor('customer', customerId) : [], data.notesFor('pool', poolId.value)]);
+  return [...c, ...p].filter((n) => n.pinned);
+}
+
+async function load() {
+  loadingVisits.value = true;
+  try {
+    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 2), pinnedNotesFor()]);
+    pinnedNotes.value = notes;
+    const latest = visits[0];
+    if (latest && isToday(parseISO(latest.visitedAt))) {
+      // Coming back to today's visit: keep editing it instead of starting a second one.
+      draft.value = clone(latest);
+      draft.value.notes ??= '';
+      draft.value.timeLog ??= { segments: [], finished: false };
+      previous.value = visits[1] ?? null;
+      editingExisting.value = true;
+    } else {
+      draft.value = blankVisit();
+      previous.value = latest ?? null;
+      editingExisting.value = false;
+    }
+    savedSnapshot.value = snapshot(draft.value);
+    // Unsaved edits from before (app closed, crash, battery): pick up where you left off.
+    const kept = await db.drafts.get(poolId.value);
+    if (kept && isToday(parseISO(kept.visit.visitedAt)) && (!editingExisting.value || kept.visit._id === draft.value._id)) {
+      draft.value = normalizeVisit(kept.visit);
+      draft.value.notes ??= '';
+      $q.notify({ message: t('Restored your unsaved changes'), color: 'grey-8', timeout: 1500 });
+    } else if (kept) {
+      await db.drafts.delete(poolId.value);
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  } finally {
+    loadingVisits.value = false;
+  }
+}
+
+function copyDoses() {
+  if (!draft.value || !previous.value) return;
+  draft.value.doses = previous.value.doses.map((d) => ({ ...d }));
+  $q.notify({ message: t('Copied last visit’s doses'), color: 'grey-8', timeout: 1500 });
+}
+
+/** Pause any timer running at another pool (one timer at a time). Returns false if the user cancels. */
+async function pauseOtherTimers(): Promise<boolean> {
+  const others = data.activeTimers.filter((v) => v._id !== draft.value?._id);
+  if (!others.length) return true;
+  const names = others
+    .map((v) => {
+      const p = data.poolById.get(v.poolId);
+      return p ? data.customerById.get(p.customerId)?.name ?? p.name : 'another pool';
+    })
+    .join(', ');
+  const go = await new Promise<boolean>((resolve) =>
+    $q
+      .dialog({ title: t('Timer running elsewhere'), message: t('The timer at {names} is still running. Pause it and start here?', { names }), cancel: true, ok: { label: t('Pause it'), unelevated: true } })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false))
+      .onDismiss(() => resolve(false)),
+  );
+  if (!go) return false;
+  const now = new Date().toISOString();
+  for (const v of others) {
+    const copy = clone(v);
+    const last = copy.timeLog?.segments[copy.timeLog.segments.length - 1];
+    if (last && !last.end) last.end = now;
+    copy.updatedAt = now;
+    await data.saveVisit(copy);
+  }
+  return true;
+}
+
+async function onTimer(action: TimerAction) {
+  const v = draft.value;
+  if (!v?.timeLog) return;
+  const tl = v.timeLog;
+  const now = new Date().toISOString();
+  const last = tl.segments[tl.segments.length - 1];
+  if (action === 'start' || action === 'resume') {
+    if (!(await pauseOtherTimers())) return;
+    tl.finished = false;
+    tl.segments.push({ start: now, end: null });
+  } else if (action === 'pause') {
+    if (last && !last.end) last.end = now;
+  } else if (action === 'stop') {
+    if (last && !last.end) last.end = now;
+    tl.finished = true;
+  }
+  await save(action);
+}
+
+async function onTimesEdited(timeLog: TimeLog) {
+  if (!draft.value) return;
+  draft.value.timeLog = timeLog;
+  await save('times');
+}
+
+async function save(reason: 'manual' | 'auto' | TimerAction | 'times' = 'manual'): Promise<boolean> {
+  const v = draft.value;
+  if (!v) return true;
+  const invalidDose = v.doses.find((d) => !d.chemicalId || !(d.amount > 0));
+  if (invalidDose) {
+    $q.notify({ type: 'warning', message: t('Each dose needs a chemical and an amount above 0.') });
+    return false;
+  }
+  saving.value = true;
+  try {
+    const readings = Object.fromEntries(Object.entries(v.readings).filter(([, x]) => x !== null && x !== undefined && !Number.isNaN(x)));
+    const body: Visit = { ...v, readings, updatedAt: new Date().toISOString() };
+    if (!body.notes?.trim()) delete body.notes;
+    await data.saveVisit(body);
+    v.updatedAt = body.updatedAt;
+    savedSnapshot.value = snapshot(v);
+    editingExisting.value = true;
+    const offline = !sync.online || !sync.reachable;
+    const messages: Record<string, string> = {
+      manual: offline ? t('Saved on phone · uploads when there’s signal') : t('Visit saved'),
+      auto: offline ? t('Visit saved on phone') : t('Visit saved'),
+      start: t('Timer started'),
+      resume: t('Timer resumed'),
+      pause: t('Timer paused'),
+      stop: t('Timer stopped'),
+      times: t('Times updated'),
+    };
+    $q.notify({ type: 'positive', message: messages[reason] ?? t('Saved'), timeout: 1200 });
+    return true;
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+    return false;
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function toggleDone(done: boolean) {
+  try {
+    await data.setDone(poolId.value, done);
+  } catch (err) {
+    $q.notify({ type: 'negative', message: errorMessage(err) });
+  }
+}
+
+function onIssueSaved() {
+  $q.notify({ type: 'positive', message: t('Issue added'), timeout: 1500 });
+}
+
+// Leaving the screen saves the visit (on the phone first; it uploads when there's signal).
+onBeforeRouteLeave(async () => {
+  if (dirty.value && hasContent.value) await save('auto');
+  return true;
+});
+
+// Every change is kept on the phone as a draft (300 ms after the last keystroke), so
+// closing the app or a crash loses nothing. Going to the background saves the visit.
+let draftTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+  draft,
+  (v) => {
+    clearTimeout(draftTimer);
+    if (!v || !dirty.value) return;
+    draftTimer = setTimeout(() => void db.drafts.put({ poolId: v.poolId, visit: clone(v), savedAt: new Date().toISOString() }), 300);
+  },
+  { deep: true },
+);
+function onHidden() {
+  if (document.visibilityState === 'hidden' && dirty.value && hasContent.value) void save('auto');
+}
+onMounted(() => document.addEventListener('visibilitychange', onHidden));
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onHidden);
+  clearTimeout(draftTimer);
+});
+
+watch(
+  [pool, customer],
+  () => {
+    if (pool.value) ui.setTitle(customer.value?.name ?? 'Pool', data.poolName(pool.value));
+  },
+  { immediate: true },
+);
+
+onMounted(load);
+// If the pool record arrives after the page opens, pick up the customer's pinned notes.
+watch(
+  () => pool.value?.customerId,
+  async (id, before) => {
+    if (id && id !== before && !loadingVisits.value) pinnedNotes.value = await pinnedNotesFor();
+  },
+);
+
+/**
+ * When a sync brings new data (e.g. the first download on a new phone), refresh
+ * the previous-visit card and pinned notes. The visit being edited is left alone.
+ */
+watch(
+  () => data.version,
+  async () => {
+    if (loadingVisits.value || !draft.value) return;
+    const [visits, notes] = await Promise.all([data.recentVisits(poolId.value, 3), pinnedNotesFor()]);
+    pinnedNotes.value = notes;
+    previous.value = visits.find((v) => v._id !== draft.value!._id && !isToday(parseISO(v.visitedAt))) ?? previous.value;
+  },
+);
+</script>
+
+<style scoped>
+.save-bar {
+  z-index: 10;
+}
+.pre-wrap {
+  white-space: pre-wrap;
+}
+.save-bar-inner {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+</style>

@@ -1,0 +1,80 @@
+# The edge: all web traffic in passes here; no business logic, no tenant data.
+#   traefik      routes <tenant>.<domain> to that tenant's app. tenant.sh connects it to each
+#                tenant's sealed network (there is no shared tenant network).
+#   dockerproxy  read-only view of Docker for Traefik (containers/networks only, no control).
+#   notice       answers 503 with a short page for suspended tenants (phones keep their unsent
+#                changes and retry later; 5xx never marks them failed).
+# Started by gpf/tenant.sh (edge-up). cloudflared joins the "edge" network on the home lab.
+name: ${GPF_PREFIX}-edge
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy:v0.4.1
+    container_name: ${GPF_PREFIX}-dockerproxy
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      EVENTS: 1
+      PING: 1
+      VERSION: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [dockerapi]
+    mem_limit: 64m
+
+  traefik:
+    image: traefik:v3.6.25
+    container_name: ${GPF_PREFIX}-traefik
+    restart: unless-stopped
+    logging: *logging
+    command:
+      - --entrypoints.web.address=:8080
+      - --providers.docker.endpoint=tcp://dockerproxy:2375
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.constraints=Label(`gpf.edge`,`${GPF_PREFIX}`)
+      - --providers.file.directory=/dynamic
+      - --providers.file.watch=true
+      - --ping=true
+      - --ping.entrypoint=web
+      - --log.level=WARN
+      - --accesslog=false
+    volumes:
+      - ${GPF_EDGE_DYNAMIC}:/dynamic:ro
+    ports:
+      - "${GPF_EDGE_BIND}:8080"
+    networks: [edge, dockerapi]
+    depends_on: [dockerproxy]
+    # Measured ~85 MB idle with two tenants (Nov 20); room for traffic and more tenants.
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping", "--entrypoints.web.address=:8080", "--ping.entrypoint=web"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  notice:
+    image: ${GPF_NOTICE_IMAGE}
+    container_name: ${GPF_PREFIX}-notice
+    restart: unless-stopped
+    logging: *logging
+    command: ["node", "/notice/notice.cjs"]
+    volumes:
+      - ./notice.cjs:/notice/notice.cjs:ro
+    networks: [edge]
+    mem_limit: 64m
+
+networks:
+  edge:
+    name: ${GPF_PREFIX}-edge
+  dockerapi:
+    name: ${GPF_PREFIX}-dockerapi
+    internal: true

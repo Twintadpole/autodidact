@@ -1,0 +1,34 @@
+import mongoose from 'mongoose';
+import { buildApp } from './app.js';
+import { loadConfig } from './config.js';
+import { ensureCollections } from './models/index.js';
+import { seedChemicals } from './seed/chemicals.js';
+import { ensureFirstOwner } from './services/users.js';
+
+async function main() {
+  const config = loadConfig();
+  await mongoose.connect(config.mongoUrl);
+  await ensureCollections();
+  // GPF item 3: the first start with accounts turns today's password into the first owner.
+  await ensureFirstOwner(config.adminPasswordHash, config.ownerEmail);
+  const seeded = await seedChemicals();
+
+  const app = await buildApp(config);
+  if (seeded) app.log.info(`Seeded ${seeded} chemicals`);
+
+  const shutdown = async (signal: string) => {
+    app.log.info(`${signal} received, shutting down`);
+    await app.close();
+    await mongoose.disconnect();
+    process.exit(0);
+  };
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+  await app.listen({ host: config.host, port: config.port });
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,0 +1,98 @@
+# One business ("tenant"): its app and its own MongoDB on one sealed network.
+# Started only by gpf/tenant.sh, with --env-file <secrets>/compose.env (non-secret settings):
+#   TENANT, GPF_PREFIX, DOMAIN, IMAGE, SUBNET, DATA_DIR, SECRETS_DIR
+# Secrets are files in SECRETS_DIR (mode 600), never in this file or in git.
+#
+# The network is internal: nothing in it reaches the internet, and nothing outside reaches in,
+# except Traefik, which tenant.sh connects to it to pass web traffic to the app. No host ports.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    logging: *logging
+    # The secret files belong to the host user (600). Mongo runs as its own user, and a replica set
+    # with auth needs a key file it owns with mode 400, so copy them (as root) into /run/gpf first.
+    entrypoint: ["bash", "-c", "install -d -m 700 -o mongodb -g mongodb /run/gpf && install -m 400 -o mongodb -g mongodb /run/secrets/mongo_* /run/gpf/ && exec docker-entrypoint.sh \"$$@\"", "--"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/run/gpf/mongo_keyfile", "--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/gpf/mongo_root_password
+    secrets: [mongo_root_password, mongo_app_password, mongo_keyfile]
+    volumes:
+      - ${DATA_DIR}/mongo:/data/db
+      - ../mongo/10-app-user.js:/docker-entrypoint-initdb.d/10-app-user.js:ro
+    networks: [tenant]
+    mem_limit: 640m
+    cpus: 1.0
+    healthcheck:
+      # Starts the replica set on first boot, then reports healthy once PRIMARY.
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet -u root -p "$$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin --eval
+          "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok }; db.hello().isWritablePrimary || quit(1)"
+      interval: 30s
+      start_interval: 2s
+      start_period: 60s
+      timeout: 10s
+      retries: 5
+
+  api:
+    image: ${IMAGE}
+    restart: unless-stopped
+    logging: *logging
+    env_file: ${SECRETS_DIR}/api.env
+    environment:
+      NODE_ENV: production
+      PHOTO_DIR: /data/photos
+      BACKUP_DIR: /backups
+      # Links in emails (password reset). The app queues mail; tenant.sh mail sends it (no internet here).
+      PUBLIC_URL: https://${TENANT}.${DOMAIN}
+    volumes:
+      - ${DATA_DIR}/photos:/data/photos
+      - ${DATA_DIR}/../backups:/backups:ro
+    networks: [tenant]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    mem_limit: 384m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      start_interval: 2s
+      start_period: 30s
+      timeout: 5s
+      retries: 3
+    # List form: Compose fills in ${…} in label values only, so the whole line must be a value.
+    labels:
+      - traefik.enable=true
+      - gpf.edge=${GPF_PREFIX}
+      - gpf.tenant=${TENANT}
+      - traefik.docker.network=${GPF_PREFIX}-t-${TENANT}
+      - traefik.http.routers.${GPF_PREFIX}-${TENANT}.rule=Host(`${TENANT}.${DOMAIN}`)
+      - traefik.http.routers.${GPF_PREFIX}-${TENANT}.entrypoints=web
+      - traefik.http.services.${GPF_PREFIX}-${TENANT}.loadbalancer.server.port=3000
+
+networks:
+  tenant:
+    name: ${GPF_PREFIX}-t-${TENANT}
+    internal: true
+    ipam:
+      config:
+        - subnet: ${SUBNET}
+
+secrets:
+  mongo_root_password:
+    file: ${SECRETS_DIR}/mongo-root-password
+  mongo_app_password:
+    file: ${SECRETS_DIR}/mongo-app-password
+  mongo_keyfile:
+    file: ${SECRETS_DIR}/mongo-keyfile
