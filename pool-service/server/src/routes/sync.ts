@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { syncPackageSchema, syncPullQuerySchema, type SyncPullResponse } from '@pool/shared';
-import { Issue, Photo, SYNC_MODELS, User, Visit } from '../models/index.js';
+import { Issue, Photo, ServerMeta, SYNC_MODELS, User, Visit } from '../models/index.js';
 import { redact, scopeFilter, techScope } from '../services/scope.js';
 import { isOwner, toMember } from '../services/users.js';
 import { applyPackage } from '../services/applyPackage.js';
@@ -60,7 +60,12 @@ export const syncRoutes: FastifyPluginAsync<{ photos: PhotoStore }> = async (app
     const me = await User.findById(actor.userId, { accessChangedAt: 1 }).lean<{ accessChangedAt?: Date | null }>();
     // `since` is the serverTime of the phone's last pull, taken before that pull read anything:
     // a change after it may not be in that pull, so the next one is full.
-    const full = !since || (!isOwner(actor) && !!me?.accessChangedAt && me.accessChangedAt.getTime() > since.getTime());
+    // After a restore from a backup, every phone (owners too) replaces its copy with the server's.
+    const restored = await ServerMeta.findById('restore', { at: 1 }).lean<{ at?: Date | null }>();
+    const full =
+      !since ||
+      (!!restored?.at && restored.at.getTime() > since.getTime()) ||
+      (!isOwner(actor) && !!me?.accessChangedAt && me.accessChangedAt.getTime() > since.getTime());
     const scope = isOwner(actor) ? undefined : await techScope(actor);
     const scoped = async (name: string) => scopeFilter(name, actor, scope);
     const out = (name: string, docs: Record<string, any>[]) => docs.map((d) => redact(name, stripServerFields(d), actor)).filter(Boolean);

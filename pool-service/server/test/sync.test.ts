@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { Issue, Note, Photo, Pool, SyncLog, Visit } from '../src/models/index.js';
+import { Issue, Note, Photo, Pool, ServerMeta, SyncLog, Visit } from '../src/models/index.js';
 import { newId } from '../src/util.js';
 import { anyChemicalId, createPool, login, setupTestApp, type TestContext } from './helpers.js';
 
@@ -261,5 +261,17 @@ describe('GET /api/sync/pull', () => {
     const deleted = delta.json().notes.find((n: any) => n._id === noteId);
     expect(deleted).toBeDefined();
     expect(deleted.deletedAt).not.toBeNull();
+  });
+
+  it('after a restore from a backup, the next pull is full for everyone (owners too)', async () => {
+    const first = (await ctx.app.inject({ method: 'GET', url: '/api/sync/pull', headers: { cookie } })).json();
+    const since = encodeURIComponent(first.serverTime);
+    expect((await ctx.app.inject({ method: 'GET', url: `/api/sync/pull?since=${since}`, headers: { cookie } })).json().full).toBe(false);
+    await ServerMeta.updateOne({ _id: 'restore' }, { $set: { at: new Date() } }, { upsert: true });
+    const after = (await ctx.app.inject({ method: 'GET', url: `/api/sync/pull?since=${since}`, headers: { cookie } })).json();
+    expect(after.full).toBe(true);
+    expect(after.chemicals.length).toBe(11);
+    const next = encodeURIComponent(after.serverTime);
+    expect((await ctx.app.inject({ method: 'GET', url: `/api/sync/pull?since=${next}`, headers: { cookie } })).json().full).toBe(false);
   });
 });

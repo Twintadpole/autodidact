@@ -39,6 +39,8 @@ bash gpf/tenant.sh update <name|all> [image] # backup, counts, new image, health
 bash gpf/tenant.sh backup <name|all>         # nightly (cron): dump + offsite; one failure doesn't skip the rest
 bash gpf/tenant.sh restore-check <name> [--offsite local|r2]
 bash gpf/tenant.sh restore-check all --offsite   # weekly (cron): every tenant, every offsite target
+bash gpf/tenant.sh snapshots <name> [local|r2]  # its offsite backups, to pick one
+bash gpf/tenant.sh restore <name> [--file <dump> | --offsite local|r2 [--snapshot <id>]] (--dry-run | --confirm <name>)
 bash gpf/tenant.sh monitor health|backups|disk|test   # alerts (monitor.sh), usually from cron
 bash gpf/tenant.sh cron [--install]          # print / install the cron jobs below
 bash gpf/tenant.sh welcome <name>            # docs/welcome-<name>.pdf + beta-tester-guide.pdf for a new business
@@ -67,6 +69,10 @@ bash gpf/tenant.sh purge <name-time> --confirm <name-time>
   backup (local and offsite), then removes the containers, the network and the live data. It keeps
   the dumps, the exports and the offsite copies, with their key, in `deleted/<name>-<time>/`.
 - **purge** removes those kept copies, and is refused until `GPF_PURGE_DAYS` (90) have passed.
+- **restore** puts a backup back into the live database: checked in a scratch database first, a safety
+  dump (`pool-prerestore-*`, 10 kept, local only), the app stopped meanwhile, `mongorestore --drop`, then
+  `serverMeta.restore` so every phone's next pull is full; from an offsite snapshot, missing photo files are
+  added back (never replaced or removed). It prints the undo command; `backups/RESTORES` logs each one.
 
 ## Nightly backups and alerts
 
@@ -149,6 +155,8 @@ It creates tenants `alpha` and `bravo` and checks:
   old backup, edge down = one alert), each tenant's status file and System card, the cron lines
 - `feedback` and `errors` per tenant (kept apart), and one alert per batch of new feedback
 - `welcome`: the two guide PDFs
+- `restore`: refusals (no/wrong confirm, a damaged dump), dry run changes nothing, newest nightly dump,
+  safety backup + undo, offsite snapshot with a missing photo added back, phones told to reload
 - email: no reset offered before a mailbox; then a sealed app's queued reset email reaches a test mailbox (Mailpit)
 - update, suspend and resume, export, delete and its refusals, purge and its 90-day refusal
 
@@ -157,5 +165,4 @@ Finally it confirms the live app's containers weren't restarted and its record c
 ## Not in this kit yet
 
 - cloudflared and the wildcard hostname (home lab)
-- restoring a tenant from a backup (only restore-check so far)
 - read-only suspend

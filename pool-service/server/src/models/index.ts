@@ -413,6 +413,13 @@ const passwordResetSchema = new Schema(
 );
 passwordResetSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 24 * 3600 });
 
+// ---------------------------------------------------------------- server notes
+/**
+ * Small server-side markers. `_id: 'restore'`, `at`: when this database was last put back from a
+ * backup (gpf tenant.sh restore writes it); every phone's next pull is then full and replaces its copy.
+ */
+const serverMetaSchema = new Schema({ _id: { type: String, required: true }, at: Date, note: String }, { versionKey: false });
+
 // ---------------------------------------------------------------- sessions
 const sessionSchema = new Schema(
   {
@@ -447,6 +454,7 @@ export const ImportLog = model('ImportLog', importLogSchema, 'imports');
 export const User = model('User', userSchema, 'users');
 export const Feedback = model('Feedback', feedbackSchema, 'feedback');
 export const ClientError = model('ClientError', clientErrorSchema, 'clientErrors');
+export const ServerMeta = model('ServerMeta', serverMetaSchema, 'serverMeta');
 export const MailOutbox = model('MailOutbox', mailOutboxSchema, 'mailOutbox');
 export const PasswordReset = model('PasswordReset', passwordResetSchema, 'passwordResets');
 

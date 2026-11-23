@@ -15,6 +15,14 @@
 #   tenant.sh backup <name|all> [--predeploy]   database dump; nightly runs also send it and photos offsite
 #   tenant.sh restore-check <name> [--offsite local|r2]   restore into a scratch database and compare
 #   tenant.sh restore-check all --offsite [local|r2]      every tenant (the weekly cron job)
+#   tenant.sh snapshots <name> [local|r2]  its offsite backups (ids and times), to pick one for restore
+#   tenant.sh restore <name> [--file <dump> | --offsite local|r2 [--snapshot <id>]] [--no-photos]
+#                    (--dry-run | --confirm <name>)
+#                                        puts a backup back into its live database (default: the newest
+#                                        nightly dump). Checks it in a scratch database first, takes a
+#                                        safety backup, then restores; from an offsite copy also adds back
+#                                        missing photos (never removes any). Phones reload everything.
+#                                        Prints the command that undoes it.
 #   tenant.sh monitor health|backups|disk|test   alerts through ntfy (see monitor.sh)
 #   tenant.sh cron [--install]           the cron lines for nightly backups, restore checks and alerts
 #   tenant.sh welcome <name>             PDFs for a new business: its welcome guide (address, login) and
@@ -243,6 +251,7 @@ backup_one() {
   dir="$(t_dir "${name}")"; ts="$(date -u +%Y%m%d-%H%M%S)"
   case "${label}" in
     --predeploy) out="${dir}/backups/pool-predeploy-${ts}.archive.gz"; keep=10; pattern="pool-predeploy-*.archive.gz" ;;
+    --prerestore) out="${dir}/backups/pool-prerestore-${ts}.archive.gz"; keep=10; pattern="pool-prerestore-*.archive.gz" ;;
     --final)     out="${dir}/backups/pool-final-${ts}.archive.gz"; keep=0; pattern="" ;;
     "")          out="${dir}/backups/pool-${ts}.archive.gz"; keep=14; pattern="pool-2*.archive.gz" ;;
     *) die "Unknown backup option ${label}" ;;
@@ -256,7 +265,7 @@ backup_one() {
   fi
   now > "${dir}/backups/LAST_BACKUP"
   echo "${name}: backup written: ${out} ($(du -h "${out}" | cut -f1))"
-  [[ "${label}" == --predeploy ]] && return 0
+  [[ "${label}" == --predeploy || "${label}" == --prerestore ]] && return 0
 
   local target tag=nightly failed=0
   [[ "${label}" == --final ]] && tag=final
@@ -324,6 +333,111 @@ restore_check_one() {
   compare_counts "${restored}" "${live}" backup live || die "${name}: the live database has fewer records than the backup!"
   [[ "${opt}" == --offsite ]] && now > "${dir}/backups/LAST_RESTORE_CHECK"
   echo "${name}: restore check passed (${what})"
+}
+
+# ---- restore: a backup back into the live database
+cmd_snapshots() {
+  local name="${1:-}" target="${2:-}"; need_tenant "${name}"
+  [[ -n "${target}" ]] || target="$(offsite_targets | head -1)"
+  [[ -n "${target}" ]] || die "No offsite copy is set up"
+  trestic "${name}" "${target}" -- snapshots --host "${name}" --compact
+}
+cmd_restore() {
+  local name="${1:-}"; shift || true; need_tenant "${name}"
+  local file="" target="" snap="latest" photos=1 dry=0 given=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --file) file="${2:-}"; shift 2 ;;
+      --offsite) target="${2:-}"; shift 2 ;;
+      --snapshot) snap="${2:-}"; shift 2 ;;
+      --no-photos) photos=0; shift ;;
+      --dry-run) dry=1; shift ;;
+      --confirm) given="${2:-}"; shift 2 ;;
+      *) die "Unknown option $1" ;;
+    esac
+  done
+  local dir; dir="$(t_dir "${name}")"
+  [[ -n "${file}" && -n "${target}" ]] && die "Use --file or --offsite, not both"
+  (( dry )) || [[ "${given}" == "${name}" ]] || die "Type the name again to restore: --confirm ${name} (or --dry-run to look first)"
+
+  # The source: a dump file (default: the newest nightly one) or an offsite snapshot.
+  local what
+  if [[ -n "${target}" ]]; then
+    [[ "${target}" == local || "${target}" == r2 ]] || die "--offsite local or --offsite r2"
+    offsite_targets | grep -qx "${target}" || die "No ${target} offsite copy is set up"
+    [[ "${snap}" =~ ^(latest|[0-9a-f]{8,64})$ ]] || die "Snapshot: an id from 'tenant.sh snapshots ${name}', or latest"
+    what="${target} offsite snapshot ${snap}"
+    source_dump() { trestic "${name}" "${target}" -- dump "${snap}" /data/db.archive.gz; }
+  else
+    [[ -n "${file}" ]] || file="$(ls -1t "${dir}"/backups/pool-2*.archive.gz 2>/dev/null | head -1)"
+    [[ -n "${file}" && -s "${file}" ]] || die "No backup to restore (no nightly dump of ${name} yet; use --file or --offsite)"
+    gzip -t "${file}" 2>/dev/null || die "${file} is damaged (not a complete gzip file)"
+    what="${file}"
+    source_dump() { cat "${file}"; }
+  fi
+
+  say "${name}: checking ${what} in a scratch database"
+  tmongosh "${name}" pool_restorecheck <<<'db.dropDatabase()' >/dev/null
+  source_dump | restore_into_scratch "${name}" || die "Could not read ${what}"
+  local restored live
+  restored="$(t_counts "${name}" pool_restorecheck)"
+  live="$(t_counts "${name}")"
+  tmongosh "${name}" pool_restorecheck <<<'db.dropDatabase()' >/dev/null
+  [[ "$(docker_ run --rm -i "${MONGO_IMAGE}" mongosh --quiet --nodb --eval "print(Object.values(${restored}).reduce((a, b) => a + b, 0))")" != 0 ]] || die "${what} has no records: not restoring it"
+  echo "Records: the backup vs the live database now (FEWER means the restore removes records):"
+  compare_counts "${live}" "${restored}" "now" "backup" || true
+  if (( dry )); then echo "${name}: dry run, nothing changed. To restore: add --confirm ${name}"; return 0; fi
+
+  say "${name}: safety backup of the live database first"
+  backup_one "${name}" --prerestore
+  local safety; safety="$(ls -1t "${dir}"/backups/pool-prerestore-*.archive.gz | head -1)"
+
+  local active=0
+  [[ "$(t_get "${name}" STATE)" == active ]] && active=1
+  (( active )) && { say "${name}: stopping the app during the restore"; tdc "${name}" stop api; }
+  say "${name}: restoring ${what}"
+  # --drop replaces each collection in the backup; the database's logins (admin) are untouched.
+  if ! source_dump | tjob "${name}" -- sh -c 'mongorestore --quiet --host mongo -u root -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin --archive --gzip --drop --nsInclude "pool.*"'; then
+    echo "Restore FAILED. Putting the safety backup back." >&2
+    tjob "${name}" -- sh -c 'mongorestore --quiet --host mongo -u root -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin --archive --gzip --drop --nsInclude "pool.*"' < "${safety}"
+    (( active )) && tdc "${name}" start api
+    die "${name}: the restore failed; the database is back as it was (${safety})"
+  fi
+  # Every phone's next pull is full and replaces its copy (server/src/routes/sync.ts).
+  tmongosh "${name}" pool <<<"db.serverMeta.updateOne({ _id: 'restore' }, { \$set: { at: new Date(), note: 'tenant.sh restore: ${what//\'/}' } }, { upsert: true })" >/dev/null
+
+  if [[ -n "${target}" ]] && (( photos )); then
+    say "${name}: adding back photos missing from the live folder (none are removed or replaced)"
+    local tmp="${dir}/restore-tmp"
+    rm -rf "${tmp}"; mkdir -p "${tmp}"
+    trestic "${name}" "${target}" -v "${tmp}:/restore" -- restore "${snap}" --target /restore --include /data/photos >/dev/null
+    local added=0
+    if [[ -d "${tmp}/data/photos" ]]; then
+      # File by file: a file already there is never replaced (cp -n would skip whole existing folders).
+      added="$(docker_ run --rm -v "${tmp}/data/photos:/src:ro" -v "${dir}/data/photos:/dst" "${HELPER_IMAGE}" sh -c '
+        n=0; cd /src
+        for f in $(find . -type f); do
+          [ -e "/dst/$f" ] && continue
+          mkdir -p "/dst/$(dirname "$f")" && cp -p "$f" "/dst/$f" && n=$((n + 1))
+        done
+        chown -R 1000:1000 /dst; echo "$n"')"
+    fi
+    docker_ run --rm -v "${dir}:/d" "${HELPER_IMAGE}" rm -rf /d/restore-tmp
+    echo "${name}: ${added} photo file(s) added back"
+  fi
+
+  if (( active )); then
+    tdc "${name}" start api
+    t_wait_healthy "${name}"
+    [[ "$(t_edge_code "${name}")" == 200 ]] || die "${name}: restored, but not reachable through the edge"
+  fi
+  local now_counts; now_counts="$(t_counts "${name}")"
+  compare_counts "${restored}" "${now_counts}" backup restored >/dev/null || die "${name}: fewer records after the restore than in the backup. Safety backup: ${safety}"
+  echo "$(now) restored ${what}; safety backup ${safety}" >> "${dir}/backups/RESTORES"
+  echo
+  echo "${name}: restored from ${what}. Every phone reloads its data at its next sync."
+  echo "Logins and passwords are as they were in that backup; people may need to log in again."
+  echo "To undo: bash gpf/tenant.sh restore ${name} --file ${safety} --confirm ${name}"
 }
 
 # ---- cron: nightly backups, weekly restore checks, alerts. --install puts them in this user's
@@ -571,6 +685,8 @@ case "${1:-}" in
   update) shift; cmd_update "$@" ;;
   backup) shift; cmd_backup "$@" ;;
   restore-check) shift; cmd_restore_check "$@" ;;
+  snapshots) cmd_snapshots "${2:-}" "${3:-}" ;;
+  restore) shift; cmd_restore "$@" ;;
   monitor) shift; bash "$(dirname "${BASH_SOURCE[0]}")/monitor.sh" "$@" ;;
   cron) cmd_cron "${2:-}" ;;
   welcome) cmd_welcome "${2:-}" ;;

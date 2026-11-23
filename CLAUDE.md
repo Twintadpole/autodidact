@@ -105,6 +105,12 @@ Then start the VPS session:
   6. ✅ Docs (built Nov 22): Terms + Privacy in the app (`client/src/legal/*.md` → `LegalPage`, /terms, /privacy,
      public; `lib/markdown.ts`), operator guide `gpf/docs/operator-guide.md` (the owner's complete runbook), PDFs via
      `tenant.sh docs` in `~/gpf/docs/` (make-pdf.cjs now does tables). `e2e/legal.cjs` (3).
+  7. ✅ Restore (built Nov 23, owner: "start on that"): `tenant.sh restore <name> [--file|--offsite local|r2
+     [--snapshot id]] [--no-photos] (--dry-run|--confirm <name>)`, `tenant.sh snapshots`. Scratch check, safety dump
+     `pool-prerestore-*` (local only, 10 kept), api stopped, mongorestore --drop, `serverMeta {_id:'restore', at}` →
+     every phone's next pull is full (sync.ts, owners too; sync.test.ts), offsite: missing photos added back
+     (file by file; busybox cp -n skips existing folders), undo command printed, `backups/RESTORES` log.
+     Owner's own app has no restore command yet (deploy/restore-check.sh only).
   - Tenant addresses: `<name>.evolutiondfw.com` (Cloudflare's free cert covers one level; `<name>.gpf.…` would need
     Advanced Certificate Manager). gpf.evolutiondfw.com = tenant `gpf`, the owner's test/demo business ("test
     branch": `update gpf` first, then `update all`). Owner Nov 22: the tunnel already routes gpf; they'll probably

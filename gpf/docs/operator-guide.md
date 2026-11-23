@@ -55,6 +55,7 @@ From then on, nightly backups, the weekly restore check, alerts and feedback cov
 | To see who has logins | `bash gpf/tenant.sh users <name>` |
 | A copy of all their data | `bash gpf/tenant.sh export <name>` → `~/gpf/tenants/<name>/exports/<time>/everything.xlsx` + `photos.zip` |
 | To pause (unpaid, on request) | `bash gpf/tenant.sh suspend <name>`: their address shows "paused"; data and backups carry on. `resume <name>` undoes it. |
+| Records deleted by mistake | `restore <name> --dry-run`, then `--confirm <name>` (section 7). |
 | To leave | `export <name>` (send it to them), then `delete <name> --confirm <name>`: a final backup is kept 90 days. After 90 days: `purge <name-time> --confirm <name-time>`. |
 
 ## 6. Updating the app (test first)
@@ -84,7 +85,17 @@ Copies kept: 14 daily, 8 weekly, 12 monthly. The weekly restore check reads ever
 
 Copy them into your password manager.
 
-**Restoring a business** from a backup isn't a one-command job yet: ask Claude. That command is on the list before the paid launch.
+**Restoring a business** (for example, a business deleted records by mistake):
+
+1. Look first, change nothing: `bash gpf/tenant.sh restore <name> --dry-run`. It checks the newest nightly backup in a scratch database and shows its records next to today's ("FEWER" = the restore would remove those).
+2. Pick the backup:
+   - the newest nightly one (default),
+   - a specific file: `--file ~/gpf/tenants/<name>/backups/pool-<date>.archive.gz` (the last 14 nights are there),
+   - or an off-site copy: `--offsite local|r2`, plus `--snapshot <id>` from `bash gpf/tenant.sh snapshots <name>` (up to 12 months back). Off-site copies also bring back missing photos; none are ever removed.
+3. Restore: the same command with `--confirm <name>` instead of `--dry-run`. It takes a safety backup first, stops the app for the minute it takes, restores, starts it again and checks the counts.
+4. It prints the command that **undoes** it (restoring the safety backup). Every phone reloads its data at its next sync; logins are as they were in that backup.
+
+Only that business is touched. Tell its owner before you do it: anything entered after the backup's time is gone (it stays in the safety backup).
 
 ## 8. Alerts (ntfy)
 

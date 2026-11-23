@@ -2,6 +2,13 @@
 
 ## Unreleased (November 2026)
 
+### Restore a business from a backup
+
+- `gpf/tenant.sh restore <name>`: a nightly dump, any dump file, or an off-site snapshot back into that
+  business's live database, with `--dry-run` to look first, a safety backup and an undo command; off-site
+  snapshots also add back missing photos. Afterwards every phone (owners too) reloads its data at its
+  next sync (server: `serverMeta` "restore" marker makes the next pull full).
+
 ### Beta: terms, privacy, guides
 
 - **Terms of beta use** and **Privacy** pages (English text; links on the login screen, at the bottom

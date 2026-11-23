@@ -130,6 +130,38 @@ check "restore-check alpha --offsite local" run restore-check alpha --offsite lo
 if (( R2 )); then check "restore-check alpha --offsite r2" run restore-check alpha --offsite r2; fi
 check "alpha's local offsite copy can't be read with bravo's key" bash -c "! TRESTIC_KEY='$(t_sec bravo)/restic-password' bash -c 'source ${HERE}/../lib.sh; trestic alpha local -- snapshots' >/dev/null 2>&1"
 
+echo "== Restore"
+add_customer() { # add_customer <tenant> <cookie> <name>
+  curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.${GPF_DOMAIN}" -H "cookie: $2" -H 'content-type: application/json' \
+    --data "{\"_id\":\"$(cat /proc/sys/kernel/random/uuid)\",\"name\":\"$3\"}" "http://${GPF_EDGE_BIND}/api/customers"
+}
+# A photo file in alpha's folder, then a nightly backup (with its offsite copy): 1 customer + the photo.
+docker run --rm -v "$(t_dir alpha)/data/photos:/p" "${HELPER_IMAGE}" sh -c 'mkdir -p /p/2026/11 && echo kit-photo > /p/2026/11/kit-test.jpg && chown -R 1000:1000 /p'
+run backup alpha >/dev/null
+code="$(add_customer alpha "${CA}" 'Added after the backup')"
+check "a customer added after the backup (HTTP ${code})" test "$(count alpha customers)" = 2
+refuses "restore without --confirm" bash "${GPF}" restore alpha
+refuses "restore with the wrong name" bash "${GPF}" restore alpha --confirm bravo
+check "restore --dry-run shows the backup has fewer" bash -c "bash '${GPF}' restore alpha --dry-run | grep -q 'FEWER'"
+check "dry run changed nothing" test "$(count alpha customers)" = 2
+check "restore alpha (newest nightly dump)" run restore alpha --confirm alpha
+check "alpha is back to 1 customer" test "$(count alpha customers)" = 1
+check "alpha answers after the restore" test "$(http alpha /api/health)" = 200
+check "the restore told the phones to reload (serverMeta)" test "$(tmongosh alpha pool <<<"db.serverMeta.countDocuments({ _id: 'restore' })")" = 1
+check "a safety backup was taken" bash -c "ls $(t_dir alpha)/backups/pool-prerestore-*.archive.gz"
+check "the restore is logged" grep -q restored "$(t_dir alpha)/backups/RESTORES"
+check "bravo untouched" test "$(count bravo customers)" = 0
+safety="$(ls -1t "$(t_dir alpha)"/backups/pool-prerestore-*.archive.gz | head -1)"
+check "undo: restore the safety backup" run restore alpha --file "${safety}" --confirm alpha
+check "alpha has 2 customers again" test "$(count alpha customers)" = 2
+check "snapshots lists alpha's offsite copies" bash -c "bash '${GPF}' snapshots alpha local | grep -q nightly"
+docker run --rm -v "$(t_dir alpha)/data/photos:/p" "${HELPER_IMAGE}" rm -f /p/2026/11/kit-test.jpg
+check "restore from the offsite copy (latest)" run restore alpha --offsite local --confirm alpha
+check "alpha is back to 1 customer (offsite)" test "$(count alpha customers)" = 1
+check "the missing photo is back" test -s "$(t_dir alpha)/data/photos/2026/11/kit-test.jpg"
+check "refuses a damaged dump" bash -c "head -c 100 '${safety}' > /var/tmp/gpft-bad.archive.gz; ! bash '${GPF}' restore alpha --file /var/tmp/gpft-bad.archive.gz --confirm alpha"
+check "alpha still has 1 customer after the refusal" test "$(count alpha customers)" = 1
+
 echo "== Weekly restore check and alerts"
 check "restore-check all --offsite (every tenant)" run restore-check all --offsite
 check "alpha LAST_RESTORE_CHECK written" test -s "$(t_dir alpha)/backups/LAST_RESTORE_CHECK"
