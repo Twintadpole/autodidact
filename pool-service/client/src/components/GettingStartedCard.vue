@@ -37,7 +37,10 @@
 
 <script setup lang="ts">
 import { t } from '@/i18n';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useQuasar } from 'quasar';
+import type { Me } from '@pool/shared';
+import { api, errorMessage } from '@/stores/api';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { customerStatus } from '@pool/shared';
 import { useAuthStore } from '@/stores/auth';
@@ -46,19 +49,39 @@ import { gettingStartedHidden, hideGettingStarted, installed, saveTickedSteps, t
 
 /**
  * Beta onboarding for owners: a checklist on the Route (and the dashboard) that ticks itself from the
- * business's own data, or by hand (tap the circle). Hidden when everything is done, or with Hide (this device, this person).
+ * business's own data, or by hand (tap the circle; saved with the login). Hidden when everything is done, or with Hide (this device, this person).
  */
 defineOptions({ name: 'GettingStartedCard' });
 const props = defineProps<{ desk?: boolean }>();
 const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
+const $q = useQuasar();
 const hidden = ref(gettingStartedHidden(auth.me?._id));
-const ticked = ref<string[]>(tickedSteps(auth.me?._id));
-function toggle(id: string) {
-  ticked.value = ticked.value.includes(id) ? ticked.value.filter((x) => x !== id) : [...ticked.value, id];
-  saveTickedSteps(auth.me?._id, ticked.value);
+// Hand ticks are saved with the login (PATCH /auth/me), so they follow the person to any device.
+const ticked = computed<string[]>(() => auth.me?.onboardingTicks ?? []);
+async function saveTicks(list: string[]) {
+  const me = auth.me;
+  if (!me) return;
+  auth.setMe({ ...me, onboardingTicks: list });
+  try {
+    auth.setMe(await api<Me>('/auth/me', { method: 'PATCH', body: { onboardingTicks: list } }));
+  } catch (e) {
+    auth.setMe(me);
+    $q.notify({ type: 'negative', message: errorMessage(e) });
+  }
 }
+function toggle(id: string) {
+  void saveTicks(ticked.value.includes(id) ? ticked.value.filter((x) => x !== id) : [...ticked.value, id]);
+}
+// Ticks made on this device before they followed the login: moved to the login once.
+onMounted(async () => {
+  const local = tickedSteps(auth.me?._id);
+  if (!local.length || !auth.me) return;
+  const merged = [...new Set([...ticked.value, ...local])];
+  if (merged.length !== ticked.value.length) await saveTicks(merged);
+  if (auth.me.onboardingTicks?.length === merged.length) saveTickedSteps(auth.me._id, []);
+});
 
 interface Step {
   id: string;

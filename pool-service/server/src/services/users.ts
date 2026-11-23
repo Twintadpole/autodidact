@@ -75,7 +75,7 @@ export function tempPassword(): string {
 }
 export const hashPassword = (pw: string) => argon2.hash(pw, { type: argon2.argon2id });
 
-export const toMe = (u: UserDoc): Me => ({ _id: u._id, email: u.email, name: u.name, role: u.role, mustChangePassword: !!u.mustChangePassword, language: u.language ?? null });
+export const toMe = (u: UserDoc): Me => ({ _id: u._id, email: u.email, name: u.name, role: u.role, mustChangePassword: !!u.mustChangePassword, language: u.language ?? null, onboardingTicks: u.onboardingTicks ?? [] });
 export const toMember = (u: UserDoc): TeamMember => ({ _id: u._id, name: u.name, role: u.role, active: u.active !== false });
 export const toMemberFull = (u: UserDoc): TeamMemberFull => ({
   ...toMember(u),

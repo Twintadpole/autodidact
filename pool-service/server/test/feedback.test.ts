@@ -59,3 +59,17 @@ describe('app errors (client-log)', () => {
     expect(rows[0].stack).toContain('a.js');
   });
 });
+
+describe('Getting started hand ticks (saved with the login)', () => {
+  it('are saved per person, follow them to another device, and refuse odd values', async () => {
+    expect((await req(owner, 'GET', '/auth/me')).json().me.onboardingTicks).toEqual([]);
+    const r = await req(owner, 'PATCH', '/auth/me', { onboardingTicks: ['team', 'install'] });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().onboardingTicks).toEqual(['team', 'install']);
+    const other = await login(ctx.app);
+    expect((await req(other, 'GET', '/auth/me')).json().me.onboardingTicks).toEqual(['team', 'install']);
+    expect((await req(tech, 'GET', '/auth/me')).json().me.onboardingTicks).toEqual([]);
+    expect((await req(owner, 'PATCH', '/auth/me', { onboardingTicks: ['<script>'] })).statusCode).toBe(400);
+    expect((await req(owner, 'PATCH', '/auth/me', { onboardingTicks: [] })).json().onboardingTicks).toEqual([]);
+  });
+});

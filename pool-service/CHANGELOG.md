@@ -46,7 +46,8 @@
 - **Getting started** card for owners at the top of the Route and the dashboard: business details,
   logo, chemical prices, customers, pools on the route, monthly rates, techs, installing the app. Each
   step ticks itself from the business's own data and opens its screen; tapping a step's circle ticks it
-  by hand (for example "Add your techs" when working alone). Hide puts it away.
+  by hand (for example "Add your techs" when working alone); hand ticks are saved with the login, so
+  they follow the person to any device. Hide puts it away.
 - **Beta tester guide** in Help (what to try, how to send feedback, your data, leaving).
 
 ### Beta: Help, feedback, error reports

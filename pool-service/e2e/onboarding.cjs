@@ -1,6 +1,7 @@
 // Beta segment 2: onboarding. Phone size. Test environment only (it adds a tech login; turned off at the end).
 //  1. Owner: the Getting started card is on the Route, with its count; a step opens its screen.
-//  2. The circle ticks a step by hand (kept after a reload) and unticks it; the Route stays open.
+//  2. The circle ticks a step by hand (kept after a reload and on another device: saved with the login)
+//     and unticks it; the Route stays open.
 //  3. Hide: the card goes and stays gone after a reload.
 //  4. Team → add a tech → Invite: the share sheet gets the app's address, their login and the temporary password.
 //  5. The tech's first login: choose a password → three welcome screens ("Your route") → gone for good.
@@ -63,9 +64,16 @@ const { chromium } = require('playwright');
     await p.reload({ waitUntil: 'networkidle' });
     await p.locator('[data-test=getting-started-count]').waitFor();
     if ((await countNow()) !== n0 + 1) throw new Error('hand tick not kept after a reload');
+    // Saved with the login: another device (a fresh browser) shows it too.
+    const other = await newPage();
+    await login(other.page, email, password);
+    await other.page.locator('[data-test=getting-started-count]').waitFor();
+    const there = Number((await other.page.locator('[data-test=getting-started-count]').innerText()).split(' ')[0]);
+    if (there !== n0 + 1) throw new Error(`another device shows ${there} done, not ${n0 + 1}`);
+    await other.ctx.close();
     await p.locator('[data-test=getting-started-tick-install]').click();
     await p.waitForFunction((n) => document.querySelector('[data-test=getting-started-count]')?.textContent?.startsWith(`${n} of`), n0);
-    ok('the circle ticks a step by hand (kept after a reload) and unticks it, without leaving the Route');
+    ok('the circle ticks a step by hand (kept after a reload and on another device) and unticks it, without leaving the Route');
 
     // ---- 3
     await p.locator('[data-test=getting-started-hide]').click();

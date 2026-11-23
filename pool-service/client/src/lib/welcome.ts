@@ -37,7 +37,7 @@ const hiddenKey = (userId: string | undefined) => `pool.gettingStarted.hidden.${
 export const gettingStartedHidden = (userId?: string) => store.get(hiddenKey(userId)) === '1';
 export const hideGettingStarted = (userId?: string, hidden = true) => store.set(hiddenKey(userId), hidden ? '1' : null);
 
-/** Steps the person ticked by hand (e.g. "Add your techs" when they work alone). */
+/** Hand ticks kept on this device by the first version (now saved with the login; read once to move them). */
 const tickedKey = (userId: string | undefined) => `pool.gettingStarted.ticked.${userId ?? 'owner'}`;
 export function tickedSteps(userId?: string): string[] {
   try {

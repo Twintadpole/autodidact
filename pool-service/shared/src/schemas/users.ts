@@ -35,9 +35,15 @@ export interface Me {
   mustChangePassword: boolean;
   /** The app's language for this person (GPF item 5); null = the phone's own. */
   language: LanguageCode | null;
+  /** Getting started steps this person ticked by hand (beta onboarding); follows them to any device. */
+  onboardingTicks: string[];
 }
 /** What people change about themselves (My account). */
-export const mePatchSchema = z.object({ language: z.enum(LANGUAGE_CODES).nullable().optional(), name: z.string().trim().min(1).max(100).optional() });
+export const mePatchSchema = z.object({
+  language: z.enum(LANGUAGE_CODES).nullable().optional(),
+  name: z.string().trim().min(1).max(100).optional(),
+  onboardingTicks: z.array(z.string().regex(/^[a-z]{2,20}$/)).max(20).optional(),
+});
 /** Team list (owner only), and the names every phone gets with each pull. */
 export interface TeamMember {
   _id: string;

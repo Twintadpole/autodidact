@@ -320,6 +320,8 @@ const userSchema = new Schema(
     mustChangePassword: { type: Boolean, default: false },
     /** The app's language (GPF item 5); null = the device's. */
     language: { type: String, default: null },
+    /** Getting started steps ticked by hand (beta onboarding). */
+    onboardingTicks: { type: [String], default: undefined },
     failedLogins: { type: Number, default: 0 },
     lockedUntil: { type: Date, default: null },
     lastLoginAt: { type: Date, default: null },
