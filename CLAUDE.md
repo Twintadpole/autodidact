@@ -112,7 +112,16 @@ Then start the VPS session:
      (file by file; busybox cp -n skips existing folders), undo command printed, `backups/RESTORES` log.
      Owner's own app has no restore command yet (deploy/restore-check.sh only).
      Shortcut `~/.local/bin/gpf` (host only) = tenant.sh; the owner (Termux = root) runs `sudo -iu claude gpf list`.
-  - Tenant addresses: `<name>.evolutiondfw.com` (Cloudflare's free cert covers one level; `<name>.gpf.…` would need
+  8. ✅ Domain move (Nov 23, owner bought greatpoolfriend.com, on Cloudflare): kit.env `GPF_DOMAIN=greatpoolfriend.com`,
+     `GPF_ALIAS_DOMAINS=evolutiondfw.com` (old addresses kept during the move; kit.env.bak-20261123). New test
+     business **demo** (owner@demo.example, seeded 14 customers); gpf to be retired later (owner: "demo is better").
+     Support address **support@greatpoolfriend.com** (owner sets Cloudflare Email Routing). Owner still to add the
+     tunnel wildcard `*.greatpoolfriend.com` → localhost:8080 and check Zaraz is off there. Kit test 155/155.
+  - **Security hardening segment proposed Nov 23 (awaiting approval):** security headers (CSP/HSTS/frame/nosniff),
+     max lengths on ~47 unbounded text fields, uploads verified as images + GPS/EXIF stripped, npm audit monthly,
+     Cloudflare settings for the owner (WAF free rules, Always HTTPS, TLS 1.2, rate-limit /api/auth). Told the
+     owner: no character bans (Unicode names); no Cloudflare Access per business; owner 2FA could come later.
+  - Tenant addresses (before the move): `<name>.evolutiondfw.com` (Cloudflare's free cert covers one level; `<name>.gpf.…` would need
     Advanced Certificate Manager). gpf.evolutiondfw.com = tenant `gpf`, the owner's test/demo business ("test
     branch": `update gpf` first, then `update all`). Owner Nov 22: the tunnel already routes gpf; they'll probably
     run real tenants on this setup. Each tester: a tunnel public hostname (or a `*.evolutiondfw.com` wildcard).

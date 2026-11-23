@@ -17,8 +17,9 @@ There are two separate things on the server:
 
 - **Your own app** at **poolapp.evolutiondfw.com**: Evolution Home Solutions' live data. Folder `~/autodidact/pool-service`. Changed only with `deploy/update.sh`, and only when you say "deploy".
 - **Great Pool Friend (GPF)**: one copy of the app per business. Folder `~/gpf` (data), `~/.config/gpf` (secrets), `~/autodidact/gpf` (the kit). Managed with `gpf/tenant.sh`.
-  - **gpf.evolutiondfw.com** is the tenant named `gpf`: the demo and test business. New versions go there first.
-  - Every other business is `<name>.evolutiondfw.com`, for example `bluewave.evolutiondfw.com`.
+  - **demo.greatpoolfriend.com** is the tenant named `demo`: the demo and test business, with made-up data. New versions go there first.
+  - Every other business is `<name>.greatpoolfriend.com`, for example `bluewave.greatpoolfriend.com`.
+  - During the move from evolutiondfw.com (Nov 23), the old addresses (`gpf.evolutiondfw.com`, …) still work too; see section 10.
 
 How a GPF request travels: phone → Cloudflare → your Cloudflare Tunnel → Traefik on the server (127.0.0.1:8080) → that business's app → that business's own database. Each business has its own sealed network, database, passwords, backup key and folders. One business can never reach another's data, and the apps have no internet access of their own.
 
@@ -43,10 +44,10 @@ How a GPF request travels: phone → Cloudflare → your Cloudflare Tunnel → T
 
 ## 4. Adding a beta tester (a new business)
 
-1. **Pick a short name** for their address: lowercase letters, digits and dashes, for example `sunnypools`. Their address will be `https://sunnypools.evolutiondfw.com`.
-2. **Cloudflare** (dashboard → Zero Trust → Networks → Tunnels → your tunnel → Public hostnames → Add): subdomain `sunnypools`, domain `evolutiondfw.com`, service **HTTP** `localhost:8080`. Skip this step if you've set up the wildcard (section 10).
+1. **Pick a short name** for their address: lowercase letters, digits and dashes, for example `sunnypools`. Their address will be `https://sunnypools.greatpoolfriend.com`.
+2. **Cloudflare:** nothing to do. The wildcard `*.greatpoolfriend.com` sends every name to the server (section 10).
 3. **Create it:** `bash gpf/tenant.sh create sunnypools owner@theirbusiness.com`. This makes the secrets, the network, the database, the route and their owner login with a temporary password. The password is saved, never printed, in `~/.config/gpf/tenants/sunnypools/owner-password`.
-4. **Check it:** open `https://sunnypools.evolutiondfw.com`. You should see the Great Pool Friend login.
+4. **Check it:** open `https://sunnypools.greatpoolfriend.com`. You should see the Great Pool Friend login.
 5. **Make their guides:** `bash gpf/tenant.sh welcome sunnypools` → `~/gpf/tenants/sunnypools/docs/welcome-sunnypools.pdf` (address, login, first steps) and `beta-tester-guide.pdf`. The terms and privacy PDFs are in `~/gpf/docs/` (`bash gpf/tenant.sh docs`).
 6. **Send them:** email the PDFs. Send the temporary password **separately**, by text: `cat ~/.config/gpf/tenants/sunnypools/owner-password`.
 7. **They take it from there:** at their first login they choose their own password, see three welcome screens, and follow the Getting started card. They add their techs under More → Team, and Invite texts each tech their login.
@@ -72,7 +73,7 @@ From then on, nightly backups, the weekly restore check, alerts and feedback cov
 New versions are built from the code in `~/autodidact` (Claude commits and pushes them):
 
 1. `bash gpf/tenant.sh build`: builds image `gpf-api:<commit>` and makes it the default for new businesses.
-2. `bash gpf/tenant.sh update gpf`: the **test business first**. Try it on gpf.evolutiondfw.com.
+2. `bash gpf/tenant.sh update demo`: the **test business first**. Try it on demo.greatpoolfriend.com.
 3. When it's good: `bash gpf/tenant.sh update all`. Every update takes a backup first, compares record counts before and after, and stops at the first problem.
 
 A business can stay on an older version: `bash gpf/tenant.sh update <name> gpf-api:<older-commit>`. `list` shows who runs what.
@@ -132,9 +133,14 @@ Until that password file exists, "Forgot password?" tells people to ask their ow
 
 ## 10. Addresses and the Cloudflare Tunnel
 
-- Today each business needs one public hostname in the tunnel (section 4, step 2).
-- **Optional, for many businesses:** a wildcard. Add public hostname `*.evolutiondfw.com` → HTTP `localhost:8080`, kept **below** the `poolapp`, `ntfy` and `gpf` entries, plus a DNS record `*` (CNAME to the tunnel, proxied). Then every new business works with no Cloudflare step. Named hostnames always win over the wildcard, so your own app is unaffected.
-- **Why not `<name>.gpf.evolutiondfw.com`?** Cloudflare's free certificate covers only one level (`*.evolutiondfw.com`). A second level needs Cloudflare's paid Advanced Certificate Manager. A product domain of your own later (for example `<name>.greatpoolfriend.com`) is the clean long-term answer: set `GPF_DOMAIN` in `~/.config/gpf/kit.env` before the businesses are created.
+- Every business is `<name>.greatpoolfriend.com`. One wildcard in the tunnel covers them all: public hostname `*.greatpoolfriend.com` → HTTP `localhost:8080` (with a DNS record `*`, CNAME to the tunnel, proxied). Cloudflare's free certificate covers `greatpoolfriend.com` and `*.greatpoolfriend.com`.
+- The kit's settings are in `~/.config/gpf/kit.env`: `GPF_DOMAIN=greatpoolfriend.com` (addresses, email links, guides) and `GPF_ALIAS_DOMAINS=evolutiondfw.com` (old addresses that still answer during the move).
+- **Ending the move:** once everyone uses the new addresses, delete the `GPF_ALIAS_DOMAINS` line and run `bash gpf/tenant.sh update all`. The old addresses then stop answering. Remove their tunnel hostnames (`gpf`, `bluewave` on evolutiondfw.com) in Cloudflare.
+- An installed app is tied to its address: after a move, people open the new address once and install it again. Their data is on the server.
+- Keep Zaraz off on greatpoolfriend.com too (section 8).
+- Your own app stays at poolapp.evolutiondfw.com and isn't part of this.
+
+**Support email:** `support@greatpoolfriend.com` (Cloudflare → greatpoolfriend.com → Email → Email Routing: forward it to your Gmail). The app, the guides and the Terms show it.
 
 ## 11. Feedback, errors and translations
 
