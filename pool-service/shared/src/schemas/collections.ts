@@ -4,7 +4,7 @@ import { addressSchema, collectionSchemas, dateSchema, e164Schema, idSchema, SER
 
 // ---------------------------------------------------------------- customers
 export const phoneSchema = z.object({
-  label: z.string().trim().default('mobile'),
+  label: z.string().trim().max(40).default('mobile'),
   number: e164Schema,
 });
 
@@ -24,11 +24,11 @@ export function customerStatus(c: { status?: CustomerStatus | null }): CustomerS
  * app version), so they have no defaults here.
  */
 export const customer = collectionSchemas({
-  name: z.string().trim().min(1),
-  phones: z.array(phoneSchema).default([]),
+  name: z.string().trim().min(1).max(200),
+  phones: z.array(phoneSchema).max(20).default([]),
   email: z.email().optional(),
   address: addressSchema.optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(20000).optional(),
   status: z.enum(CUSTOMER_STATUSES).nullable().optional(),
   /** Flat monthly rate in dollars (chemicals included). */
   monthlyRate: z.number().nonnegative().nullable().optional(),
@@ -40,7 +40,7 @@ export const customer = collectionSchemas({
   /** Miles from HQ, one way (for mileage). */
   distanceMiles: z.number().nonnegative().nullable().optional(),
   /** User who added it (set by the server). A tech also sees customers they added that have no pool yet. */
-  createdBy: z.string().nullable().optional(),
+  createdBy: z.string().max(64).nullable().optional(),
 });
 /** Customer fields the server keeps when a sender leaves them out. */
 export const CUSTOMER_PRESERVED_FIELDS = ['status', 'monthlyRate', 'billingEmail', 'paymentMethod', 'startDate', 'endDate', 'distanceMiles', 'createdBy'] as const;
@@ -64,34 +64,34 @@ export const equipmentSchema = z.object({
   _id: idSchema,
   kind: z.enum(EQUIPMENT_KINDS),
   /** Own name, e.g. "Booster pump" (needed only for "other"). */
-  name: z.string().trim().optional(),
-  model: z.string().trim().optional(),
-  serial: z.string().trim().optional(),
+  name: z.string().trim().max(200).optional(),
+  model: z.string().trim().max(100).optional(),
+  serial: z.string().trim().max(100).optional(),
   installedOn: dateSchema.nullable().optional(),
-  notes: z.string().optional(),
+  notes: z.string().max(20000).optional(),
 });
 export type Equipment = z.infer<typeof equipmentSchema>;
 
 export const pool = collectionSchemas({
   customerId: idSchema,
-  name: z.string().trim().min(1).default('Pool'),
+  name: z.string().trim().min(1).max(200).default('Pool'),
   /** Overrides the customer's address when present. */
   address: addressSchema.optional(),
   type: z.enum(POOL_TYPES).nullable().optional(),
-  surface: z.string().optional(),
+  surface: z.string().max(100).optional(),
   volumeGal: z.number().positive().nullable().optional(),
   /** Weekly service day. No day and no one-time date: "Not scheduled" on the Route. */
   serviceDay: z.enum(SERVICE_DAYS).nullable().optional(),
   /** A one-time job instead of a weekly day (see routeSlot). */
   oneTimeDate: dateSchema.nullable().optional(),
   routeOrder: z.number().default(0),
-  accessNotes: z.string().default(''),
+  accessNotes: z.string().max(20000).default(''),
   active: z.boolean().default(true),
   week: weekSchema.default({ done: false, doneAt: null, changedAt: null }),
   /** No default: an older app that leaves it out must not wipe it (see POOL_PRESERVED_FIELDS). */
-  equipment: z.array(equipmentSchema).optional(),
+  equipment: z.array(equipmentSchema).max(100).optional(),
   /** The tech whose route it is (user id), or null. A tech's phone only gets their own pools. */
-  techId: z.string().nullable().optional(),
+  techId: z.string().max(64).nullable().optional(),
 });
 export type Pool = z.infer<typeof pool.doc>;
 export const POOL_PRESERVED_FIELDS = ['equipment', 'oneTimeDate', 'techId'] as const;
@@ -137,7 +137,7 @@ export const timeSegmentSchema = z.object({
 });
 export const timeLogSchema = z
   .object({
-    segments: z.array(timeSegmentSchema).default([]),
+    segments: z.array(timeSegmentSchema).max(200).default([]),
     finished: z.boolean().default(false),
   })
   .superRefine((log, ctx) => {
@@ -184,12 +184,12 @@ export const visit = collectionSchemas({
   poolId: idSchema,
   visitedAt: dateSchema,
   readings: readingsSchema.default({}),
-  doses: z.array(doseSchema).default([]),
+  doses: z.array(doseSchema).max(100).default([]),
   tasks: tasksSchema.default({ ...EMPTY_TASKS }),
-  notes: z.string().optional(),
+  notes: z.string().max(20000).optional(),
   timeLog: timeLogSchema.default({ segments: [], finished: false }),
   /** Written for the customer (visit recap); `notes` stay private. */
-  customerNote: z.string().optional(),
+  customerNote: z.string().max(20000).optional(),
   /** When a recap of this visit was last sent. */
   recapSentAt: dateSchema.nullable().optional(),
 });
@@ -198,7 +198,7 @@ export const VISIT_PRESERVED_FIELDS = ['customerNote', 'recapSentAt'] as const;
 
 // ---------------------------------------------------------------- chemicals
 export const chemical = collectionSchemas({
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(200),
   defaultUnit: z.enum(UNITS),
   active: z.boolean().default(true),
   /** Owner-only price, e.g. 4.5 per gal. */
@@ -214,14 +214,14 @@ export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 
 export const issue = collectionSchemas({
   poolId: idSchema,
-  title: z.string().trim().min(1),
-  description: z.string().optional(),
+  title: z.string().trim().min(1).max(300),
+  description: z.string().max(20000).optional(),
   urgent: z.boolean().default(false),
   important: z.boolean().default(false),
   status: z.enum(ISSUE_STATUSES).default('open'),
   resolvedAt: dateSchema.nullable().default(null),
   postponedAt: dateSchema.nullable().default(null),
-  photoIds: z.array(idSchema).default([]),
+  photoIds: z.array(idSchema).max(200).default([]),
 });
 export type Issue = z.infer<typeof issue.doc>;
 
@@ -250,7 +250,7 @@ export const NOTE_PARENT_TYPES = ['customer', 'pool', 'visit'] as const;
 export const note = collectionSchemas({
   parentType: z.enum(NOTE_PARENT_TYPES),
   parentId: idSchema,
-  body: z.string().trim().min(1),
+  body: z.string().trim().min(1).max(20000),
   pinned: z.boolean().default(false),
 });
 export type Note = z.infer<typeof note.doc>;
@@ -267,7 +267,7 @@ export const photo = collectionSchemas({
   height: z.number().int().nonnegative(),
   bytes: z.number().int().nonnegative(),
   takenAt: dateSchema,
-  caption: z.string().optional(),
+  caption: z.string().max(2000).optional(),
 });
 export type Photo = z.infer<typeof photo.doc> & { file?: string };
 
@@ -293,14 +293,19 @@ export type DashboardLayout = z.infer<typeof dashboardLayoutSchema>;
 
 /** Everything optional. Missing terms = due on receipt; timing = start of month; first number = 1001. */
 export const settings = collectionSchemas({
-  businessName: z.string().trim().optional(),
+  businessName: z.string().trim().max(200).optional(),
   address: addressSchema.optional(),
-  phone: z.string().trim().optional(),
-  email: z.string().trim().optional(),
+  phone: z.string().trim().max(50).optional(),
+  email: z.string().trim().max(200).optional(),
   /** Small logo image as a data: URL (shown on invoices). */
-  logoDataUrl: z.string().max(600_000).optional(),
+  // Only a PNG, JPEG, WebP or GIF picture (not SVG, which can carry scripts); empty = no logo.
+  logoDataUrl: z
+    .string()
+    .max(600_000)
+    .regex(/^(data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*)?$/, 'The logo must be a PNG, JPEG, WebP or GIF picture')
+    .optional(),
   /** Printed on every invoice, e.g. "Checks payable to … · Zelle: …". */
-  paymentInstructions: z.string().optional(),
+  paymentInstructions: z.string().max(2000).optional(),
   terms: z.enum(INVOICE_TERMS).nullable().optional(),
   billingTiming: z.enum(BILLING_TIMINGS).nullable().optional(),
   firstInvoiceNumber: z.number().int().positive().nullable().optional(),
@@ -317,7 +322,7 @@ export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 export const invoiceLineSchema = z.object({
   _id: idSchema,
-  description: z.string().trim().default(''),
+  description: z.string().trim().max(500).default(''),
   /** Dollars; negative for a discount. */
   amount: z.number(),
 });
@@ -327,7 +332,7 @@ export const paymentSchema = z.object({
   amount: z.number().positive(),
   method: z.enum(PAYMENT_METHODS).nullable().optional(),
   /** Check number or transfer reference. */
-  reference: z.string().trim().optional(),
+  reference: z.string().trim().max(200).optional(),
 });
 
 /** Payments live on their invoice. Paid and overdue are worked out (see invoiceState). */
@@ -338,12 +343,12 @@ export const invoice = collectionSchemas({
   period: z.string().regex(/^\d{4}-\d{2}$/).nullable().optional(),
   issueDate: dateSchema,
   dueDate: dateSchema.nullable().optional(),
-  lines: z.array(invoiceLineSchema).default([]),
+  lines: z.array(invoiceLineSchema).max(500).default([]),
   /** Printed on the invoice for the customer. */
-  notes: z.string().optional(),
+  notes: z.string().max(20000).optional(),
   status: z.enum(INVOICE_STATUSES).default('draft'),
   sentAt: dateSchema.nullable().optional(),
-  payments: z.array(paymentSchema).default([]),
+  payments: z.array(paymentSchema).max(500).default([]),
 });
 export type Invoice = z.infer<typeof invoice.doc>;
 
@@ -400,8 +405,8 @@ export const ledger = collectionSchemas({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   amount: z.number().nonnegative().nullable().optional(),
   category: z.string().trim().max(60).nullable().optional(),
-  vendor: z.string().trim().optional(),
-  note: z.string().optional(),
+  vendor: z.string().trim().max(200).optional(),
+  note: z.string().max(20000).optional(),
   /** Counts against this customer's profit (expenses) or as their income. */
   customerId: idSchema.nullable().optional(),
   /** Small receipt photo as a data: URL. */

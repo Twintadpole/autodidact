@@ -15,6 +15,7 @@ import { importRoutes } from './routes/import.js';
 import { teamRoutes } from './routes/team.js';
 import { businessIcon, manifest } from './services/branding.js';
 import { passwordResetRoutes } from './routes/passwordReset.js';
+import { registerSecurityHeaders } from './plugins/securityHeaders.js';
 import { accessLoginRoutes, clientLogRoutes, feedbackRoutes, healthRoutes, photoRoutes, routeRoutes, systemRoutes } from './routes/misc.js';
 import { resourceRoutes } from './routes/resources.js';
 import { syncRoutes } from './routes/sync.js';
@@ -33,6 +34,8 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+
+  registerSecurityHeaders(app);
 
   app.setErrorHandler((err: FastifyError, request, reply) => {
     if (err instanceof HttpError) {

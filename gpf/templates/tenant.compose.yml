@@ -38,7 +38,9 @@ services:
         - >-
           mongosh --quiet -u root -p "$$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin --eval
           "try { rs.status().ok } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}).ok }; db.hello().isWritablePrimary || quit(1)"
-      interval: 30s
+      # Each check starts mongosh (about 1 s of CPU): every 2 minutes once running, so many tenants
+      # stay cheap; every 2 s while starting. Outages are caught by monitor.sh health (every 5 min).
+      interval: 120s
       start_interval: 2s
       start_period: 60s
       timeout: 10s
@@ -55,6 +57,8 @@ services:
       BACKUP_DIR: /backups
       # Links in emails (password reset). The app queues mail; tenant.sh mail sends it (no internet here).
       PUBLIC_URL: https://${TENANT}.${DOMAIN}
+      # "Mail waiting" flag for tenant.sh mail (inside the photo folder the app can already write).
+      MAIL_FLAG_DIR: /data/photos/.mail
     volumes:
       - ${DATA_DIR}/photos:/data/photos
       - ${DATA_DIR}/../backups:/backups:ro

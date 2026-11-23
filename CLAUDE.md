@@ -117,7 +117,16 @@ Then start the VPS session:
      business **demo** (owner@demo.example, seeded 14 customers); gpf to be retired later (owner: "demo is better").
      Support address **support@greatpoolfriend.com** (owner sets Cloudflare Email Routing). Owner still to add the
      tunnel wildcard `*.greatpoolfriend.com` → localhost:8080 and check Zaraz is off there. Kit test 155/155.
-  - **Security hardening segment proposed Nov 23 (awaiting approval):** security headers (CSP/HSTS/frame/nosniff),
+  - ✅ **Security hardening built Nov 23** (owner: "Go"): `plugins/securityHeaders.ts` (CSP script-src 'self', no inline
+     scripts; style 'unsafe-inline' for Quasar; img data:/blob:; frame-ancestors none; HSTS; nosniff; XFO DENY;
+     Referrer same-origin; Permissions-Policy), `.max()` on every text field + list caps (shared schemas), logo
+     data URL only png/jpeg/webp/gif (or empty), photos re-encoded by sharp in `PhotoStore.place` (real image or
+     400 "A photo file is not a picture"; EXIF/GPS dropped), `npm audit fix` (@fastify/static 10.1.12), 2 moderate
+     left (exceljs→uuid, unused v3/v5/v6), `monitor.sh audit` monthly cron. `test/security.test.ts`;
+     `e2e/csp-watch.cjs` preload fails any e2e run with a CSP block (used by /var/tmp/pw-run.sh).
+     Operator guide 13b: Cloudflare settings for the owner (Always HTTPS, TLS 1.2, Free Managed Ruleset,
+     rate limit /api/auth/ 10/min, Bot Fight Mode off, Zaraz off, no Access on tenants).
+  - (Plan as proposed Nov 23:) security headers (CSP/HSTS/frame/nosniff),
      max lengths on ~47 unbounded text fields, uploads verified as images + GPS/EXIF stripped, npm audit monthly,
      Cloudflare settings for the owner (WAF free rules, Always HTTPS, TLS 1.2, rate-limit /api/auth). Told the
      owner: no character bans (Unicode names); no Cloudflare Access per business; owner 2FA could come later.

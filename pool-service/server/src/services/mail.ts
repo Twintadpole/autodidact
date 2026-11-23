@@ -28,10 +28,17 @@ export function buildMessage(to: string[], subject: string, text: string): strin
   ].join('\r\n');
 }
 
-export async function queueMail(to: string[], subject: string, text: string, kind: string): Promise<void> {
+export async function queueMail(to: string[], subject: string, text: string, kind: string, flagDir?: string): Promise<void> {
   const list = to.map((t) => t.trim().toLowerCase()).filter((t) => /^[^\s@<>,]+@[^\s@<>,]+\.[^\s@<>,]+$/.test(t));
   if (!list.length) return;
   await MailOutbox.create({ _id: crypto.randomUUID(), to: list, subject, raw: buildMessage(list, subject, text), kind, createdAt: new Date() });
+  // Tell the sender there is mail (it then reads the outbox; without the flag it looks only now and then).
+  if (flagDir) {
+    await fs.promises
+      .mkdir(flagDir, { recursive: true })
+      .then(() => fs.promises.writeFile(path.join(flagDir, 'pending'), new Date().toISOString()))
+      .catch(() => undefined);
+  }
 }
 
 /** True when the server's sender has a mailbox set up (it touches MAIL_READY at most ~1 day ago). */

@@ -454,6 +454,7 @@ cron_lines() {
   echo "23 * * * * ${env} bash ${kit}/monitor.sh disk >> ${log}/monitor.log 2>&1"
   echo "41 6 * * * ${env} bash ${kit}/monitor.sh backups >> ${log}/monitor.log 2>&1"
   echo "53 * * * * ${env} bash ${kit}/monitor.sh feedback >> ${log}/monitor.log 2>&1"
+  echo "17 7 1 * * ${env} bash ${kit}/monitor.sh audit >> ${log}/monitor.log 2>&1"
   echo "* * * * * ${env} bash ${kit}/tenant.sh mail all >> ${log}/mail.log 2>&1"
   echo "# ${GPF_PREFIX}-kit end"
 }
@@ -500,8 +501,7 @@ cmd_docs() {
 mail_one() {
   local name="$1"
   mail_mongo() { tdc "${name}" exec -T mongo sh -c 'mongosh --quiet -u root -p "$(cat /run/secrets/mongo_root_password)" --authenticationDatabase admin pool --eval "$(cat)"'; }
-  [[ -n "$(tdc "${name}" ps -q mongo 2>/dev/null)" ]] || return 0
-  mail_send_pending "$(t_dir "${name}")/backups" "${name}"
+  mail_send_pending "$(t_dir "${name}")/backups" "${name}" "$(t_dir "${name}")/data/photos/.mail/pending"
 }
 cmd_mail() {
   source "${APP_SRC}/deploy/mail-lib.sh"

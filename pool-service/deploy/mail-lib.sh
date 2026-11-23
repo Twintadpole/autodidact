@@ -29,14 +29,24 @@ mail_configured() {
 }
 mail_from_address() { sed -E 's/.*<([^>]+)>.*/\1/' <<<"${MAIL_FROM}"; }
 
-# mail_send_pending <backups-dir> <label>: sends what's waiting; MAIL_READY tells the app email works.
+# mail_send_pending <backups-dir> <label> [flag-file]: sends what's waiting; MAIL_READY tells the app
+# email works. With a flag file (the app touches it when it queues mail), the database is opened only
+# when the flag is newer than the last look, or every 15 minutes as a safety net: starting mongosh
+# costs about a second of CPU, which adds up with many businesses checked every minute.
 mail_send_pending() {
-  local backups="$1" label="$2"
+  local backups="$1" label="$2" flag="${3:-}"
   if ! mail_configured; then
     rm -f "${backups}/MAIL_READY"
     return 0
   fi
   date -u +%FT%TZ > "${backups}/MAIL_READY"
+  if [[ -n "${flag}" ]]; then
+    local stamp seen
+    stamp="$(date -r "${flag}" +%s%N 2>/dev/null || echo 0)"
+    seen="$(cat "${backups}/.mail-seen" 2>/dev/null || echo 0)"
+    if (( stamp <= seen )) && (( 10#$(date +%M) % 15 != 0 )); then return 0; fi
+    echo "${stamp}" > "${backups}/.mail-seen"
+  fi
   local pending id
   pending="$(mail_mongo <<<"
     db.mailOutbox.find({ sentAt: null, attempts: { \$lt: ${MAIL_MAX_ATTEMPTS} } }).sort({ createdAt: 1 }).limit(20)

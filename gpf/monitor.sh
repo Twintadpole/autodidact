@@ -9,6 +9,8 @@
 #                         26 h old, or the weekly offsite restore check hasn't passed in 8 days
 #   monitor.sh disk       hourly: alerts when the disk holding GPF_ROOT is over GPF_DISK_LIMIT % (80)
 #   monitor.sh feedback   hourly: one alert per tenant with new beta feedback since the last check
+#   monitor.sh audit      monthly: known security holes in the app's packages (npm audit); alerts on
+#                         high or critical ones (moderate ones are listed in the log only)
 #   monitor.sh test       sends a test alert
 #
 # Alerts go to GPF_NTFY_URL (e.g. http://127.0.0.1:2586/gpf-alerts) with the token in the file
@@ -128,6 +130,24 @@ check_feedback() {
   done
 }
 
+check_audit() {
+  local out high crit mod
+  out="$(docker_ run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "${APP_SRC}:/w:ro" -w /w node:22 \
+    npm audit --omit=dev --package-lock-only --json 2>/dev/null)" || true
+  read -r crit high mod < <(docker_ run --rm -i node:22 node -e '
+    let j = {}; try { j = JSON.parse(require("fs").readFileSync(0, "utf8")); } catch {}
+    const v = (j.metadata && j.metadata.vulnerabilities) || {};
+    console.log([v.critical || 0, v.high || 0, v.moderate || 0].join(" "));' <<<"${out}")
+  echo "$(now) audit: ${crit:-?} critical, ${high:-?} high, ${mod:-?} moderate"
+  if [[ -z "${crit}" ]]; then
+    problem audit "Package check failed" "npm audit could not run (no network to the npm registry?). See ${GPF_ROOT}/logs/monitor.log."
+  elif (( crit + high > 0 )); then
+    problem audit "Security holes in the app's packages" "${crit} critical, ${high} high (npm audit). Ask Claude to update the packages and test."
+  else
+    fine audit "App packages OK (${mod} moderate)"
+  fi
+}
+
 # Each tenant's System card reads backups/MONITOR_STATUS: "checked <time>", then "down <check> <since>".
 # Server-wide problems (edge, disk) are shown to every tenant.
 write_status() {
@@ -154,7 +174,8 @@ case "${1:-}" in
   backups) check_backups ;;
   disk) check_disk ;;
   feedback) check_feedback; exit 0 ;;
+  audit) check_audit; exit 0 ;;
   test) notify "GPF test alert" "Alerts from the GPF server reach this phone." default bell; exit 0 ;;
-  *) die "Usage: monitor.sh health|backups|disk|feedback|test" ;;
+  *) die "Usage: monitor.sh health|backups|disk|feedback|audit|test" ;;
 esac
 write_status

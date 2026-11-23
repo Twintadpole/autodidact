@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { Readable } from 'node:stream';
 import sharp from 'sharp';
-import { newId } from '../util.js';
+import { HttpError, newId } from '../util.js';
 
 /**
  * Photos live at PHOTO_DIR/YYYY/MM/<photoId>.jpg. Thumbnails (Phase 5, sharp)
@@ -38,11 +38,24 @@ export class PhotoStore {
     return tmp;
   }
 
-  /** Move a temp file into its final place. */
+  /**
+   * Saves an upload in its final place as a clean JPEG (security hardening, Nov 23): the picture is
+   * decoded and written again, so only a real image is kept, it is turned upright, and anything
+   * hidden in the file (GPS location, camera details, other data) is dropped. Not a picture: 400.
+   */
   async place(tmp: string, rel: string): Promise<void> {
     const abs = this.absPath(rel);
     await fs.mkdir(path.dirname(abs), { recursive: true });
-    await fs.rename(tmp, abs);
+    const part = `${abs}.part`;
+    try {
+      await sharp(tmp, { failOn: 'error', limitInputPixels: 100_000_000 }).rotate().jpeg({ quality: 88 }).toFile(part);
+    } catch {
+      await fs.rm(part, { force: true });
+      throw new HttpError(400, 'A photo file is not a picture');
+    } finally {
+      await fs.rm(tmp, { force: true });
+    }
+    await fs.rename(part, abs);
   }
 
   /**

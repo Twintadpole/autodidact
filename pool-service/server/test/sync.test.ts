@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import fs from 'node:fs/promises';
+import sharp from 'sharp';
 import path from 'node:path';
 import { Issue, Note, Photo, Pool, ServerMeta, SyncLog, Visit } from '../src/models/index.js';
 import { newId } from '../src/util.js';
@@ -190,7 +191,12 @@ describe('POST /api/sync/package', () => {
     const at = new Date('2026-10-31T12:00:00Z').toISOString();
     const meta = { _id: photoId, poolId, savedToPool: true, width: 1600, height: 1200, bytes: 4, takenAt: at, createdAt: at, updatedAt: at };
     const pkg = makePackage({ visit: undefined, issues: [], notes: [], weekToggle: undefined, photos: [meta] });
-    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    // A real photo with a GPS location inside, as a phone camera writes it.
+    const jpeg = await sharp({ create: { width: 64, height: 48, channels: 3, background: '#2a7ab0' } })
+      .jpeg()
+      .withExif({ IFD0: { Make: 'TestPhone', Model: 'X1' }, IFD3: { GPSLatitudeRef: 'N', GPSLatitude: '32/1 46/1 0/1', GPSLongitudeRef: 'W', GPSLongitude: '96/1 48/1 0/1' } })
+      .toBuffer();
+    expect((await sharp(jpeg).metadata()).exif).toBeDefined();
     const { body, contentType } = multipartBody(pkg, { [photoId]: jpeg });
     const res = await ctx.app.inject({ method: 'POST', url: '/api/sync/package', headers: { cookie, 'content-type': contentType }, payload: body });
     expect(res.statusCode).toBe(200);
@@ -198,17 +204,32 @@ describe('POST /api/sync/package', () => {
 
     const photo = await Photo.findById(photoId).lean<any>();
     expect(photo.file).toBe(`2026/10/${photoId}.jpg`);
-    expect(await fs.readFile(path.join(ctx.photoDir, photo.file))).toEqual(jpeg);
+    // Stored as a clean picture: same size, no hidden data (no GPS, no camera details).
+    const stored = await fs.readFile(path.join(ctx.photoDir, photo.file));
+    const meta2 = await sharp(stored).metadata();
+    expect([meta2.format, meta2.width, meta2.height]).toEqual(['jpeg', 64, 48]);
+    expect(meta2.exif).toBeUndefined();
+    expect(stored.includes(Buffer.from('TestPhone'))).toBe(false);
 
     const served = await ctx.app.inject({ method: 'GET', url: `/api/photos/${photoId}`, headers: { cookie } });
     expect(served.statusCode).toBe(200);
     expect(served.headers['content-type']).toBe('image/jpeg');
-    expect(served.rawPayload).toEqual(jpeg);
+    expect(served.rawPayload).toEqual(stored);
     const thumb = await ctx.app.inject({ method: 'GET', url: `/api/photos/${photoId}/thumb`, headers: { cookie } });
     expect(thumb.statusCode).toBe(200);
 
     const missing = makePackage({ visit: undefined, issues: [], notes: [], weekToggle: undefined, photos: [{ ...meta, _id: newId() }] });
     expect((await postJson(missing)).statusCode).toBe(400);
+
+    // Not a picture (a script dressed up as one): refused, nothing kept.
+    const badId = newId();
+    const bad = makePackage({ visit: undefined, issues: [], notes: [], weekToggle: undefined, photos: [{ ...meta, _id: badId }] });
+    const fake = multipartBody(bad, { [badId]: Buffer.from('<script>alert(1)</script>') });
+    const refused = await ctx.app.inject({ method: 'POST', url: '/api/sync/package', headers: { cookie, 'content-type': fake.contentType }, payload: fake.body });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json().message).toBe('A photo file is not a picture');
+    expect(await Photo.exists({ _id: badId })).toBeNull();
+    await expect(fs.access(path.join(ctx.photoDir, '2026/10', `${badId}.jpg`))).rejects.toThrow();
   });
 });
 

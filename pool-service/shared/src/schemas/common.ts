@@ -19,11 +19,11 @@ export const baseDocFields = {
 
 /** Every part optional (the owner fills in what they know). */
 export const addressSchema = z.object({
-  line1: z.string().trim().optional(),
-  line2: z.string().trim().optional(),
-  city: z.string().trim().optional(),
-  state: z.string().trim().optional(),
-  zip: z.string().trim().optional(),
+  line1: z.string().trim().max(200).optional(),
+  line2: z.string().trim().max(200).optional(),
+  city: z.string().trim().max(100).optional(),
+  state: z.string().trim().max(100).optional(),
+  zip: z.string().trim().max(20).optional(),
 });
 export type Address = z.infer<typeof addressSchema>;
 

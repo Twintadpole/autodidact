@@ -86,14 +86,19 @@ const { chromium, devices } = require('playwright');
     ok(`previous visit: Filter PSI ${psi.replace(/\s+/g, ' ').trim()}; old task "Baskets emptied" still shown`);
 
     // Today's visit: Start, Pause, Resume, Stop; filter PSI; the two basket tasks
-    await page.locator('[data-test=timer-start]').click();
-    await page.locator('[data-test=timer-pause]').waitFor();
+    // Each tap waits for the previous one's "Timer …" confirmation, as a person would: while a tap is
+    // still saving, the button shows a spinner and ignores the next tap (on a busy server that matters).
+    const tap = async (button, done) => {
+      await page.locator(`[data-test=${button}]`).click();
+      await page.locator('.q-notification', { hasText: done }).last().waitFor();
+      await page.waitForTimeout(300);
+    };
+    await tap('timer-start', 'Timer started');
     await page.waitForTimeout(1200);
-    await page.locator('[data-test=timer-pause]').click();
-    await page.locator('[data-test=timer-resume]').waitFor();
+    await tap('timer-pause', 'Timer paused');
     await page.waitForTimeout(1200);
-    await page.locator('[data-test=timer-resume]').click();
-    await page.locator('[data-test=timer-stop]').click();
+    await tap('timer-resume', 'Timer resumed');
+    await tap('timer-stop', 'Timer stopped');
     await page.locator('[data-test=timer-reopen]').waitFor();
     const state = await page.locator('[data-test=timer-state]').innerText();
     if (!/1 pause/.test(state)) throw new Error(`pause not kept: ${state}`);

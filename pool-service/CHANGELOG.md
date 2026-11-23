@@ -2,6 +2,19 @@
 
 ## Unreleased (November 2026)
 
+### Security hardening
+
+- **Browser safety headers** on every answer: a strict content policy (only the app's own scripts, no
+  inline or outside scripts; this also blocks anything a proxy might insert), no framing by other
+  sites, HTTPS only (HSTS), no MIME guessing, same-origin referrers, no microphone or location.
+- **Length limits** on every text field (names 200 characters, notes 20,000, …) and on lists (phones,
+  equipment, invoice lines, …). Any characters are still allowed; text is always shown as plain text.
+- **Uploads:** every photo is decoded and saved again as a clean JPEG, so only real pictures are kept
+  and hidden data (GPS location, camera details) is dropped; the logo must be a PNG, JPEG, WebP or GIF.
+- **Packages:** a patch update for the static-file server (`npm audit fix`); a monthly check
+  (`gpf/monitor.sh audit`) alerts on high or critical security holes. Two moderate notices remain in the
+  Excel library's `uuid`, in code the app doesn't use.
+
 ### Restore a business from a backup
 
 - `gpf/tenant.sh restore <name>`: a nightly dump, any dump file, or an off-site snapshot back into that

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import sharp from 'sharp';
 import { Customer, Photo, Pool } from '../src/models/index.js';
 import { newId } from '../src/util.js';
 import { login, setupTestApp, type TestContext } from './helpers.js';
@@ -124,7 +125,8 @@ describe('7A: new fields survive an older app, and clear when the app says so', 
     const photoId = newId();
     const form = new FormData();
     form.append('package', JSON.stringify(pkg({ poolId: p._id, photos: [{ _id: photoId, poolId: p._id, equipmentId: pumpId, width: 1, height: 1, bytes: 3, takenAt: at, createdAt: at, updatedAt: at }] })));
-    form.append(photoId, new Blob([Buffer.from('/9j/', 'base64')], { type: 'image/jpeg' }), `${photoId}.jpg`);
+    const jpeg = await sharp({ create: { width: 8, height: 8, channels: 3, background: '#888' } }).jpeg().toBuffer();
+    form.append(photoId, new Blob([jpeg], { type: 'image/jpeg' }), `${photoId}.jpg`);
     const req = new Request('http://x/api/sync/package', { method: 'POST', body: form });
     const res = await ctx.app.inject({
       method: 'POST',

@@ -61,6 +61,7 @@ export const passwordResetRoutes: FastifyPluginAsyncZod<{ config: AppConfig }> =
           signature,
         ].join('\n'),
         'reset',
+        config.mailFlagDir,
       );
       // The business's owners hear about it (not the link).
       const owners = await User.find({ role: 'owner', active: true, _id: { $ne: user._id } }).lean<{ email: string }[]>();
@@ -76,6 +77,7 @@ export const passwordResetRoutes: FastifyPluginAsyncZod<{ config: AppConfig }> =
           signature,
         ].join('\n'),
         'reset-notice',
+        config.mailFlagDir,
       );
       await recordAudit({ collectionName: 'users', docId: user._id, action: 'update', source: 'app', note: 'Password reset email requested', userId: user._id });
       return answer;

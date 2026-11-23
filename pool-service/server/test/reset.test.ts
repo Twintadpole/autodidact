@@ -20,7 +20,7 @@ async function tokenFor(to: string): Promise<string> {
 
 beforeAll(async () => {
   backupDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pool-mail-'));
-  ctx = await setupTestApp({ backupDir, publicUrl: 'https://pools.example.com', ownerEmail: 'boss@example.com', forgotRateLimit: { max: 100, timeWindow: '15 minutes' } });
+  ctx = await setupTestApp({ backupDir, mailFlagDir: path.join(backupDir, 'flag'), publicUrl: 'https://pools.example.com', ownerEmail: 'boss@example.com', forgotRateLimit: { max: 100, timeWindow: '15 minutes' } });
   owner = await login(ctx.app, false, 'boss@example.com');
   const r = (await inject('POST', '/team', { email: 'tina@example.com', name: 'Tina' }, owner)).json();
   techPw = r.password;
@@ -52,6 +52,8 @@ describe('password reset by email', () => {
     expect(Buffer.from(notice.raw.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString()).not.toContain('token=');
     expect(notice.raw).not.toMatch(/^From:/m);
     expect(await tokenFor('tina@example.com')).toMatch(/^[\w-]{40,}$/);
+    // The "mail waiting" flag for the server's sender.
+    expect(await fs.readFile(path.join(backupDir, 'flag', 'pending'), 'utf8')).toMatch(/^\d{4}-/);
   });
 
   it('the link sets a new password once: old password and other devices stop working', async () => {

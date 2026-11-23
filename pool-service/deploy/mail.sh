@@ -6,4 +6,4 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/mail-lib.sh"
 cd "${APP_DIR}"
 mail_mongo() { dc exec -T mongo mongosh --quiet pool --eval "$(cat)"; }
-mail_send_pending "${APP_DIR}/backups" app
+mail_send_pending "${APP_DIR}/backups" app "${APP_DIR}/data/photos/.mail/pending"

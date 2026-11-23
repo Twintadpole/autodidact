@@ -21,6 +21,9 @@ const envSchema = z.object({
     .pipe(z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash')),
   /** Login name of the first owner, made from ADMIN_PASSWORD_HASH on the first start with accounts ("owner" if unset). */
   OWNER_EMAIL: z.string().trim().toLowerCase().optional(),
+  /** A folder the app may write to: it touches `pending` there when an email is queued, so the
+   *  server's sender only opens the database when there is mail (deploy/mail-lib.sh). */
+  MAIL_FLAG_DIR: z.string().optional(),
   /** The app's own address, e.g. https://poolapp.example.com: links in emails (password reset). */
   PUBLIC_URL: z.string().url().optional(),
   /** The product's name (GPF item 4), shown where a business hasn't set its own. */
@@ -45,6 +48,7 @@ export interface AppConfig {
   adminPasswordHash: string;
   ownerEmail?: string;
   publicUrl?: string;
+  mailFlagDir?: string;
   productName?: string;
   photoDir: string;
   clientDist?: string;
@@ -74,6 +78,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     adminPasswordHash: e.ADMIN_PASSWORD_HASH,
     ...(e.OWNER_EMAIL && { ownerEmail: e.OWNER_EMAIL }),
     ...(e.PUBLIC_URL && { publicUrl: e.PUBLIC_URL.replace(/\/+$/, '') }),
+    ...(e.MAIL_FLAG_DIR && { mailFlagDir: path.resolve(e.MAIL_FLAG_DIR) }),
     productName: e.PRODUCT_NAME,
     photoDir: path.resolve(e.PHOTO_DIR),
     clientDist: e.CLIENT_DIST ? path.resolve(e.CLIENT_DIST) : undefined,

@@ -172,6 +172,32 @@ Scheduled jobs: `crontab -l` (user `claude`). The GPF ones are between the `# gp
 - Never `docker compose down -v`, and never delete a folder under `~/gpf/tenants` by hand: use `tenant.sh delete`, which keeps a final backup.
 - Updates always go to the test business first.
 
+## 13b. Security
+
+**Built into the app:**
+- strict checks on every request, with length limits on every field
+- passwords stored only as argon2 hashes
+- a login limit per address, plus a lock per login after 10 wrong passwords
+- one-use reset links
+- photos and logos must be real pictures, and photos are saved again without their hidden GPS location and camera details
+- browser safety headers: no outside or inline scripts, can't be framed, HTTPS only
+- each business sealed in its own network and database, with encrypted backups under its own key
+
+People can type any characters, in any language. That's safe because the app shows everything typed as plain text.
+
+**Monthly:** `monitor.sh audit` checks the app's packages for known security holes and alerts on `gpf-alerts` if a high or critical one appears. Ask Claude to update and test.
+
+**Cloudflare settings** (for greatpoolfriend.com, and for evolutiondfw.com too):
+
+1. **SSL/TLS → Edge Certificates:** Always Use HTTPS **on**; Minimum TLS Version **1.2**; Automatic HTTPS Rewrites **on**.
+2. **Security → WAF → Managed rules:** turn on the **Cloudflare Free Managed Ruleset** (it blocks common attacks before they reach the server).
+3. **Security → WAF → Rate limiting rules → Create:** name "Login limit"; when URI Path **starts with** `/api/auth/`; **10 requests per 1 minute** per IP; action **Block** for 10 minutes. (The app has its own limits too; this stops floods at Cloudflare.)
+4. **Security → Bots:** leave **Bot Fight Mode off**. It can challenge the phone app's background requests. The rules above are enough.
+5. **Zaraz:** off (section 8).
+6. **No Cloudflare Access on the businesses' addresses.** Their logins are the app's own. Your own app keeps its Access login.
+
+Later, if wanted: two-step login (an authenticator-app code) for owners.
+
 ## 14. Moving to the home lab (before July 2027)
 
 The kit was built for this move: on the new server, install Docker, set `default-address-pools` in `/etc/docker/daemon.json`, copy `~/autodidact`, `~/gpf`, `~/.config/gpf` and `~/.config/pool-mail`, run `bash gpf/tenant.sh edge-up`, start each business, point the tunnel there, and install the cron jobs. Claude does the move when the server is ready.

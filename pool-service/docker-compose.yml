@@ -55,6 +55,8 @@ services:
       BACKUP_DIR: /backups
       # Links in emails (password reset). The app queues mail; deploy/mail.sh sends it (cron, every minute).
       PUBLIC_URL: https://poolapp.evolutiondfw.com
+      # "Mail waiting" flag for deploy/mail.sh (inside the photo folder the app can already write).
+      MAIL_FLAG_DIR: /data/photos/.mail
     volumes:
       - ./data/photos:/data/photos
       # Read-only: the More screen shows the last backup time from backups/LAST_BACKUP.
