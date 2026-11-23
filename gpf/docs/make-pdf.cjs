@@ -2,7 +2,7 @@
 // Runs in the Playwright container (see "tenant.sh welcome"); no other dependencies.
 //
 //   node make-pdf.cjs <in.md> <out.pdf> [KEY=value …]
-// Markdown subset: # / ## headings, paragraphs, "- " lists, "1. " lists, | tables |, **bold**, `code`.
+// Markdown subset: # / ## headings, paragraphs, "- " lists, "1. " lists, | tables |, ``` blocks, **bold**, `code`.
 const fs = require('node:fs');
 const { chromium } = require('playwright');
 
@@ -30,8 +30,14 @@ const closeTable = () => {
   html.push(`<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
   table = null;
 };
+let pre = null;
 for (const line of md.split('\n')) {
   let m;
+  if (line.startsWith('```')) {
+    if (pre) { html.push(`<pre>${esc(pre.join('\n'))}</pre>`); pre = null; } else { flushPara(); closeList(); closeTable(); pre = []; }
+    continue;
+  }
+  if (pre) { pre.push(line); continue; }
   if (/^\|.*\|\s*$/.test(line)) {
     flushPara(); closeList();
     const cells = line.trim().slice(1, -1).split('|').map((c) => c.trim());
@@ -68,6 +74,7 @@ const page = `<!doctype html><html><head><meta charset="utf-8"><style>
   table { border-collapse: collapse; width: 100%; margin: 0 0 8pt; font-size: 10pt; }
   th, td { border: 1px solid #d5e3f3; padding: 3pt 5pt; text-align: left; vertical-align: top; }
   th { background: #eef3f8; }
+  pre { font-family: monospace; font-size: 9.5pt; background: #eef3f8; padding: 5pt 7pt; margin: 0 0 8pt; white-space: pre-wrap; }
   h2 { page-break-after: avoid; } tr { page-break-inside: avoid; }
 </style></head><body>${html.join('\n')}</body></html>`;
 

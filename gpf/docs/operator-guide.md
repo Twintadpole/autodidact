@@ -1,6 +1,15 @@
 # Great Pool Friend: operator guide
 
-For the operator (you) running Great Pool Friend on a server: your own business's app and the Great Pool Friend businesses ("tenants"). Every command below runs on the server as user `claude`, from `~/autodidact`, unless it says otherwise. Claude can run any of them for you; this guide is so you know what exists and can do it yourself.
+For the operator (you) running Great Pool Friend on a server: your own business's app and the Great Pool Friend businesses ("tenants"). Every command below runs on the server as user `claude`, from `~/autodidact`, unless it says otherwise.
+
+**From your phone (Termux logs in as root),** become `claude` first:
+
+```
+sudo -iu claude
+cd ~/autodidact
+```
+
+Then type the commands as written. Shortcut: `gpf` is the same as `bash gpf/tenant.sh`, so `gpf list` works from any folder, and from root in one line: `sudo -iu claude gpf list`. Claude can run any of them for you; this guide is so you know what exists and can do it yourself.
 
 ## 1. The big picture
 
