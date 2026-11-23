@@ -425,6 +425,8 @@
  "Make a tech": "جعله فنيًا",
  "Make an owner": "جعله مالكًا",
  "Make one": "إنشاء واحدة",
+ "Mark as done": "وضع علامة: تم",
+ "Mark as not done": "إزالة علامة: تم",
  "Mark as sent?": "وسمها كمرسلة؟",
  "Mark it Urgent and/or Important. Both together shows it in red.": "ضع علامة عاجل و/أو مهم. عند اختيار الاثنين معًا تظهر باللون الأحمر.",
  "Mark sent": "وسم كمرسلة",

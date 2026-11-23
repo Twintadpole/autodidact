@@ -420,6 +420,8 @@
  "Make a tech": "设为技术员",
  "Make an owner": "设为老板",
  "Make one": "生成一个",
+ "Mark as done": "标记为已完成",
+ "Mark as not done": "标记为未完成",
  "Mark as sent?": "标记为已发送？",
  "Mark it Urgent and/or Important. Both together shows it in red.": "标记为紧急和/或重要。两者都选时显示为红色。",
  "Mark sent": "标记为已发送",

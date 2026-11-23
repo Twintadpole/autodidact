@@ -1,9 +1,10 @@
 // Beta segment 2: onboarding. Phone size. Test environment only (it adds a tech login; turned off at the end).
 //  1. Owner: the Getting started card is on the Route, with its count; a step opens its screen.
-//  2. Hide: the card goes and stays gone after a reload.
-//  3. Team → add a tech → Invite: the share sheet gets the app's address, their login and the temporary password.
-//  4. The tech's first login: choose a password → three welcome screens ("Your route") → gone for good.
-//  5. The tech sees no Getting started card.
+//  2. The circle ticks a step by hand (kept after a reload) and unticks it; the Route stays open.
+//  3. Hide: the card goes and stays gone after a reload.
+//  4. Team → add a tech → Invite: the share sheet gets the app's address, their login and the temporary password.
+//  5. The tech's first login: choose a password → three welcome screens ("Your route") → gone for good.
+//  6. The tech sees no Getting started card.
 //
 //   node onboarding.cjs <baseUrl> <password> <outDir>
 const { chromium } = require('playwright');
@@ -54,6 +55,19 @@ const { chromium } = require('playwright');
 
     // ---- 2
     await p.goto(url('/'), { waitUntil: 'networkidle' });
+    const countNow = async () => Number((await p.locator('[data-test=getting-started-count]').innerText()).split(' ')[0]);
+    const n0 = await countNow();
+    await p.locator('[data-test=getting-started-tick-install]').click();
+    await p.waitForFunction((n) => document.querySelector('[data-test=getting-started-count]')?.textContent?.startsWith(`${n + 1} of`), n0);
+    if (new URL(p.url()).pathname !== '/') throw new Error(`the tick opened ${p.url()}`);
+    await p.reload({ waitUntil: 'networkidle' });
+    await p.locator('[data-test=getting-started-count]').waitFor();
+    if ((await countNow()) !== n0 + 1) throw new Error('hand tick not kept after a reload');
+    await p.locator('[data-test=getting-started-tick-install]').click();
+    await p.waitForFunction((n) => document.querySelector('[data-test=getting-started-count]')?.textContent?.startsWith(`${n} of`), n0);
+    ok('the circle ticks a step by hand (kept after a reload) and unticks it, without leaving the Route');
+
+    // ---- 3
     await p.locator('[data-test=getting-started-hide]').click();
     await card.waitFor({ state: 'hidden' });
     await p.reload({ waitUntil: 'networkidle' });
@@ -62,7 +76,7 @@ const { chromium } = require('playwright');
     if (await card.count()) throw new Error('card back after reload');
     ok('Hide: the card stays hidden');
 
-    // ---- 3
+    // ---- 4
     await p.goto(url('/more/team'), { waitUntil: 'networkidle' });
     await p.locator('[data-test=team-add]').click();
     await p.locator('[data-test=team-new-name]').fill('Onboard Tech');
@@ -82,7 +96,7 @@ const { chromium } = require('playwright');
     ok('Invite shares the address, the login and the temporary password');
     console.log(`    ${shared.text.split('\n').join('\n    ')}`);
 
-    // ---- 4
+    // ---- 5
     const tech = await newPage();
     const q = tech.page;
     await login(q, techEmail, temp);
@@ -108,7 +122,7 @@ const { chromium } = require('playwright');
     if (await q.locator('[data-test=welcome-title]').count()) throw new Error('welcome shown again');
     ok('tech first login: new password → 3 welcome screens ("Your route") → not shown again');
 
-    // ---- 5
+    // ---- 6
     if (await q.locator('[data-test=getting-started]').count()) throw new Error('tech sees the Getting started card');
     ok('the tech sees no Getting started card');
     await tech.ctx.close();

@@ -11,8 +11,19 @@
     <q-linear-progress :value="doneCount / steps.length" color="primary" track-color="blue-2" class="q-mx-md" style="width: auto" rounded />
     <q-list dense class="q-py-sm">
       <q-item v-for="s in steps" :key="s.id" clickable :data-test="`getting-started-${s.id}`" :class="{ 'text-grey-6': s.done }" @click="router.push(s.to)">
-        <q-item-section avatar style="min-width: 32px">
-          <q-icon :name="s.done ? 'check_circle' : 'radio_button_unchecked'" :color="s.done ? 'positive' : 'grey-6'" />
+        <!-- The circle ticks the step by hand (or unticks a hand tick); the words open its screen. -->
+        <q-item-section avatar style="min-width: 40px">
+          <q-btn
+            flat
+            round
+            dense
+            :icon="s.done ? 'check_circle' : 'radio_button_unchecked'"
+            :color="s.done ? 'positive' : 'grey-6'"
+            :disable="s.auto"
+            :aria-label="s.done ? $t('Mark as not done') : $t('Mark as done')"
+            :data-test="`getting-started-tick-${s.id}`"
+            @click.stop="toggle(s.id)"
+          />
         </q-item-section>
         <q-item-section>
           <q-item-label :class="{ 'text-strike': s.done }">{{ s.label }}</q-item-label>
@@ -31,11 +42,11 @@ import { useRouter, type RouteLocationRaw } from 'vue-router';
 import { customerStatus } from '@pool/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useDataStore } from '@/stores/data';
-import { gettingStartedHidden, hideGettingStarted, installed } from '@/lib/welcome';
+import { gettingStartedHidden, hideGettingStarted, installed, saveTickedSteps, tickedSteps } from '@/lib/welcome';
 
 /**
  * Beta onboarding for owners: a checklist on the Route (and the dashboard) that ticks itself from the
- * business's own data. Hidden when everything is done, or with Hide (this device, this person).
+ * business's own data, or by hand (tap the circle). Hidden when everything is done, or with Hide (this device, this person).
  */
 defineOptions({ name: 'GettingStartedCard' });
 const props = defineProps<{ desk?: boolean }>();
@@ -43,9 +54,16 @@ const router = useRouter();
 const auth = useAuthStore();
 const data = useDataStore();
 const hidden = ref(gettingStartedHidden(auth.me?._id));
+const ticked = ref<string[]>(tickedSteps(auth.me?._id));
+function toggle(id: string) {
+  ticked.value = ticked.value.includes(id) ? ticked.value.filter((x) => x !== id) : [...ticked.value, id];
+  saveTickedSteps(auth.me?._id, ticked.value);
+}
 
 interface Step {
   id: string;
+  /** Done because the business's data shows it (can't be unticked by hand). */
+  auto?: boolean;
   label: string;
   hint?: string | undefined;
   done: boolean;
@@ -65,7 +83,7 @@ const steps = computed<Step[]>(() => {
     { id: 'team', label: t('Add your techs'), hint: t('Skip this if you work alone'), done: auth.team.length > 1, to: `${d}/team` },
   ];
   if (!props.desk) list.push({ id: 'install', label: t('Install the app on your phone'), hint: t('See Help → Getting started'), done: installed(), to: { name: 'help', params: { topic: 'start' } } });
-  return list;
+  return list.map((st) => ({ ...st, auto: st.done, done: st.done || ticked.value.includes(st.id) }));
 });
 const doneCount = computed(() => steps.value.filter((s) => s.done).length);
 const show = computed(() => auth.isOwner && data.loaded && !hidden.value && doneCount.value < steps.value.length);
