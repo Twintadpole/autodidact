@@ -119,6 +119,8 @@ Only that business is touched. Tell its owner before you do it: anything entered
 
 A whole-server outage can't alert from the server itself: Cloudflare emails you when the tunnel is down.
 
+**Something on the pages that isn't ours** (a banner, "Hello world", a cookie popup): Cloudflare can insert scripts into every page it passes along (Zaraz, Snippets, Workers). Check evolutiondfw.com → Zaraz in the Cloudflare dashboard first; it is turned off on purpose (Nov 23), and the Privacy page promises no tracking.
+
 ## 9. Email (password reset)
 
 The apps never send mail themselves (GPF apps have no internet). Each app queues its emails, and the server sends them every minute through **Twintadpole@gmail.com**:
