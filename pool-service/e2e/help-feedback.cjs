@@ -51,7 +51,7 @@ const { chromium } = require('playwright');
     await page.locator('[data-test=help-list]').waitFor();
     const count = await page.locator('[data-test=help-list] .q-item').count();
     if (count < 10) throw new Error(`only ${count} topics`);
-    await page.locator('[data-test=help-support] a[href^="mailto:steven@evolutiondfw.com"]').waitFor();
+    await page.locator('[data-test=help-support] a[href^="mailto:support@greatpoolfriend.com"]').waitFor();
     await page.screenshot({ path: `${out}/help-list.png` });
     await page.locator('[data-test=help-search] input, input[data-test=help-search]').fill('timer');
     await page.locator('[data-test=help-visit]').waitFor();

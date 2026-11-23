@@ -234,6 +234,17 @@ check "alpha on the new image" test "$(t_get alpha IMAGE)" = "${img}-next"
 check "alpha still has its customer" test "$(count alpha customers)" = 1
 check "alpha answers after update" test "$(http alpha /api/health)" = 200
 
+echo "== Moving to a new domain (old addresses kept during the move)"
+oldhttp() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.$2" "http://${GPF_EDGE_BIND}$3"; }
+check "update alpha with an alias domain" env GPF_ALIAS_DOMAINS=old.test bash "${GPF}" update alpha
+check "alpha answers on the main domain" test "$(http alpha /api/health)" = 200
+check "alpha answers on the old domain too" test "$(oldhttp alpha old.test /api/health)" = 200
+check "bravo (not updated) has no old address" test "$(oldhttp bravo old.test /api/health)" = 404
+check "alpha's email links use the main domain" bash -c "docker exec \$(docker ps -qf name=gpft-t-alpha-api) printenv PUBLIC_URL | grep -qx 'https://alpha.${GPF_DOMAIN}'"
+check "update alpha without the alias" run update alpha
+check "the old address is gone" test "$(oldhttp alpha old.test /api/health)" = 404
+check "alpha still answers on the main domain" test "$(http alpha /api/health)" = 200
+
 echo "== Suspend / resume"
 check "suspend alpha" run suspend alpha
 check "alpha answers 503 (page)" test "$(http alpha /)" = 503

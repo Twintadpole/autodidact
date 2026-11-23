@@ -19,6 +19,8 @@ if [[ -f "${GPF_CONFIG}/kit.env" ]]; then
   done < <(grep -E '^GPF_[A-Z0-9_]+=' "${GPF_CONFIG}/kit.env")
 fi
 GPF_DOMAIN="${GPF_DOMAIN:-}"                          # tenant address = <name>.<GPF_DOMAIN>
+GPF_ALIAS_DOMAINS="${GPF_ALIAS_DOMAINS:-}"            # older domains that still answer (space-separated), e.g.
+                                                      # during a move to a new domain; links and guides use GPF_DOMAIN
 GPF_EDGE_BIND="${GPF_EDGE_BIND:-127.0.0.1:8080}"      # where Traefik listens (cloudflared connects here)
 GPF_SUBNET_BASE="${GPF_SUBNET_BASE:-10.213}"          # tenant networks: <base>.<n*32>/27 style blocks
 # Offsite copies (restic, encrypted with each tenant's own key). Either, both or neither:
@@ -27,7 +29,7 @@ GPF_R2_ENV="${GPF_R2_ENV:-}"                          # file with R2_ENDPOINT, A
 GPF_R2_BUCKET="${GPF_R2_BUCKET:-}"
 GPF_R2_PREFIX="${GPF_R2_PREFIX:-gpf}"                 # repo = <bucket>/<prefix>/<tenant>
 GPF_PURGE_DAYS="${GPF_PURGE_DAYS:-90}"                # deleted tenants' final backups are kept this long
-GPF_SUPPORT_EMAIL="${GPF_SUPPORT_EMAIL:-steven@evolutiondfw.com}"   # shown in the welcome guide and tester guide
+GPF_SUPPORT_EMAIL="${GPF_SUPPORT_EMAIL:-support@greatpoolfriend.com}"   # shown in the welcome guide and tester guide
 
 MONGO_IMAGE="mongo:8"
 RESTIC_IMAGE="restic/restic:0.18.1"
@@ -131,6 +133,17 @@ t_wait_healthy() {
   die "Tenant $1 did not become healthy"
 }
 # HTTP status of <path> on a tenant's address, through the edge (as a visitor would arrive).
+# Traefik rule for a tenant: its address on GPF_DOMAIN, plus the same name on each alias domain.
+host_rule() {
+  local rule="Host(\`$1.${GPF_DOMAIN}\`)" d
+  for d in ${GPF_ALIAS_DOMAINS}; do rule+=" || Host(\`$1.${d}\`)"; done
+  echo "${rule}"
+}
+# Writes the current domains into a tenant's settings (used on create and every update).
+t_sync_domain() {
+  t_set "$1" DOMAIN "${GPF_DOMAIN}"
+  t_set "$1" ROUTE_RULE "'$(host_rule "$1")'"
+}
 t_http() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.${GPF_DOMAIN}" "http://${GPF_EDGE_BIND}$2"; }
 # Traefik picks up a (re)started app a few seconds after it is healthy: wait up to 30 s for a 200.
 t_edge_code() {

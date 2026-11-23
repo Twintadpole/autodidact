@@ -140,6 +140,7 @@ SECRETS_DIR=${sec}
 STATE=active
 CREATED=$(now)
 ENV
+    t_sync_domain "${name}"
   )
   mkdir -p "${dir}/data/mongo" "${dir}/data/photos" "${dir}/backups" "${dir}/exports"
   # The app runs as uid 1000 ("node") in its image.
@@ -533,7 +534,7 @@ cmd_errors() { local which="${1:-}"; shift || true; each errors_one "${which}" "
 update_one() {
   local name="$1" image="${2:-$(current_image)}"
   [[ -n "${image}" ]] || die "No image chosen"
-  [[ "$(t_get "${name}" STATE)" == active ]] || { echo "${name}: suspended, image set for when it resumes"; t_set "${name}" IMAGE "${image}"; return 0; }
+  [[ "$(t_get "${name}" STATE)" == active ]] || { echo "${name}: suspended, image and address set for when it resumes"; t_set "${name}" IMAGE "${image}"; t_sync_domain "${name}"; return 0; }
   say "${name}: safety backup"
   backup_one "${name}" --predeploy   # stops here on failure; nothing changed yet
   local before after old
@@ -541,6 +542,7 @@ update_one() {
   old="$(t_get "${name}" IMAGE)"
   say "${name}: ${old} -> ${image}"
   t_set "${name}" IMAGE "${image}"
+  t_sync_domain "${name}"
   tdc "${name}" up -d
   edge_connect "${name}"
   t_wait_healthy "${name}"
@@ -591,7 +593,7 @@ cmd_suspend() {
 http:
   routers:
     ${GPF_PREFIX}-${name}-paused:
-      rule: Host(\`${name}.${GPF_DOMAIN}\`)
+      rule: $(host_rule "${name}")
       entryPoints: [web]
       priority: 100000
       service: ${GPF_PREFIX}-notice

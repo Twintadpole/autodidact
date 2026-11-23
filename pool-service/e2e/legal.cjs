@@ -26,7 +26,7 @@ const { chromium } = require('playwright');
     await page.locator('[data-test=login-legal]').getByText('Terms of beta use').click();
     await page.waitForURL(/\/terms$/);
     await page.locator('[data-test=legal-text]').getByText('Your data is yours').waitFor();
-    await page.locator('[data-test=legal-text] a[href="mailto:steven@evolutiondfw.com"]').first().waitFor();
+    await page.locator('[data-test=legal-text] a[href="mailto:support@greatpoolfriend.com"]').first().waitFor();
     if (await page.locator('[data-test=legal-english-only]').count()) throw new Error('English page shows the English-only note');
     await page.screenshot({ path: `${out}/legal-terms.png`, fullPage: true });
     ok('login → Terms of beta use (with the support email link)');

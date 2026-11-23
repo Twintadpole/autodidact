@@ -271,5 +271,5 @@ export function topicForScreen(routeName: unknown): string | undefined {
   return HELP.find((t) => t.screens.includes(String(routeName ?? '')))?.id;
 }
 
-export const SUPPORT_EMAIL = 'steven@evolutiondfw.com';
+export const SUPPORT_EMAIL = 'support@greatpoolfriend.com';
 export const LEGAL_LINE = 'Great Pool Friend. Created by S R Donaldson, all rights reserved.';

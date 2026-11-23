@@ -1,6 +1,6 @@
 # One business ("tenant"): its app and its own MongoDB on one sealed network.
 # Started only by gpf/tenant.sh, with --env-file <secrets>/compose.env (non-secret settings):
-#   TENANT, GPF_PREFIX, DOMAIN, IMAGE, SUBNET, DATA_DIR, SECRETS_DIR
+#   TENANT, GPF_PREFIX, DOMAIN, ROUTE_RULE, IMAGE, SUBNET, DATA_DIR, SECRETS_DIR
 # Secrets are files in SECRETS_DIR (mode 600), never in this file or in git.
 #
 # The network is internal: nothing in it reaches the internet, and nothing outside reaches in,
@@ -77,7 +77,8 @@ services:
       - gpf.edge=${GPF_PREFIX}
       - gpf.tenant=${TENANT}
       - traefik.docker.network=${GPF_PREFIX}-t-${TENANT}
-      - traefik.http.routers.${GPF_PREFIX}-${TENANT}.rule=Host(`${TENANT}.${DOMAIN}`)
+      # ROUTE_RULE (tenant.sh): <name>.<GPF_DOMAIN>, plus <name>.<alias> for each GPF_ALIAS_DOMAINS entry.
+      - traefik.http.routers.${GPF_PREFIX}-${TENANT}.rule=${ROUTE_RULE:-Host(`${TENANT}.${DOMAIN}`)}
       - traefik.http.routers.${GPF_PREFIX}-${TENANT}.entrypoints=web
       - traefik.http.services.${GPF_PREFIX}-${TENANT}.loadbalancer.server.port=3000
 

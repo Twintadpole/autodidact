@@ -126,7 +126,7 @@ image (`npm i playwright` once, cached in `<GPF_ROOT>/.pdf-node`). Support addre
 | `GPF_PURGE_DAYS` | `90` | |
 | `GPF_NTFY_URL`, `GPF_NTFY_TOKEN_FILE` | — | alerts, e.g. `http://127.0.0.1:2586/gpf-alerts`; without a URL they only go to the log |
 | `GPF_DISK_LIMIT` | `80` | disk alert, % full |
-| `GPF_SUPPORT_EMAIL` | `steven@evolutiondfw.com` | in the welcome and tester guides |
+| `GPF_SUPPORT_EMAIL` | `support@greatpoolfriend.com` | in the welcome and tester guides |
 
 Any `GPF_*` setting can also go in `<GPF_CONFIG>/kit.env` (no secrets there).
 
