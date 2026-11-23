@@ -126,6 +126,11 @@ Then start the VPS session:
      `e2e/csp-watch.cjs` preload fails any e2e run with a CSP block (used by /var/tmp/pw-run.sh).
      Operator guide 13b: Cloudflare settings for the owner (Always HTTPS, TLS 1.2, Free Managed Ruleset,
      rate limit /api/auth/ 10/min, Bot Fight Mode off, Zaraz off, no Access on tenants).
+  - Load (Nov 23): at rest ~24% CPU of 2 vCPU (incl. the Claude session and the live app's 5 s mongosh health
+     check, fixed at the next deploy), 1.5 GB RAM available; testing pushes it into swap. Told the owner: no VPS
+     upgrade now; RAM (8 GB) first if >4–6 beta tenants here; home lab later. Tenant mongo health check now 120 s;
+     mail sender opens a DB only when the app's flag (photos/.mail/pending) is newer, or every 15 min.
+     Kit test 157/157 (Nov 23: the live-app check once saw the owner's own phone sync during the run; harmless).
   - (Plan as proposed Nov 23:) security headers (CSP/HSTS/frame/nosniff),
      max lengths on ~47 unbounded text fields, uploads verified as images + GPS/EXIF stripped, npm audit monthly,
      Cloudflare settings for the owner (WAF free rules, Always HTTPS, TLS 1.2, rate-limit /api/auth). Told the
