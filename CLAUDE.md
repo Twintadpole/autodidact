@@ -111,6 +111,7 @@ Then start the VPS session:
      every phone's next pull is full (sync.ts, owners too; sync.test.ts), offsite: missing photos added back
      (file by file; busybox cp -n skips existing folders), undo command printed, `backups/RESTORES` log.
      Owner's own app has no restore command yet (deploy/restore-check.sh only).
+     Shortcut `~/.local/bin/gpf` (host only) = tenant.sh; the owner (Termux = root) runs `sudo -iu claude gpf list`.
   - Tenant addresses: `<name>.evolutiondfw.com` (Cloudflare's free cert covers one level; `<name>.gpf.…` would need
     Advanced Certificate Manager). gpf.evolutiondfw.com = tenant `gpf`, the owner's test/demo business ("test
     branch": `update gpf` first, then `update all`). Owner Nov 22: the tunnel already routes gpf; they'll probably
