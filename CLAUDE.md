@@ -295,7 +295,7 @@ Push VPS commits to `claude/new-session-q17smb` right after committing (never fo
   already open in Cloudflare Access, so the login screen can read them.
   **GPF test install running on the VPS (Nov 20, owner: dummy data, prove isolation; subdomain later):**
   `~/gpf` + `~/.config/gpf` (kit.env: GPF_DOMAIN=evolutiondfw.com, edge 127.0.0.1:8080, local offsite
-  folder), image `gpf-api:d490ba2` (Nov 23, beta checklist + restore; mail cron on), tenants **gpf** (GPF Demo Pools, owner@gpf.example, 14 customers) and
+  folder), image `gpf-api:f6900c6` (Nov 23, + hand ticks on Getting started; mail cron on), tenants **gpf** (GPF Demo Pools, owner@gpf.example, 14 customers) and
   **bluewave** (Bluewave Pool Co, owner@bluewave.example, 9), dummy data from `gpf/demo/seed-demo.cjs`;
   `gpf/demo/verify.sh gpf bluewave` 31/31 (3 logins per tenant: wait 15 min between runs). Not public: the
   owner will add tunnel hostname gpf.evolutiondfw.com → http://localhost:8080 later. No backup cron for it.
