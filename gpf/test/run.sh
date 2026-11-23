@@ -93,6 +93,8 @@ check "add a customer to alpha (HTTP ${code})" test "${code}" = 200 -o "${code}"
 check "alpha has 1 customer" test "$(count alpha customers)" = 1
 check "bravo has 0 customers" test "$(count bravo customers)" = 0
 
+check "safety headers through the edge (strict content policy, no framing)" bash -c "h=\$(curl -sI -H 'Host: alpha.${GPF_DOMAIN}' 'http://${GPF_EDGE_BIND}/'); grep -qi \"content-security-policy: default-src 'self'; script-src 'self';\" <<<\"\$h\" && grep -qi 'x-frame-options: DENY' <<<\"\$h\""
+
 echo "== Sealed networks"
 for t in alpha bravo; do
   for s in api mongo; do
@@ -219,6 +221,7 @@ check "mail all (no mailbox): nothing to do" env MAIL_CONFIG_DIR=/var/tmp/gpft/n
 check "mail all: marks the apps ready" env MAIL_CONFIG_DIR=/var/tmp/gpft/mail bash "${GPF}" mail all
 check "now alpha offers email reset" bash -c "curl -s -H 'Host: alpha.${GPF_DOMAIN}' 'http://${GPF_EDGE_BIND}/api/auth/options' | grep -q '\"resetByEmail\":true'"
 check "forgot password on alpha" bash -c "curl -s -H 'Host: alpha.${GPF_DOMAIN}' -H 'content-type: application/json' --data '{\"email\":\"owner@alpha.example\"}' 'http://${GPF_EDGE_BIND}/api/auth/forgot' | grep -q '\"ok\":true'"
+check "the app left its \"mail waiting\" flag" test -s "$(t_dir alpha)/data/photos/.mail/pending"
 check "mail all: sends it" env MAIL_CONFIG_DIR=/var/tmp/gpft/mail bash "${GPF}" mail all
 check "the email reached the mailbox, with alpha's own reset link" bash -c "sleep 1; id=\$(curl -s 'http://127.0.0.1:8026/api/v1/search?query=to:owner@alpha.example' | grep -o '\"ID\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4); curl -s \"http://127.0.0.1:8026/api/v1/message/\$id\" | grep -q 'https://alpha.${GPF_DOMAIN}/reset?token='"
 check "nothing left in alpha's outbox" test "$(tmongosh alpha pool <<<'db.mailOutbox.countDocuments({ sentAt: null })')" = 0
