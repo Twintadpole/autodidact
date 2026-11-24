@@ -59,6 +59,11 @@ Then start the VPS session:
 4. e2e against `http://127.0.0.1:3000/` on the VPS with `E2E_SESSION=$(docker compose exec -T api node server/dist/cli/e2e-session.js)` and `NODE_OPTIONS=--require /e2e/local-cookies.cjs`; the password argument is `unused` (see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
+## Owner's decision (Nov 24): poolapp stays as it is until the home-lab move
+- poolapp.evolutiondfw.com stays on **v0.2.0** ("good enough", used daily). **No deploys there** until the
+  migration to the home lab; then it moves as-is or as a GPF tenant (decide then). All new work ships to GPF.
+  The OWNER_EMAIL line / mail cron / 30 s health check for poolapp wait until then.
+
 ## Where we left off (Nov 22)
 - Everything since v0.2.0 is built and tested but **NOT deployed** to the owner's app (owner's rule: no deploys
   until they say so): GPF tenant kit, customer import, accounts/roles/routes, branding, six languages.
