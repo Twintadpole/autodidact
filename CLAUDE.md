@@ -115,8 +115,9 @@ Then start the VPS session:
   8. ✅ Domain move (Nov 23, owner bought greatpoolfriend.com, on Cloudflare): kit.env `GPF_DOMAIN=greatpoolfriend.com`,
      `GPF_ALIAS_DOMAINS=evolutiondfw.com` (old addresses kept during the move; kit.env.bak-20261123). New test
      business **demo** (owner@demo.example, seeded 14 customers); gpf to be retired later (owner: "demo is better").
-     Support address **support@greatpoolfriend.com** (owner sets Cloudflare Email Routing). Owner still to add the
-     tunnel wildcard `*.greatpoolfriend.com` → localhost:8080 and check Zaraz is off there. Kit test 155/155.
+     Support address **support@greatpoolfriend.com** (Email Routing on, Nov 24). Tunnel wildcard `*.greatpoolfriend.com`
+     → localhost:8080 live Nov 24 (demo/bluewave/gpf 200, unknown names 404); Zaraz off; WAF managed rules and TLS 1.2
+     verified. Still off (Nov 24): Always Use HTTPS on both zones; the /api/auth/ rate-limit rule didn't trigger. Kit test 155/155.
   - ✅ **Security hardening built Nov 23** (owner: "Go"): `plugins/securityHeaders.ts` (CSP script-src 'self', no inline
      scripts; style 'unsafe-inline' for Quasar; img data:/blob:; frame-ancestors none; HSTS; nosniff; XFO DENY;
      Referrer same-origin; Permissions-Policy), `.max()` on every text field + list caps (shared schemas), logo
