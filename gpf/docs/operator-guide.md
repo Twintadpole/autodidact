@@ -85,7 +85,7 @@ A business can stay on an older version: `bash gpf/tenant.sh update <name> gpf-a
 | What | When | Where |
 | --- | --- | --- |
 | Your app | 03:17 nightly; restore check Sundays 04:47 | `pool-service/backups/` + encrypted copy in R2 (`pool-backup`) |
-| Each GPF business | 02:37 nightly; restore check Sundays 05:13 | `~/gpf/tenants/<name>/backups/` + encrypted copy (each business has its own key) |
+| Each GPF business | 02:37 nightly; restore check Sundays 05:13 | `~/gpf/tenants/<name>/backups/` + encrypted copies in `~/gpf/offsite/<name>` (same server, fast restores) and in R2 (`pool-backup/gpf/<name>`, off-site), each business with its own key |
 
 Copies kept: 14 daily, 8 weekly, 12 monthly. The weekly restore check reads every byte of the off-site copy, restores it into a scratch database and compares the counts with the live one. A failure is an alert.
 
@@ -101,7 +101,7 @@ Copy them into your password manager.
 2. Pick the backup:
    - the newest nightly one (default),
    - a specific file: `--file ~/gpf/tenants/<name>/backups/pool-<date>.archive.gz` (the last 14 nights are there),
-   - or an off-site copy: `--offsite local|r2`, plus `--snapshot <id>` from `bash gpf/tenant.sh snapshots <name>` (up to 12 months back). Off-site copies also bring back missing photos; none are ever removed.
+   - or an off-site copy: `--offsite r2` (really off-site; use this if the server's disk was lost) or `--offsite local`, plus `--snapshot <id>` from `bash gpf/tenant.sh snapshots <name> r2` (up to 12 months back). Off-site copies also bring back missing photos; none are ever removed.
 3. Restore: the same command with `--confirm <name>` instead of `--dry-run`. It takes a safety backup first, stops the app for the minute it takes, restores, starts it again and checks the counts.
 4. It prints the command that **undoes** it (restoring the safety backup). Every phone reloads its data at its next sync; logins are as they were in that backup.
 

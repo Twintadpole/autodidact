@@ -271,6 +271,11 @@ backup_one() {
   local target tag=nightly failed=0
   [[ "${label}" == --final ]] && tag=final
   for target in $(offsite_targets); do
+    # A target added after the tenant was made (e.g. R2 switched on later): set up its repository first.
+    if ! trestic "${name}" "${target}" -- cat config >/dev/null 2>&1; then
+      echo "${name}: setting up the ${target} offsite copy (encrypted with ${name}'s own key)"
+      trestic "${name}" "${target}" -- init --quiet >/dev/null || { echo "${name}: could not set up the ${target} repository" >&2; failed=1; continue; }
+    fi
     if trestic "${name}" "${target}" -v "${out}:/data/db.archive.gz:ro" -v "${dir}/data/photos:/data/photos:ro" -- \
          backup --quiet --host "${name}" --tag "${tag}" /data/db.archive.gz /data/photos &&
        { [[ "${tag}" == final ]] || trestic "${name}" "${target}" -- forget --quiet --host "${name}" --tag nightly \

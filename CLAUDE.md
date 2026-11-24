@@ -59,6 +59,12 @@ Then start the VPS session:
 4. e2e against `http://127.0.0.1:3000/` on the VPS with `E2E_SESSION=$(docker compose exec -T api node server/dist/cli/e2e-session.js)` and `NODE_OPTIONS=--require /e2e/local-cookies.cjs`; the password argument is `unused` (see `pool-service/deploy/README.md`). Login limit: 5 per 15 min, so run at most 4 tests per deploy.
 5. dry run of `cleanup-orphans.sh`, then `record_counts`
 
+## GPF off-site backups to R2 (Nov 24, owner: "Do 1")
+- kit.env: `GPF_R2_ENV=~/.config/pool-backup/r2.env`, `GPF_R2_BUCKET=pool-backup`, `GPF_R2_PREFIX=gpf` (kit.env.bak-20261124);
+  local offsite folder kept too. backup_one now inits a missing repository (targets added later). First R2 copies of
+  bluewave/demo/gpf Nov 24; `restore-check all --offsite r2` passed for all three. Owner to copy each tenant's
+  `~/.config/gpf/tenants/<name>/restic-password` into their password manager.
+
 ## Owner's decision (Nov 24): poolapp stays as it is until the home-lab move
 - poolapp.evolutiondfw.com stays on **v0.2.0** ("good enough", used daily). **No deploys there** until the
   migration to the home lab; then it moves as-is or as a GPF tenant (decide then). All new work ships to GPF.
