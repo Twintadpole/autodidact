@@ -21,6 +21,8 @@ const envSchema = z.object({
     .pipe(z.string().startsWith('$argon2', 'ADMIN_PASSWORD_HASH must be an argon2 hash')),
   /** Login name of the first owner, made from ADMIN_PASSWORD_HASH on the first start with accounts ("owner" if unset). */
   OWNER_EMAIL: z.string().trim().toLowerCase().optional(),
+  /** Where Send feedback notes are also emailed (beta), e.g. support@greatpoolfriend.com. Unset: no email. */
+  SUPPORT_EMAIL: z.union([z.string().email(), z.literal('')]).optional(),
   /** A folder the app may write to: it touches `pending` there when an email is queued, so the
    *  server's sender only opens the database when there is mail (deploy/mail-lib.sh). */
   MAIL_FLAG_DIR: z.string().optional(),
@@ -49,6 +51,7 @@ export interface AppConfig {
   ownerEmail?: string;
   publicUrl?: string;
   mailFlagDir?: string;
+  supportEmail?: string;
   productName?: string;
   photoDir: string;
   clientDist?: string;
@@ -79,6 +82,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     ...(e.OWNER_EMAIL && { ownerEmail: e.OWNER_EMAIL }),
     ...(e.PUBLIC_URL && { publicUrl: e.PUBLIC_URL.replace(/\/+$/, '') }),
     ...(e.MAIL_FLAG_DIR && { mailFlagDir: path.resolve(e.MAIL_FLAG_DIR) }),
+    ...(e.SUPPORT_EMAIL && { supportEmail: e.SUPPORT_EMAIL }),
     productName: e.PRODUCT_NAME,
     photoDir: path.resolve(e.PHOTO_DIR),
     clientDist: e.CLIENT_DIST ? path.resolve(e.CLIENT_DIST) : undefined,

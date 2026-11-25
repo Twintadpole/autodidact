@@ -224,6 +224,10 @@ check "forgot password on alpha" bash -c "curl -s -H 'Host: alpha.${GPF_DOMAIN}'
 check "the app left its \"mail waiting\" flag" test -s "$(t_dir alpha)/data/photos/.mail/pending"
 check "mail all: sends it" env MAIL_CONFIG_DIR=/var/tmp/gpft/mail bash "${GPF}" mail all
 check "the email reached the mailbox, with alpha's own reset link" bash -c "sleep 1; id=\$(curl -s 'http://127.0.0.1:8026/api/v1/search?query=to:owner@alpha.example' | grep -o '\"ID\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4); curl -s \"http://127.0.0.1:8026/api/v1/message/\$id\" | grep -q 'https://alpha.${GPF_DOMAIN}/reset?token='"
+fb="$(curl -s -o /dev/null -w '%{http_code}' -H "Host: alpha.${GPF_DOMAIN}" -H "cookie: ${CA}" -H 'content-type: application/json' --data '{"kind":"idea","text":"Kit feedback by email"}' "http://${GPF_EDGE_BIND}/api/feedback")"
+check "send feedback on alpha (HTTP ${fb})" test "${fb}" = 201
+check "mail all: sends the feedback to support" env MAIL_CONFIG_DIR=/var/tmp/gpft/mail bash "${GPF}" mail all
+check "support got it, with alpha's address and a reply-to" bash -c "sleep 1; id=\$(curl -s 'http://127.0.0.1:8026/api/v1/search?query=to:${GPF_SUPPORT_EMAIL}' | grep -o '\"ID\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4); m=\$(curl -s \"http://127.0.0.1:8026/api/v1/message/\$id\"); grep -q 'Kit feedback by email' <<<\"\$m\" && grep -q 'https://alpha.${GPF_DOMAIN}' <<<\"\$m\" && grep -q '\"ReplyTo\":\[{' <<<\"\$m\""
 check "nothing left in alpha's outbox" test "$(tmongosh alpha pool <<<'db.mailOutbox.countDocuments({ sentAt: null })')" = 0
 docker rm -f gpft-mailpit >/dev/null
 docker rm -f gpft-ntfy >/dev/null; unset GPF_NTFY_URL

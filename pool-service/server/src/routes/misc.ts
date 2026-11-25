@@ -4,9 +4,11 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import type { FastifyPluginAsync } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { idSchema } from '@pool/shared';
+import { BUSINESS_SETTINGS_ID, idSchema } from '@pool/shared';
 import crypto from 'node:crypto';
-import { ClientError, Feedback, Photo, Pool } from '../models/index.js';
+import { ClientError, Feedback, Photo, Pool, Settings, User } from '../models/index.js';
+import { queueMail } from '../services/mail.js';
+import type { AppConfig } from '../config.js';
 import type { PhotoStore } from '../services/photoStore.js';
 import { diff, recordAudit } from '../services/audit.js';
 import { scopeFilter } from '../services/scope.js';
@@ -116,7 +118,7 @@ export const clientLogRoutes: FastifyPluginAsync = async (parent) => {
 };
 
 /** "Send feedback" (beta). Anyone signed in sends; the owner reads them all and marks them done. */
-export const feedbackRoutes: FastifyPluginAsync = async (parent) => {
+export const feedbackRoutes: FastifyPluginAsync<{ config: AppConfig }> = async (parent, { config }) => {
   const app = parent.withTypeProvider<ZodTypeProvider>();
   app.post(
     '/feedback',
@@ -145,6 +147,33 @@ export const feedbackRoutes: FastifyPluginAsync = async (parent) => {
         screen: b.screen, appVersion: b.appVersion, language: b.language, userAgent: b.userAgent,
         createdAt: b.createdAt ? new Date(b.createdAt) : new Date(),
       });
+      // Also emailed to support (beta), with the person's email as the reply address.
+      if (config.supportEmail) {
+        const me = await User.findById(req.actor!.userId, { email: 1 }).lean<{ email?: string }>();
+        const settings = await Settings.findById(BUSINESS_SETTINGS_ID, { businessName: 1 }).lean<{ businessName?: string }>();
+        const product = config.productName ?? 'Great Pool Friend';
+        const business = settings?.businessName || product;
+        const kind = { problem: 'Problem', idea: 'Idea', question: 'Question', other: 'Feedback' }[b.kind ?? 'other'];
+        await queueMail(
+          [config.supportEmail],
+          `[${product} feedback] ${business}: ${kind} from ${req.actor!.name}`,
+          [
+            b.text,
+            '',
+            '—',
+            `Business: ${business}${config.publicUrl ? ` (${config.publicUrl})` : ''}`,
+            `From: ${req.actor!.name} <${me?.email ?? '?'}>, ${req.actor!.role}`,
+            `Kind: ${kind}`,
+            `Screen: ${b.screen ?? '—'} · App version: ${b.appVersion ?? '?'} · Language: ${b.language ?? '?'}`,
+            `Sent: ${new Date().toUTCString()}`,
+            '',
+            me?.email && /@/.test(me.email) ? 'Reply to this email to answer them.' : 'Their login is not an email address: answer them in person.',
+          ].join('\n'),
+          'feedback',
+          config.mailFlagDir,
+          me?.email,
+        );
+      }
       return reply.code(201).send({ ok: true, _id });
     },
   );

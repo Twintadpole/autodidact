@@ -59,6 +59,8 @@ services:
       PUBLIC_URL: https://${TENANT}.${DOMAIN}
       # "Mail waiting" flag for tenant.sh mail (inside the photo folder the app can already write).
       MAIL_FLAG_DIR: /data/photos/.mail
+      # Send feedback notes are also emailed here (GPF_SUPPORT_EMAIL).
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
     volumes:
       - ${DATA_DIR}/photos:/data/photos
       - ${DATA_DIR}/../backups:/backups:ro

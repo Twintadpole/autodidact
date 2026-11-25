@@ -13,10 +13,12 @@ const encodeHeader = (s: string) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?$
 const clean = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
 
 /** A plain-text message (no From: the sender adds it). */
-export function buildMessage(to: string[], subject: string, text: string): string {
+const EMAIL = /^[^\s@<>,"]+@[^\s@<>,"]+\.[^\s@<>,"]+$/;
+export function buildMessage(to: string[], subject: string, text: string, replyTo?: string): string {
   const body = b64(text.replace(/\r?\n/g, '\r\n')).replace(/.{1,76}/g, '$&\r\n');
   return [
     `To: ${to.map(clean).join(', ')}`,
+    ...(replyTo && EMAIL.test(replyTo) ? [`Reply-To: ${clean(replyTo)}`] : []),
     `Subject: ${encodeHeader(clean(subject))}`,
     `Date: ${new Date().toUTCString().replace('GMT', '+0000')}`,
     `Message-ID: <${crypto.randomUUID()}@greatpoolfriend>`,
@@ -28,10 +30,10 @@ export function buildMessage(to: string[], subject: string, text: string): strin
   ].join('\r\n');
 }
 
-export async function queueMail(to: string[], subject: string, text: string, kind: string, flagDir?: string): Promise<void> {
+export async function queueMail(to: string[], subject: string, text: string, kind: string, flagDir?: string, replyTo?: string): Promise<void> {
   const list = to.map((t) => t.trim().toLowerCase()).filter((t) => /^[^\s@<>,]+@[^\s@<>,]+\.[^\s@<>,]+$/.test(t));
   if (!list.length) return;
-  await MailOutbox.create({ _id: crypto.randomUUID(), to: list, subject, raw: buildMessage(list, subject, text), kind, createdAt: new Date() });
+  await MailOutbox.create({ _id: crypto.randomUUID(), to: list, subject, raw: buildMessage(list, subject, text, replyTo), kind, createdAt: new Date() });
   // Tell the sender there is mail (it then reads the outbox; without the flag it looks only now and then).
   if (flagDir) {
     await fs.promises

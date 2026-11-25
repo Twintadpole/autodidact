@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ClientError, Feedback } from '../src/models/index.js';
+import { ClientError, Feedback, MailOutbox } from '../src/models/index.js';
 import { login, setupTestApp, type TestContext } from './helpers.js';
 
 let ctx: TestContext;
@@ -9,7 +9,7 @@ const req = (cookie: string, method: string, url: string, payload?: unknown) =>
   ctx.app.inject({ method: method as any, url: `/api${url}`, headers: { cookie }, ...(payload !== undefined && { payload: payload as any }) });
 
 beforeAll(async () => {
-  ctx = await setupTestApp();
+  ctx = await setupTestApp({ supportEmail: 'support@example.com', publicUrl: 'https://pools.example.com' });
   owner = await login(ctx.app);
   const member = (await req(owner, 'POST', '/team', { email: 'fran@example.com', name: 'Fran' })).json();
   tech = await login(ctx.app, false, 'fran@example.com', member.password);
@@ -28,6 +28,15 @@ describe('beta feedback', () => {
     expect((await req(tech, 'POST', '/feedback', body)).statusCode).toBe(200);
     expect(await Feedback.countDocuments({ _id })).toBe(1);
     expect(await Feedback.findById(_id).lean()).toMatchObject({ userName: 'Fran', role: 'tech', kind: 'problem', screen: '/pools/x', appVersion: '0.3.0' });
+    // Emailed to support once (not again for the resend), answerable by replying to Fran.
+    const mails = await MailOutbox.find({ kind: 'feedback' }).lean<any[]>();
+    expect(mails).toHaveLength(1);
+    expect(mails[0].to).toEqual(['support@example.com']);
+    expect(mails[0].raw).toMatch(/^Reply-To: fran@example\.com\r$/m);
+    const text = Buffer.from(mails[0].raw.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString();
+    expect(text).toContain('The timer stopped');
+    expect(text).toContain('From: Fran <fran@example.com>, tech');
+    expect(text).toContain('Screen: /pools/x · App version: 0.3.0 · Language: es');
   });
 
   it('refuses empty text', async () => {

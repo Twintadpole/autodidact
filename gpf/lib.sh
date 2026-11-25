@@ -139,9 +139,10 @@ host_rule() {
   for d in ${GPF_ALIAS_DOMAINS}; do rule+=" || Host(\`$1.${d}\`)"; done
   echo "${rule}"
 }
-# Writes the current domains into a tenant's settings (used on create and every update).
+# Writes the current domains and support address into a tenant's settings (create and every update).
 t_sync_domain() {
   t_set "$1" DOMAIN "${GPF_DOMAIN}"
+  t_set "$1" SUPPORT_EMAIL "${GPF_SUPPORT_EMAIL}"
   t_set "$1" ROUTE_RULE "'$(host_rule "$1")'"
 }
 t_http() { curl -s -o /dev/null -w '%{http_code}' -H "Host: $1.${GPF_DOMAIN}" "http://${GPF_EDGE_BIND}$2"; }

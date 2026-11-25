@@ -77,7 +77,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
         await secured.register(resourceRoutes);
         await secured.register(routeRoutes);
         await secured.register(clientLogRoutes);
-        await secured.register(feedbackRoutes);
+        await secured.register(feedbackRoutes, { config });
         await secured.register(syncRoutes, { photos });
         await secured.register(photoRoutes, { photos });
         // Owner only (GPF item 3): money reports, exports, imports, system status, the team.
