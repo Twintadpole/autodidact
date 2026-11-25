@@ -66,7 +66,7 @@ mail_send_pending() {
       curl -sS --max-time 60 --url "${MAIL_SMTP_URL}" --mail-from "$(mail_from_address)" "${rcpts[@]}" --upload-file "${tmp}" 2>"${tmp}.err"
     else
       # The password reaches curl through a file descriptor, never on its command line.
-      curl -sS --max-time 60 --ssl-reqd --url "${MAIL_SMTP_URL}" -K <(printf 'user = "%s:%s"\n' "${MAIL_USER}" "$(cat "${MAIL_PASSWORD_FILE}")") \
+      curl -sS --max-time 60 --ssl-reqd --url "${MAIL_SMTP_URL}" -K <(printf 'user = "%s:%s"\n' "${MAIL_USER}" "$(tr -d ' \n\r\t' < "${MAIL_PASSWORD_FILE}")") \
         --mail-from "$(mail_from_address)" "${rcpts[@]}" --upload-file "${tmp}" 2>"${tmp}.err"
     fi
     rc=$?
