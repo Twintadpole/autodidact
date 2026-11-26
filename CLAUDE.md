@@ -66,7 +66,8 @@ Then start the VPS session:
   (Nov 25, in their notes app). Gmail app password saved Nov 25 (`~/.config/pool-mail/gmail-app-password`, 600;
   mail-lib strips spaces); a test email sent to the owner's Gmail; all three tenants `resetByEmail: true`. Owner
   subscribed to ntfy `gpf-alerts`. Send feedback also emails SUPPORT_EMAIL (Nov 25; tenants get
-  GPF_SUPPORT_EMAIL via t_sync_domain; Reply-To = the person; kit 160/160). Left before the first tester: the owner's phone run-through on demo.
+  GPF_SUPPORT_EMAIL via t_sync_domain; Reply-To = the person; kit 160/160). Nov 26: owner confirmed the ntfy test
+  alert and a real feedback email via support@ reached them. GPF is ready for a first beta tester. Optional before: the owner's phone run-through on demo.
 
 ## Owner's decision (Nov 24): poolapp stays as it is until the home-lab move
 - poolapp.evolutiondfw.com stays on **v0.2.0** ("good enough", used daily). **No deploys there** until the
